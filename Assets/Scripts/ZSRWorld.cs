@@ -24,7 +24,14 @@ namespace ZombieSurvivalRun
                 ZSRVisuals.Box("steel guardrail", transform, new Vector3(side * 5.57f, .70f, 0), new Vector3(.13f, .17f, Length), ZSRVisuals.Steel);
                 ZSRVisuals.Box("guardrail lower", transform, new Vector3(side * 5.56f, .22f, 0), new Vector3(.12f, .12f, Length), ZSRVisuals.Armor);
                 for (int k = 0; k < 11; k++)
-                    ZSRVisuals.Box("rail mounting", transform, new Vector3(side * 5.57f, .35f, -22f + k * 4.3f), new Vector3(.14f, 1.3f, .18f), ZSRVisuals.Steel);
+                {
+                    float z = -22f + k * 4.3f;
+                    ZSRVisuals.Box("rail mounting", transform, new Vector3(side * 5.57f, .35f, z),
+                        new Vector3(.14f, 1.3f, .18f), ZSRVisuals.MetalWorn);
+                    if (k % 3 == 1)
+                        ZSRVisuals.Box("amber guide reflector", transform, new Vector3(side * 5.47f, .59f, z),
+                            new Vector3(.07f, .09f, .58f), ZSRVisuals.OrangeGlow);
+                }
                 for (int b = 0; b < 2; b++) BuildBuilding(side, b * 2 + (index % 2));
                 for (int lamp = 0; lamp < 2; lamp++) BuildLamp(side, -12f + lamp * 24f);
             }
@@ -431,6 +438,7 @@ namespace ZombieSurvivalRun
                     ZSRVisuals.Box("reflective debris plate",root,
                         new Vector3(-.82f,.065f,.70f),new Vector3(.72f,.07f,.50f),
                         ZSRVisuals.MetalWorn,new Vector3(0,18,0));
+                    ZSRVisuals.WreckFire(root, new Vector3(.28f, 1.05f, -.83f));
                 }
                 else if (kind==1)
                 {
@@ -457,9 +465,7 @@ namespace ZombieSurvivalRun
                     root, Vector3.zero, Vector3.one, ZSRVisuals.Yellow);
                 ZSRVisuals.Box("front crash grille", root, new Vector3(0, .74f, 1.9f),
                     new Vector3(1.3f, .21f, .08f), ZSRVisuals.Gunmetal);
-                // Small fire glow, not the giant cylinder that obscured the car.
-                ZSRVisuals.Sphere("engine ember",root,new Vector3(.34f,1.18f,1.04f),
-                    new Vector3(.26f,.24f,.23f),chapter==2?ZSRVisuals.BlueGlow:ZSRVisuals.Fire);
+                ZSRVisuals.WreckFire(root, new Vector3(.28f, 1.04f, -.83f));
             }
             else if(kind==1)
             {

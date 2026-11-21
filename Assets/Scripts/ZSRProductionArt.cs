@@ -109,23 +109,29 @@ namespace ZombieSurvivalRun
         static bool warnedMissingSettings;
         static readonly System.Collections.Generic.HashSet<string> WarnedMissingPrefabs = new();
 
-        static ZSRProductionArtSettings LoadSettings()
+        static void ReportFallback(ZSRProductionArtSettings settings, string character)
         {
-            var settings = Resources.Load<ZSRProductionArtSettings>("ProductionArtSettings");
             if (settings == null && !warnedMissingSettings)
             {
                 warnedMissingSettings = true;
-                Debug.LogWarning("[ZSR ART] Missing Resources/ProductionArtSettings.asset. Character art will use bundled fallback models.");
+                Debug.LogWarning("[ZSR ART] Missing Resources/ProductionArtSettings.asset and shipped art could not load. Using legacy fallback.");
             }
-            return settings;
+            else if (settings != null && WarnedMissingPrefabs.Add(character))
+                Debug.LogWarning("[ZSR ART] No valid custom or shipped rig for " + character + ". Using legacy fallback.");
         }
 
-        static bool HasPrefab(GameObject prefab, string character)
+        ZSRBundledCharacter bundled;
+        public Transform MuzzlePoint => bundled != null ? bundled.Muzzle : null;
+
+        static ZSRProductionArt CreateBundled(Transform parent, string name, bool hero,
+            WeaponType weapon)
         {
-            if (prefab != null) return true;
-            if (WarnedMissingPrefabs.Add(character))
-                Debug.LogWarning("[ZSR ART] ProductionArtSettings has no prefab for " + character + ". Using bundled fallback art.");
-            return false;
+            var character = ZSRBundledCharacter.Create(parent, name, hero, weapon);
+            if (character == null) return null;
+            var art = character.gameObject.AddComponent<ZSRProductionArt>();
+            art.bundled = character;
+            art.WeaponAnchor = character.Muzzle != null ? character.Muzzle.parent : null;
+            return art;
         }
 
         Animator animator;
@@ -140,27 +146,40 @@ namespace ZombieSurvivalRun
 
         public static ZSRProductionArt CreateHero(Transform parent, int selected, WeaponType gun)
         {
-            var settings = LoadSettings();
-            if (settings == null) return null;
-            var prefab = selected == 0 ? settings.maxPrefab : settings.evaPrefab;
-            if (!HasPrefab(prefab, selected == 0 ? "Max" : "Eva")) return null;
-            var fallback = selected == 0 ? settings.maxMotionController : settings.evaMotionController;
-            var avatar = selected == 0 ? settings.maxAvatar : settings.evaAvatar;
-            return Create(parent, prefab, settings.heroController, fallback, avatar, true, gun,
-                settings.heroOffset, settings.heroScale, settings.spawnLegacyGun);
+            string name = selected == 0 ? "Max" : "Eva";
+            var settings = Resources.Load<ZSRProductionArtSettings>("ProductionArtSettings");
+            if (settings != null)
+            {
+                var prefab = selected == 0 ? settings.maxPrefab : settings.evaPrefab;
+                var fallback = selected == 0 ? settings.maxMotionController : settings.evaMotionController;
+                var avatar = selected == 0 ? settings.maxAvatar : settings.evaAvatar;
+                var custom = Create(parent, prefab, settings.heroController, fallback, avatar, true, gun,
+                    settings.heroOffset, settings.heroScale, settings.spawnLegacyGun);
+                if (custom != null) return custom;
+            }
+            var shipped = CreateBundled(parent, name, true, gun);
+            if (shipped == null) ReportFallback(settings, name);
+            return shipped;
         }
 
         public static ZSRProductionArt CreateZombie(Transform parent, ZombieType type)
         {
-            var settings = LoadSettings();
-            if (settings == null) return null;
-            var prefab = settings.EnemyPrefab(type);
-            if (!HasPrefab(prefab, type.ToString())) return null;
-            var imported = Create(parent, prefab, settings.zombieController,
-                settings.EnemyMotion(type), settings.EnemyAvatar(type), false,
-                WeaponType.Rifle, settings.zombieOffset, settings.zombieScale, false);
-            if (imported != null) imported.ConfigureInfectedStyle(type);
-            return imported;
+            var settings = Resources.Load<ZSRProductionArtSettings>("ProductionArtSettings");
+            if (settings != null)
+            {
+                var custom = Create(parent, settings.EnemyPrefab(type), settings.zombieController,
+                    settings.EnemyMotion(type), settings.EnemyAvatar(type), false,
+                    WeaponType.Rifle, settings.zombieOffset, settings.zombieScale, false);
+                if (custom != null)
+                {
+                    custom.ConfigureInfectedStyle(type);
+                    return custom;
+                }
+            }
+            string name = type.ToString();
+            var shipped = CreateBundled(parent, name, false, WeaponType.Rifle);
+            if (shipped == null) ReportFallback(settings, name);
+            return shipped;
         }
 
         static ZSRProductionArt Create(Transform parent, GameObject prefab,
@@ -316,7 +335,7 @@ namespace ZombieSurvivalRun
 
         public void SetZombieMovementStyle(ZombieType type)
         {
-            if (dead) return;
+            if (dead || bundled != null) return;
             float pitch = type == ZombieType.Crawler ? 48f : type == ZombieType.Runner ? 13f :
                 type == ZombieType.Brute ? -5f : type == ZombieType.Toxic ? 7f : 3f;
             transform.localRotation = Quaternion.Slerp(transform.localRotation,
@@ -361,6 +380,7 @@ namespace ZombieSurvivalRun
             hitUntil = 0f;
             shootUntil = 0f;
             currentState = 0;
+            if (bundled != null) { bundled.ResetMotion(); return; }
             ChangeState("Run", 0f);
             if(motion != null) motion.Running = true;
         }
@@ -376,6 +396,7 @@ namespace ZombieSurvivalRun
         public void Tick(bool running, float speed)
         {
             if (dead) return;
+            if (bundled != null) { bundled.Tick(running, speed); return; }
             if (animator != null && animator.runtimeAnimatorController != null)
                 animator.speed = Mathf.Clamp(speed, .6f, 1.8f);
             if (Time.time >= hitUntil)
@@ -389,6 +410,7 @@ namespace ZombieSurvivalRun
         public void Hit()
         {
             if (dead) return;
+            if (bundled != null) { bundled.Hit(); return; }
             hitUntil = Time.time + .20f;
             ChangeState("Hit", .04f);
             if(motion != null) motion.ReactHit();
@@ -398,6 +420,7 @@ namespace ZombieSurvivalRun
         {
             dead = true;
             shootUntil = 0f;
+            if (bundled != null) { bundled.Die(); return; }
             if (animator != null) animator.speed = 1f;
             ChangeState("Death", .07f);
             if(motion != null) motion.Running = false;
@@ -406,11 +429,22 @@ namespace ZombieSurvivalRun
         public void Fire()
         {
             if (dead) return;
+            if (bundled != null) { bundled.Fire(); return; }
             shootUntil = Time.time + .20f;
             if (muzzle == null) return;
             muzzle.SetActive(true);
             CancelInvoke(nameof(HideMuzzle));
             Invoke(nameof(HideMuzzle), .06f);
+        }
+
+        public void Reload(float seconds)
+        {
+            if (!dead && bundled != null) bundled.Reload(seconds);
+        }
+
+        public void Attack()
+        {
+            if (!dead && bundled != null) bundled.Attack();
         }
 
         void HideMuzzle() { if (muzzle != null) muzzle.SetActive(false); }

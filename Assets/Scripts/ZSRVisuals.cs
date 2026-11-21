@@ -80,7 +80,7 @@ namespace ZombieSurvivalRun
                 ConcreteDark.mainTextureScale = new Vector2(2f, 5f);
                 Sidewalk.mainTextureScale = new Vector2(2f, 6f);
             }
-            AsphaltDeluxe = MatWithTexture(Color.white,"Textures/asphalt_v102",.28f,new Vector2(2.4f,10f));
+            AsphaltDeluxe = MatWithTexture(Color.white,"ProductionArt/Highway",.41f,new Vector2(2f,8f));
             ConcreteDeluxe = MatWithTexture(Color.white,"Textures/worn_concrete_v7",.13f,new Vector2(2.2f,5f));
             ClothTextured = MatWithTexture(Color.white,"Textures/fabric_survivor",.20f);
             RedClothTextured = MatWithTexture(Color.white,"Textures/jacket_eva_pbr",.24f);
@@ -101,7 +101,7 @@ namespace ZombieSurvivalRun
                 if(unlit==null)unlit=Shader.Find("Unlit/Texture");
                 SkylineMaterials[i]=new Material(unlit==null?shader:unlit);
                 SkylineMaterials[i].name="Cinematic city panorama chapter "+(i+1);
-                var sky=Resources.Load<Texture2D>("Skyline/city_chapter_"+(i+1)+"_v100");
+                var sky = Resources.Load<Texture2D>(i == 0 ? "ProductionArt/Horizon" : "Skyline/city_chapter_" + (i+1) + "_v100");
                 if(sky!=null)
                 {
                     SkylineMaterials[i].mainTexture=sky;
@@ -262,7 +262,7 @@ namespace ZombieSurvivalRun
         public static GameObject CityPanorama(Transform parent,int chapter)
         {
             var go=Shape("Distant city art - BACKGROUND ONLY",PrimitiveType.Quad,parent,
-                new Vector3(0f,8f,145f),new Vector3(290f,180f,1f),SkylineMaterials[Mathf.Clamp(chapter,0,2)],new Vector3(0,180,0));
+                new Vector3(0f,35f,145f),new Vector3(250f,164f,1f),SkylineMaterials[Mathf.Clamp(chapter,0,2)],new Vector3(0,180,0));
             return go;
         }
         public static Transform Pivot(string name,Transform parent,Vector3 pos)
@@ -332,6 +332,73 @@ namespace ZombieSurvivalRun
                 Vector3.zero, Vector3.one, Steel);
             return root;
         }
+        static Material wreckParticles;
+
+        public static void WreckFire(Transform parent, Vector3 origin)
+        {
+            if (wreckParticles == null)
+            {
+                var fxShader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
+                if (fxShader == null) return;
+                wreckParticles = new Material(fxShader) { name = "ZSR soft wreck particles / shared" };
+                wreckParticles.SetTexture("_BaseMap", Resources.Load<Texture2D>("ProductionArt/ParticleSoft"));
+                wreckParticles.SetFloat("_Surface", 1f);
+                wreckParticles.SetFloat("_ZWrite", 0f);
+                wreckParticles.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
+                wreckParticles.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
+                wreckParticles.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                wreckParticles.SetOverrideTag("RenderType", "Transparent");
+                wreckParticles.renderQueue = (int)RenderQueue.Transparent;
+            }
+
+            WreckEmitter(parent, origin, false);
+            WreckEmitter(parent, origin + Vector3.up * .27f, true);
+        }
+
+        static void WreckEmitter(Transform parent, Vector3 origin, bool smoke)
+        {
+            Transform emitter = Pivot(smoke ? "Wreck smoke" : "Wreck flames", parent, origin);
+            emitter.localRotation = Quaternion.Euler(-76f, 0f, 0f);
+            var particles = emitter.gameObject.AddComponent<ParticleSystem>();
+            particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var main = particles.main;
+            main.loop = true;
+            main.startLifetime = smoke ? new ParticleSystem.MinMaxCurve(.7f, 1.55f) : new ParticleSystem.MinMaxCurve(.22f, .55f);
+            main.startSpeed = smoke ? new ParticleSystem.MinMaxCurve(.65f, 1.17f) : new ParticleSystem.MinMaxCurve(.75f, 1.55f);
+            main.startSize = smoke ? new ParticleSystem.MinMaxCurve(.38f, .61f) : new ParticleSystem.MinMaxCurve(.21f, .48f);
+            main.startRotation = new ParticleSystem.MinMaxCurve(0f, 2f * Mathf.PI);
+            main.maxParticles = smoke ? 14 : 20;
+            var emission = particles.emission;
+            emission.rateOverTime = smoke ? 8 : 26;
+            var shape = particles.shape;
+            shape.shapeType = ParticleSystemShapeType.Cone;
+            shape.angle = smoke ? 18f : 29f;
+            shape.radius = smoke ? .24f : .37f;
+
+            var color = particles.colorOverLifetime;
+            color.enabled = true;
+            var gradient = new Gradient();
+            gradient.SetKeys(new[]
+            {
+                new GradientColorKey(smoke ? new Color(.38f, .27f, .24f) : new Color(1f, .86f, .40f), 0),
+                new GradientColorKey(smoke ? new Color(.20f, .25f, .33f) : new Color(1f, .20f, .035f), 1)
+            }, new[]
+            {
+                new GradientAlphaKey(smoke ? .18f : .84f, 0),
+                new GradientAlphaKey(smoke ? .51f : .91f, .24f),
+                new GradientAlphaKey(0, 1)
+            });
+            color.color = gradient;
+            var size = particles.sizeOverLifetime;
+            size.enabled = true;
+            size.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, smoke ? .5f : .9f, 1f, smoke ? 2.4f : .4f));
+            var renderer = particles.GetComponent<ParticleSystemRenderer>();
+            renderer.sharedMaterial = wreckParticles;
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            particles.Play();
+        }
+
         public static GameObject Explosion(Vector3 position,float size,Material color,float lifetime=.30f)
         {
             var fx=new GameObject("Impact / animated VFX");fx.transform.position=position;

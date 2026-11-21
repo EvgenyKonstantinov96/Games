@@ -493,7 +493,8 @@ namespace ZombieSurvivalRun
 
         void DrawHUD(ZSRGame g)
         {
-            Block("HUD top", 0, 0, W, 130, new Color(.017f, .028f, .041f, .92f));
+            Block("HUD top", 0, 0, W, 110, new Color(.026f, .041f, .061f, .87f));
+            Accent(9, 107, 372, Orange);
             hudLevel = Label("УРОВЕНЬ", 62, 13, 210, 31, 18, Color.white);
             hudCoins = Label("●", 275, 14, 98, 32, 15, Gold);
             Button("II", 9, 12, 44, 42, Cyan, () => g.TogglePause(), 16);
@@ -508,7 +509,8 @@ namespace ZombieSurvivalRun
             bossFill = Block("boss health red", 35, 131, 320, 9, new Color(.91f, .12f, .13f, 1));
             hudMessage = Label("", 8, 145, 374, 38, 20, Gold);
             float bottom = H - 107;
-            Block("HUD bottom", 0, bottom - 22, W, 129, new Color(.017f, .028f, .041f, .88f));
+            Block("HUD bottom", 0, bottom - 15, W, 122, new Color(.026f, .041f, .061f, .85f));
+            Accent(9, bottom - 15, 372, Orange);
             hudAmmo = Label("", 16, bottom - 8, 355, 31, 19, Color.white, TextAnchor.MiddleLeft);
             Button("АПТЕЧКА", 11, bottom + 33, 115, 64, Cyan, () => g.UseMedkit(), 13);
             Button("ГРАНАТА", 138, bottom + 33, 114, 64, Orange, () => g.ThrowGrenade(), 13);
@@ -525,7 +527,7 @@ namespace ZombieSurvivalRun
             hudLevel.text = "УРОВЕНЬ " + g.Level + " / 15";
             hudCoins.text = "● " + g.Earned;
             hudHealth.text = "ЗДОРОВЬЕ " + g.Hero.Health;
-            hudAmmo.text = g.Weapon.ToString().ToUpperInvariant() + "   " + g.Ammo + " / " + g.Magazine + (g.IsReloading ? "  •  RELOAD" : "");
+            hudAmmo.text = g.Weapon.ToString().ToUpperInvariant() + "   " + g.Ammo + " / " + g.Magazine + (g.IsReloading ? "  •  ПЕРЕЗАРЯДКА" : "");
             hudMessage.text = g.CurrentNotice;
             if (hudBoss != null) hudBoss.gameObject.SetActive(g.BossAlive);
             if (bossBackdrop != null) bossBackdrop.gameObject.SetActive(g.BossAlive);

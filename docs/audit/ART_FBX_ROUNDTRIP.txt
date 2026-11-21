@@ -1,0 +1,9 @@
+PASS Armored 16 bones, 3146 verts, 5228 triangles, 1–168 frames
+PASS Boss    16 bones, 3736 verts, 5948 triangles, 1–168 frames
+PASS Brute   16 bones, 3328 verts, 5208 triangles, 1–168 frames
+PASS Crawler 16 bones, 2872 verts, 4588 triangles, 1–168 frames
+PASS Eva     18 bones, 4086 verts, 6888 triangles, 1–168 frames
+PASS Max     18 bones, 3924 verts, 6608 triangles, 1–168 frames
+PASS Runner  16 bones, 2612 verts, 4228 triangles, 1–168 frames
+PASS Toxic   16 bones, 3048 verts, 4808 triangles, 1–168 frames
+PASS Walker  16 bones, 2644 verts, 4288 triangles, 1–168 frames

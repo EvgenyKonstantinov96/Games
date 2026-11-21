@@ -157,21 +157,22 @@ namespace ZombieSurvivalRun
 
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogDensity = .0075f;
+            RenderSettings.fogDensity = .0095f;
             RenderSettings.fogColor = new Color(.24f, .28f, .35f);
             // Tri-lighting adds shape to the imported character models at minimal mobile cost.
             RenderSettings.ambientMode = AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(.46f, .52f, .65f);
-            RenderSettings.ambientEquatorColor = new Color(.31f, .36f, .45f);
-            RenderSettings.ambientGroundColor = new Color(.15f, .17f, .22f);
+            RenderSettings.ambientSkyColor = new Color(.28f, .37f, .57f);
+            RenderSettings.ambientEquatorColor = new Color(.20f, .25f, .35f);
+            RenderSettings.ambientGroundColor = new Color(.10f, .13f, .18f);
             RenderSettings.skybox = null;
 
             var sun = new GameObject("Warm sunset key light").AddComponent<Light>();
             sun.transform.SetParent(worldRoot.transform, false);
             sun.type = LightType.Directional;
-            sun.intensity = 1.28f;
-            sun.color = new Color(1f, .78f, .57f);
-            sun.transform.rotation = Quaternion.Euler(48, -27, 0);
+            RenderSettings.sun = sun;
+            sun.intensity = 1.24f;
+            sun.color = new Color(1f, .64f, .39f);
+            sun.transform.rotation = Quaternion.Euler(29, -136, 0);
             sun.shadows = LightShadows.Soft;
             sun.shadowStrength = .72f;
             sun.shadowBias = .035f;
@@ -180,9 +181,9 @@ namespace ZombieSurvivalRun
             var cool = new GameObject("Blue fill light").AddComponent<Light>();
             cool.transform.SetParent(worldRoot.transform, false);
             cool.type = LightType.Directional;
-            cool.intensity = .32f;
+            cool.intensity = .46f;
             cool.color = new Color(.32f, .58f, 1f);
-            cool.transform.rotation = Quaternion.Euler(24, 154, 0);
+            cool.transform.rotation = Quaternion.Euler(31, 27, 0);
 
             camera3D = Camera.main;
             if (camera3D == null)
@@ -199,7 +200,7 @@ namespace ZombieSurvivalRun
             cameraData.renderType = CameraRenderType.Base;
             cameraData.renderPostProcessing = true;
             camera3D.allowHDR = true;
-            camera3D.fieldOfView = 49.5f;
+            camera3D.fieldOfView = 52f;
             camera3D.nearClipPlane = .1f;
             camera3D.farClipPlane = 200f;
             camera3D.clearFlags = CameraClearFlags.SolidColor;
@@ -515,6 +516,7 @@ namespace ZombieSurvivalRun
             {
                 reloading = true;
                 reloadTimer = Weapon == WeaponType.Pistol ? 1.05f : Weapon == WeaponType.Shotgun ? 1.65f : Weapon == WeaponType.Minigun ? 2.6f : 1.35f;
+                Hero.Reload(reloadTimer);
                 Notify("ПЕРЕЗАРЯДКА", .9f);
             }
         }
@@ -727,6 +729,7 @@ namespace ZombieSurvivalRun
 
         void Finish(bool victory)
         {
+            if (!victory) Hero.Die();
             State = victory ? ZSRState.Victory : ZSRState.Defeat;
             if (victory)
             {

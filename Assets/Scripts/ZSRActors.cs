@@ -13,7 +13,10 @@ namespace ZombieSurvivalRun
         public int MaxHealth { get; private set; } = 132;
         public int Health { get; set; } = 132;
         public int Selection { get; private set; }
-        public Vector3 Muzzle => weapon != null ? weapon.TransformPoint(new Vector3(0,.05f,.97f)) : transform.position+Vector3.up*1.6f+Vector3.forward;
+        public Vector3 Muzzle => production != null && production.MuzzlePoint != null
+            ? production.MuzzlePoint.position
+            : weapon != null ? weapon.TransformPoint(new Vector3(0,.05f,.97f))
+            : transform.position + Vector3.up * 1.6f + Vector3.forward;
 
         Transform body, hips, torso, head, leftHip, rightHip, leftKnee, rightKnee, leftShoulder, rightShoulder, leftElbow, rightElbow, weapon;
         GameObject flash, model;
@@ -124,6 +127,8 @@ namespace ZombieSurvivalRun
         }
         public void Fire(){recoil=.14f;muzzleTime=.066f;if(production!=null){production.Fire();return;}if(rigged!=null){rigged.Fire();return;}if(flash!=null)flash.SetActive(true);}
         public void Hit(){hitT=.20f;if(production!=null)production.Hit();}
+        public void Reload(float seconds) { if (production != null) production.Reload(seconds); }
+        public void Die() { if (production != null) production.Die(); }
         void Update()
         {
             var g=ZSRGame.Instance;
@@ -201,7 +206,7 @@ namespace ZombieSurvivalRun
         ZSRSkinnedArt rigged;
         ZSRProductionArt production;
         float hitPoints, maxHitPoints, walkSpeed, phase, clock, stagger, deathTime, attackTimer;
-        bool contacted;
+        bool contacted, attackTelegraphed;
         int themeLevel;
 
         public void Construct(ZombieType type)
@@ -308,7 +313,7 @@ namespace ZombieSurvivalRun
             hitPoints = maxHitPoints;
             walkSpeed = Kind == ZombieType.Boss ? 0f : Kind == ZombieType.Brute ? .78f : Kind == ZombieType.Runner ? 3.0f :
                 Kind==ZombieType.Crawler?2.6f:Kind==ZombieType.Toxic ? 0.55f:Kind == ZombieType.Armored ? 1.15f : 1.48f;
-            Alive = true; contacted = false; stagger = 0; deathTime = 0; clock = phase; attackTimer = 2f;
+            Alive = true; contacted = false; attackTelegraphed = false; stagger = 0; deathTime = 0; clock = phase; attackTimer = 2f;
             if(body!=null){body.localEulerAngles=Vector3.zero;body.localPosition=Vector3.zero;}
             if (rigged != null) {rigged.transform.localPosition = Vector3.zero;rigged.transform.localRotation = Quaternion.identity;}
             if(torso!=null)torso.localEulerAngles=Vector3.zero;
@@ -399,9 +404,11 @@ namespace ZombieSurvivalRun
             if(Kind==ZombieType.Toxic && p.z>1.25f && p.z<13f)
             {
                 attackTimer-=dt;
+                TelegraphAttack(.25f);
                 if(attackTimer<=0)
                 {
                     attackTimer=3.1f;
+                    attackTelegraphed = false;
                     if(Mathf.Abs(dx)<2.2f)
                     {
                         ZSRGame.Instance.HurtPlayer(8);
@@ -412,12 +419,21 @@ namespace ZombieSurvivalRun
             if (Kind == ZombieType.Boss && p.z <= 12.1f)
             {
                 attackTimer -= dt;
+                TelegraphAttack(.40f);
                 if (attackTimer <= 0)
                 {
                     attackTimer = Mathf.Max(2.5f, 3.4f - themeLevel * .03f);
+                    attackTelegraphed = false;
                     if (Mathf.Abs(dx) < 2.9f) ZSRGame.Instance.HurtPlayer(themeLevel >= 15 ? 18 : 15);
                     ZSRGame.Instance.Notify("МУТАНТ АТАКУЕТ!", 1.2f);
                 }
+            }
+            if (Kind != ZombieType.Boss && Kind != ZombieType.Toxic && p.z > 1f &&
+                p.z <= 1f + (ZSRGame.Instance.RunSpeed + walkSpeed) * .32f &&
+                Mathf.Abs(dx) < 1.25f && !attackTelegraphed)
+            {
+                attackTelegraphed = true;
+                if (production != null) production.Attack();
             }
             // Physical contact requires both depth overlap and a matching lane.
             // Previously every zombie dealt damage when its Z reached 1, even across the road.
@@ -434,6 +450,13 @@ namespace ZombieSurvivalRun
             // Without this, after a few waves the 44-enemy cap stopped all subsequent spawns.
             if (Kind != ZombieType.Boss && p.z < -8f)
                 ZSRGame.Instance.RecycleZombie(this);
+        }
+
+        void TelegraphAttack(float leadTime)
+        {
+            if (attackTimer > leadTime || attackTelegraphed) return;
+            attackTelegraphed = true;
+            if (production != null) production.Attack();
         }
     }
 }
