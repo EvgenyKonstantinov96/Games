@@ -219,12 +219,6 @@ namespace ZombieSurvivalRun
             heroObject.transform.SetParent(worldRoot.transform, false);
             Hero = heroObject.AddComponent<ZSRHero>();
             Hero.Build(SelectedHero, Weapon);
-            // This full archive deliberately contains original built-in OBJ meshes, but
-            // free external GLB prefabs may need re-importing; never misreport them as shipped.
-#if UNITY_EDITOR
-            if (Resources.Load<ZSRProductionArtSettings>("ProductionArtSettings") == null)
-                Debug.LogWarning("[ZSR ART] External Polyfork FBX/GLB models are not configured. Using bundled original OBJ characters. Open Zombie Survival Run 1.0/2 to import external models; see README_V102_RU.md.");
-#endif
 
             var shield = new GameObject("Protective energy shield");
             shield.transform.SetParent(Hero.transform, false);
@@ -354,9 +348,13 @@ namespace ZombieSurvivalRun
             reloading = false;
             bossSpawned = false;
             boss = null;
+            camVelocity = Vector3.zero;
+            shake = 0f;
             Notify(LevelTitle, 2.5f);
             camera3D.transform.position = new Vector3(0, 3.48f, -8.35f);
         }
+
+        static bool ExpiredRunObject(GameObject obj) => obj == null;
 
         void ClearRun()
         {
@@ -371,6 +369,7 @@ namespace ZombieSurvivalRun
         void Update()
         {
             if (State != ZSRState.Playing) return;
+            temporary.RemoveAll(ExpiredRunObject);
             float dt = FrameStep;
             HandleInput(dt);
             Elapsed += dt;

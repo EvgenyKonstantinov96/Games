@@ -93,7 +93,7 @@ namespace ZombieSurvivalRun
             mesh.vertices = new [] {new Vector3(-.5f,-.5f,0),new Vector3(.5f,-.5f,0),
                 new Vector3(.5f,.5f,0),new Vector3(-.5f,.5f,0)};
             mesh.uv = new [] {Vector2.zero,Vector2.right,Vector2.one,Vector2.up};
-            mesh.triangles = new [] {0,1,2,0,2,3,2,1,0,3,2,0}; // Front and back face: curtain remains visible from every camera angle.
+            mesh.triangles = new [] {0,1,2,0,2,3}; // With culling disabled, one face avoids blending the curtain twice.
             mesh.RecalculateNormals();
             veilMesh = mesh;
             sheet.GetComponent<MeshFilter>().sharedMesh=mesh;
@@ -118,6 +118,7 @@ namespace ZombieSurvivalRun
             if (veilMaterial.HasProperty("_ZWrite")) veilMaterial.SetFloat("_ZWrite",0f);
             if (veilMaterial.HasProperty("_Cull")) veilMaterial.SetFloat("_Cull",0f);
             veilMaterial.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            veilMaterial.SetOverrideTag("RenderType", "Transparent");
             veilMaterial.renderQueue=(int)RenderQueue.Transparent;
             var renderer=sheet.GetComponent<MeshRenderer>();
             renderer.sharedMaterial=veilMaterial;
@@ -140,8 +141,9 @@ namespace ZombieSurvivalRun
                 veilTransform.localScale=new Vector3(2.63f+shimmer,2.34f,1f);
             }
             float alpha=.83f + .06f*Mathf.Sin(Time.time*1.55f+seed); // Keep the road visible while making the veil readable.
-            if (veilMaterial.HasProperty("_BaseColor")) veilMaterial.SetColor("_BaseColor",new Color(1f,1f,1f,alpha));
-            if (veilMaterial.HasProperty("_Color")) veilMaterial.SetColor("_Color",new Color(1f,1f,1f,alpha));
+            Color veilColor = new Color(tint.r, tint.g, tint.b, alpha * .62f);
+            if (veilMaterial.HasProperty("_BaseColor")) veilMaterial.SetColor("_BaseColor", veilColor);
+            if (veilMaterial.HasProperty("_Color")) veilMaterial.SetColor("_Color", veilColor);
         }
         void OnDestroy()
         {

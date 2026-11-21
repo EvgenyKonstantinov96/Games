@@ -7,6 +7,7 @@ using UnityEngine.SceneManagement;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 using System.IO;
+using System.Collections.Generic;
 
 namespace ZombieSurvivalRun.EditorTools
 {
@@ -62,10 +63,28 @@ namespace ZombieSurvivalRun.EditorTools
                 QualitySettings.renderPipeline=urp;
                 if(!File.Exists(ScenePath))
                 {
-                    var scene=EditorSceneManager.NewScene(NewSceneSetup.EmptyScene,NewSceneMode.Single);
-                    EditorSceneManager.SaveScene(scene,ScenePath);
+                    var previousScene = SceneManager.GetActiveScene();
+                    var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
+                    try
+                    {
+                        if (!EditorSceneManager.SaveScene(scene, ScenePath))
+                            throw new IOException("Could not save " + ScenePath);
+                    }
+                    finally
+                    {
+                        if (previousScene.IsValid() && previousScene.isLoaded)
+                        {
+                            SceneManager.SetActiveScene(previousScene);
+                            EditorSceneManager.CloseScene(scene, true);
+                        }
+                    }
                 }
-                EditorBuildSettings.scenes=new[]{new EditorBuildSettingsScene(ScenePath,true)};
+                var buildScenes = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
+                int mainSceneIndex = buildScenes.FindIndex(scene => scene.path == ScenePath);
+                var mainScene = new EditorBuildSettingsScene(ScenePath, true);
+                if (mainSceneIndex < 0) buildScenes.Insert(0, mainScene);
+                else buildScenes[mainSceneIndex] = mainScene;
+                EditorBuildSettings.scenes = buildScenes.ToArray();
                 PlayerSettings.companyName="Zombie Survival Studio";
                 PlayerSettings.productName="Zombie Survival Run";
                 PlayerSettings.defaultInterfaceOrientation=UIOrientation.Portrait;
