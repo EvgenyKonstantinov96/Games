@@ -1,0 +1,16 @@
+
+Polyfork free mesh files available under CC BY 4.0 OR Polyfork license.
+If sharing mesh source files as CC BY 4.0, credit the creators per asset page.
+https://polyfork.dev/licensing
+
+МОДЕЛИ / ПРОВЕРЕННЫЕ СТРАНИЦЫ:
+https://polyfork.dev/asset/infantry-rifleman-c1c0a5
+https://polyfork.dev/asset/field-medic-fd8919
+https://polyfork.dev/asset/teen-zombie-b5bb27
+https://polyfork.dev/asset/undead-seaman-base
+https://polyfork.dev/asset/prewar-apartment-house-1081a6
+https://polyfork.dev/asset/brownstone-row-house-1b84fd
+https://polyfork.dev/asset/police-barricade-0bbf37
+https://polyfork.dev/asset/skated-jersey-barrier-7f0a04
+https://polyfork.dev/asset/town-car-56eeb6
+https://polyfork.dev/asset/fire-engine-7d476b

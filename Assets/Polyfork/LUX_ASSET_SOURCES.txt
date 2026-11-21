@@ -1,0 +1,6 @@
+External assets are NOT included in this patch.
+Polyfork low poly assets: https://polyfork.dev/licensing
+KinemIQ CC0 1.0 FBX animation source: https://huggingface.co/datasets/Kinemiq/free-game-animations
+Quaternius Universal Animation Library CC0: https://quaternius.com/packs/universalanimationlibrary.html
+Follow the license appropriate to each source. Do not redistribute Pro models as standalone assets.
+Generated in-editor keyframed curves in this patch are original code authored for this Unity project.
