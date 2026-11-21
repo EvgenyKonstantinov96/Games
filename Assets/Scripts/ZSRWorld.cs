@@ -392,13 +392,16 @@ namespace ZombieSurvivalRun
         void Update()
         {
             if (ZSRGame.Instance == null || !ZSRGame.Instance.IsRunning) return;
-            transform.position += Vector3.back * ZSRGame.Instance.RunSpeed * ZSRGame.Instance.FrameStep;
-            if (!claimed && transform.position.z < 1.35f && transform.position.z > -1.1f)
+            var game = ZSRGame.Instance;
+            float previousZ = transform.position.z;
+            transform.position += Vector3.back * game.RunSpeed * game.FrameStep;
+            float heroZ = game.Hero.transform.position.z;
+            if (!claimed && previousZ > heroZ && transform.position.z <= heroZ)
             {
                 claimed = true;
-                if (Mathf.Abs(transform.position.x - ZSRGame.Instance.Hero.PositionX) < 1.55f)
+                if (Mathf.Abs(transform.position.x - game.Hero.PositionX) < 1.55f)
                 {
-                    ZSRGame.Instance.ApplyBonus(Kind);
+                    game.ApplyBonus(Kind);
                     if (Sister != null) Sister.claimed = true;
                 }
             }
@@ -468,7 +471,7 @@ namespace ZombieSurvivalRun
                     new Vector3(.32f,.17f,1.0f),ZSRVisuals.ConcreteDark);
                 for(int i=0;i<4;i++)
                     ZSRVisuals.Box("diagonal reflective strip",root,new Vector3(-.9f+i*.6f,.94f,-.72f),
-                        new Vector3(.20f,.30f,.045f),chapter==2?ZSRVisuals.BlueGlow:ZSRVisuals.Yellow,
+                        new Vector3(.20f,.30f,.045f),i % 2 == 0 ? ZSRVisuals.White : ZSRVisuals.RedJacket,
                         new Vector3(0,0,-32));
                 for(int side=-1;side<=1;side+=2)
                     ZSRVisuals.Sphere("amber work lamp",root,new Vector3(side*.71f,1.45f,-.05f),

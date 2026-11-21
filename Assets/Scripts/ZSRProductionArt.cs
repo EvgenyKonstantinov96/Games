@@ -106,6 +106,28 @@ namespace ZombieSurvivalRun
     /// </summary>
     public sealed class ZSRProductionArt : MonoBehaviour
     {
+        static bool warnedMissingSettings;
+        static readonly System.Collections.Generic.HashSet<string> WarnedMissingPrefabs = new();
+
+        static ZSRProductionArtSettings LoadSettings()
+        {
+            var settings = Resources.Load<ZSRProductionArtSettings>("ProductionArtSettings");
+            if (settings == null && !warnedMissingSettings)
+            {
+                warnedMissingSettings = true;
+                Debug.LogWarning("[ZSR ART] Missing Resources/ProductionArtSettings.asset. Character art will use bundled fallback models.");
+            }
+            return settings;
+        }
+
+        static bool HasPrefab(GameObject prefab, string character)
+        {
+            if (prefab != null) return true;
+            if (WarnedMissingPrefabs.Add(character))
+                Debug.LogWarning("[ZSR ART] ProductionArtSettings has no prefab for " + character + ". Using bundled fallback art.");
+            return false;
+        }
+
         Animator animator;
         ZSRPolyforkBoneMotion motion;
         GameObject muzzle;
@@ -118,9 +140,10 @@ namespace ZombieSurvivalRun
 
         public static ZSRProductionArt CreateHero(Transform parent, int selected, WeaponType gun)
         {
-            var settings = Resources.Load<ZSRProductionArtSettings>("ProductionArtSettings");
+            var settings = LoadSettings();
             if (settings == null) return null;
             var prefab = selected == 0 ? settings.maxPrefab : settings.evaPrefab;
+            if (!HasPrefab(prefab, selected == 0 ? "Max" : "Eva")) return null;
             var fallback = selected == 0 ? settings.maxMotionController : settings.evaMotionController;
             var avatar = selected == 0 ? settings.maxAvatar : settings.evaAvatar;
             return Create(parent, prefab, settings.heroController, fallback, avatar, true, gun,
@@ -129,9 +152,11 @@ namespace ZombieSurvivalRun
 
         public static ZSRProductionArt CreateZombie(Transform parent, ZombieType type)
         {
-            var settings = Resources.Load<ZSRProductionArtSettings>("ProductionArtSettings");
+            var settings = LoadSettings();
             if (settings == null) return null;
-            var imported = Create(parent, settings.EnemyPrefab(type), settings.zombieController,
+            var prefab = settings.EnemyPrefab(type);
+            if (!HasPrefab(prefab, type.ToString())) return null;
+            var imported = Create(parent, prefab, settings.zombieController,
                 settings.EnemyMotion(type), settings.EnemyAvatar(type), false,
                 WeaponType.Rifle, settings.zombieOffset, settings.zombieScale, false);
             if (imported != null) imported.ConfigureInfectedStyle(type);
@@ -155,7 +180,8 @@ namespace ZombieSurvivalRun
             if (meshes.Length == 0)
             {
                 Debug.LogError("[ZSR Production] Prefab " + prefab.name + " has no renderers; retaining legacy model.");
-                Destroy(instance);
+                if (Application.isPlaying) Destroy(instance);
+                else DestroyImmediate(instance);
                 return null;
             }
             var production = instance.AddComponent<ZSRProductionArt>();
@@ -311,7 +337,8 @@ namespace ZombieSurvivalRun
                     !n.Contains("gurney") && !n.Contains("trolley") &&
                     !n.Contains("pushcart") && !n.Contains("medicalcart") &&
                     !n.Contains("hospitalbed") && !n.Contains("wheelcart") &&
-                    !n.Contains("rollingbed")) continue;
+                    !n.Contains("rollingbed") && !n.Contains("medical_case") &&
+                    !n.Contains("medicalcase")) continue;
                 // Disable *only* a named prop renderer. Don't disable its parent rig/bones.
                 foreach (var visual in child.GetComponentsInChildren<Renderer>(true))
                     visual.enabled = false;
