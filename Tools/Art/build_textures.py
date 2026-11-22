@@ -1,5 +1,8 @@
 """Build original mobile textures. Requires NumPy and Pillow."""
+from argparse import ArgumentParser
+from io import BytesIO
 from pathlib import Path
+from zipfile import ZipFile
 import numpy as np
 from PIL import Image, ImageDraw
 
@@ -12,8 +15,11 @@ PAL = [
     (124,119,79), (115,82,77), (101,64,68), (93,47,44), (179,172,145), (49,31,25),
     (74,70,53), (148,135,110), (41,38,31), (143,193,45), (235,63,37), (80,76,70),
 ]
+parser = ArgumentParser()
+parser.add_argument("--skin-pack", type=Path, required=True)
+args = parser.parse_args()
 N = 64
-atlas = Image.new("RGB", (8*N,4*N), "#302e2c")
+atlas = Image.new("RGB", (1024,1024), "#302e2c")
 y,x = np.mgrid[:N,:N]
 for i, rgb in enumerate(PAL):
     noise = rng.normal(0,3.4,(N,N)) + 3*np.sin(x*.24+y*.15)
@@ -30,7 +36,35 @@ for i, rgb in enumerate(PAL):
             d=int(rng.integers(2,10))
             c=tuple(min(255, int(v+d)) for v in rgb)
             draw.line((a,b,min(62,a+d//2),max(0,b-d)),fill=c,width=1)
-    atlas.paste(im,((i%8)*N,(i//8)*N))
+    atlas.paste(im.resize((128,128),Image.Resampling.BILINEAR),((i%8)*128,(i//8)*128))
+skins = [
+    ("young_caucasian_male", (1.00,.93,.87)),
+    ("young_caucasian_female", (1.00,.94,.89)),
+    ("old_caucasian_male", (.73,.78,.66)),
+    ("young_asian_male", (.73,.76,.66)),
+    ("middleage_african_male", (.84,.85,.80)),
+    ("old_asian_male", (.64,.92,.45)),
+    ("old_caucasian_female", (.68,.72,.69)),
+    ("middleage_caucasian_male", (.94,.62,.60)),
+]
+with ZipFile(args.skin_pack) as pack:
+    for i, (folder, tint) in enumerate(skins):
+        name, = (f for f in pack.namelist()
+                 if f.startswith("skins/" + folder + "/") and f.endswith(".png"))
+        source = Image.open(BytesIO(pack.read(name))).convert("RGB").resize((256,256), Image.Resampling.LANCZOS)
+        pixels = np.asarray(source) * np.asarray(tint)
+        if i >= 2:
+            # Kill the even studio skin finish on infected variants.
+            y,x = np.mgrid[:256,:256]
+            mottling = np.sin(x*.17+y*.23)*np.cos(y*.22-x*.08)
+            pixels *= 1 + .044*mottling[:,:,None]
+        atlas.paste(Image.fromarray(np.uint8(np.clip(pixels,0,255))), (i%4*256,512+i//4*256))
+    for i, name in enumerate(("male_casualsuit04", "female_casualsuit01")):
+        path=f"clothes/{name}/{name}_diffuse.png"
+        source=Image.open(BytesIO(pack.read(path))).convert("L").resize((256,128),Image.Resampling.LANCZOS)
+        grays = np.asarray(source,dtype=float) / 255
+        cloth=np.uint8(28 + grays[:,:,None] * np.asarray([48,53,58]))
+        atlas.paste(Image.fromarray(cloth),(i*256,384))
 atlas.save(OUT/"CharacterAtlas.png",optimize=True)
 
 n=512

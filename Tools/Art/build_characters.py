@@ -6,13 +6,23 @@ import math
 import random
 import sys
 from pathlib import Path
+from zipfile import ZipFile
 
 import bpy
 from mathutils import Matrix, Vector
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from makehuman_faces import append_face
+from survivor_clothing import append_pants
 
 OUT = Path(sys.argv[sys.argv.index("--") + 1]).resolve()
 OUT.mkdir(parents=True, exist_ok=True)
 FPS = 30
+if "--makehuman-data" not in sys.argv:
+    raise SystemExit("Pass --makehuman-data /path/to/makehuman/data to build the anatomically shaped heads.")
+FACE_DATA = Path(sys.argv[sys.argv.index("--makehuman-data") + 1])
+if "--skin-pack" not in sys.argv:
+    raise SystemExit("Pass --skin-pack /path/to/makehuman_system_assets_cc0.zip.")
+CLOTHING = ZipFile(sys.argv[sys.argv.index("--skin-pack") + 1])
 
 # Name, height, shoulder width, hip width, base textile, skin, detail.
 CAST = [
@@ -130,13 +140,15 @@ class Character:
         outline = [(-w+edge,-h),(w-edge,-h),(w,-h+edge),(w,h-edge),
                    (w-edge,h),(-w+edge,h),(-w,h-edge),(-w,-h+edge)]
         base=len(self.vertices)
-        for offset, scale in ((-d,.85),(-d*.66,1),(d*.66,1),(d,.85)):
+        profiles = ((-d,1),(d,1)) if d < .036 else ((-d,.85),(-d*.66,1),(d*.66,1),(d,.85))
+        for offset, scale in profiles:
             for a,b in outline:
                 self.vertices.append((x+a*scale+slant*b, y+offset, z+b*scale))
                 self.weights.append({bone:1.})
-        indices = [tuple(reversed(range(8))), tuple(range(24,32))]
+        last = 8*(len(profiles)-1)
+        indices = [tuple(reversed(range(8))), tuple(range(last,last+8))]
         indices += [(r*8+i,r*8+(i+1)%8,(r+1)*8+(i+1)%8,(r+1)*8+i)
-                    for r in range(3) for i in range(8)]
+                    for r in range(len(profiles)-1) for i in range(8)]
         for face in indices:
             self.faces.append(tuple(base+i for i in reversed(face)))
             self.tiles.append((tile, tuple((.5+(outline[i%8][0]/w)*.49,
@@ -151,6 +163,8 @@ class Character:
                 ("Forearm", (.062,.068,.039), self.skin, ("UpperArm"+side, True)),
                 ("Hand", (.044,.049,.032), 3 if self.hero else self.skin, None),
             ):
+                if self.hero and name in ("Thigh","Shin"):
+                    continue
                 bone = name+side
                 a,b,_=self.bones[bone]
                 m = 1.22 if self.tank else .88 if self.name == "Eva" else 1
@@ -183,34 +197,30 @@ class Character:
 
     def sculpt(self):
         h,w,hip=self.h,self.shoulder,self.hips
-        self.surface(v(0,0,h*.43),v(0,0,h*.66),
-                     [(0,hip*.30,.078),(.14,hip*.48,.122),(.43,hip*.58,.133),(.68,hip*.54,.127),
-                      (.84,hip*.45,.105),(1,hip*.44,.112)],2 if self.hero else self.cloth,"Pelvis",14,("Chest",False))
+        if self.hero:
+            append_pants(self, CLOTHING)
+        else:
+            self.surface(v(0,0,h*.43),v(0,0,h*.66),
+                         [(0,hip*.30,.078),(.14,hip*.48,.122),(.43,hip*.58,.133),(.68,hip*.54,.127),
+                          (.84,hip*.45,.105),(1,hip*.44,.112)],self.cloth,"Pelvis",14,("Chest",False))
         self.surface(v(0,.0,h*.59),v(0,.03,h*.86),
                      [(0,w*.28,.095),(.16,w*.31,.115),(.39,w*.42,.147),(.60,w*.48,.156),
                       (.77,w*.51,.144),(.90,w*.46,.109),(1,w*.23,.069)],self.cloth,"Chest",16,("Pelvis",True))
         self.volume((0,.039,h*.866),(.056,.058,.072),self.skin,"Head")
-        head_z=h*.939
-        face_w=.087 if self.name=="Eva" else .098 if not self.tank else .118
-        self.surface(v(0,.061,h*.867),v(0,.032,h*1.014),
-                     [(0,.027,.027),(.12,face_w*.72,.061),(.28,face_w*.81,.075),(.41,face_w,.089),
-                      (.55,face_w*.95,.094),(.69,face_w,.091),(.84,face_w*.79,.082),
-                      (.95,face_w*.53,.052),(1,.001,.001)],self.skin,"Head",16)
-        self.volume((0,.123,head_z-.018),(.023,.035,.031),self.skin,"Head",8)
-        self.panel((0,.156,head_z-.052),(.058,.014,.013),15,"Head")
+        head_z=h*.944
+        append_face(self, FACE_DATA)
+        eyeY = .121
         for side in (-1,1):
-            self.volume((side*face_w*.90,.036,head_z-.017),(.021,.027,.036),self.skin,"Head",8)
-            self.panel((side*.038,.150,head_z+.004),(.035,.013,.013),16 if self.hero else self.trim,"Head",side*.10)
-            self.panel((side*.038,.147,head_z+.019),(.045,.014,.009),17,"Head",side*.15)
+            x=side*(.034 if self.name=="Eva" else .038)
+            self.volume((x,eyeY,head_z),(.020,.015,.014),16,"Head",10)
+            self.volume((x,eyeY+.013,head_z),(.008,.003,.008),3 if self.hero else self.trim,"Head",8)
         if self.hero:
-            self.volume((0,.012,h*.985),(face_w*1.08,.105,.063),17,"Head",14)
-            self.volume((0,-.035,h*.939),(face_w*.97,.070,.084),17,"Head")
             for i in range(5):
                 x=(i-2)*.032
                 self.surface(v(x,.094,h*1.001),v(x*.47-.025,.116,h*(.952+.008*i)),
                     [(0,.022,.012),(.34,.022,.010),(.74,.013,.009),(1,.001,.001)],17,"Head",6)
             for s in (-1,1):
-                self.volume((s*.045,.158,head_z+.003),(.008,.005,.007),3,"Head",6)
+                self.panel((s*.035,.132,head_z+.025),(.032,.007,.006),17,"Head",.12*s)
             if self.name=="Eva":
                 self.surface(v(0,-.065,h*.964),v(.04,-.14,h*.774),
                              [(0,.038,.032),(.20,.045,.038),(.48,.039,.03),(.68,.03,.026),
@@ -226,9 +236,9 @@ class Character:
     def hero_kit(self):
         h,w=self.h,self.shoulder
         self.panel((0,.122,h*.719),(w*.60,.094,.288),4,"Chest")
-        self.panel((0,-.131,h*.717),(w*.68,.181,.281),0,"Chest")
-        self.panel((0,-.227,h*.695),(w*.58,.034,.194),2,"Chest")
-        self.panel((0,-.249,h*.696),(w*.48,.012,.036),self.trim,"Chest")
+        self.panel((0,-.126,h*.717),(w*.68,.150,.281),0,"Chest")
+        self.panel((0,-.198,h*.695),(w*.58,.029,.194),2,"Chest")
+        self.panel((0,-.217,h*.696),(w*.48,.012,.028),self.trim,"Chest")
         for s in (-1,1):
             self.panel((s*w*.25,-.230,h*.724),(.031,.021,.256),3,"Chest",s*.14)
             self.panel((s*w*.225,-.242,h*.715),(.028,.016,.027),4,"Chest",s*.14)
@@ -309,7 +319,13 @@ class Character:
         uv = data.uv_layers.new(name="Atlas")
         for p,(tile,coords) in zip(data.polygons,self.tiles):
             for loop,(x,y) in zip(p.loop_indices,coords):
-                uv.data[loop].uv=((tile%8+.035+x*.93)/8, (3-tile//8+.035+y*.93)/4)
+                if tile < 24:
+                    uv.data[loop].uv=((tile%8+.035+x*.93)/8, (7-tile//8+.035+y*.93)/8)
+                elif tile < 32:
+                    slot=tile-24
+                    uv.data[loop].uv=((slot%4+.013+x*.974)/4, (1-slot//4+.013+y*.974)/4)
+                else:
+                    uv.data[loop].uv=((tile-32+.013+x*.974)/4, (.035+y*.93)/8+.50)
         groups={name:skin.vertex_groups.new(name=name) for name in self.bones}
         for i, weights in enumerate(self.weights):
             for key,weight in weights.items():
@@ -467,12 +483,45 @@ def main():
         preview(scene,roster)
 
 
+def preview_weapon(actor):
+    grip = actor.rig.matrix_world @ actor.rig.pose.bones["WeaponGrip"].head
+    barrel = actor.rig.matrix_world @ actor.rig.pose.bones["WeaponForward"].head
+    steel = bpy.data.materials.get("Preview rifle")
+    if steel is None:
+        steel = bpy.data.materials.new("Preview rifle")
+        steel.diffuse_color = (.07,.08,.09,1)
+    for part in ("lux_weapon_rifle","lux_weapon_rifle_steel"):
+        path = OUT.parent / ("Meshes/" + part + ".obj")
+        if not path.exists():
+            continue
+        points,faces = [],[]
+        for line in path.read_text().splitlines():
+            if line.startswith("v "):
+                x,y,z=map(float,line.split()[1:4])
+                points.append((x,z,y))
+            elif line.startswith("f "):
+                faces.append([int(i.split("/")[0])-1 for i in line.split()[1:]][::-1])
+        mesh = bpy.data.meshes.new(part)
+        mesh.from_pydata(points,[],faces)
+        gun = bpy.data.objects.new(part,mesh)
+        bpy.context.collection.objects.link(gun)
+        gun.location = grip + v(0,0,.065)
+        direction = barrel - grip
+        gun.rotation_euler.z = math.atan2(-direction.x,direction.y)
+        gun.scale = (.51,)*3
+        gun.data.materials.append(steel)
+
+
 def preview(scene,roster):
     for i, actor in enumerate(roster):
         actor.rig.location = ((i%5-2)*2.2, 0 if i<5 else -3.6,0)
         if actor.name in ("Brute","Boss"):
             actor.rig.scale *= 1.16
     scene.frame_set(40)
+    bpy.context.view_layer.update()
+    for actor in roster:
+        if actor.hero:
+            preview_weapon(actor)
     scene.render.engine="CYCLES"
     scene.cycles.samples=32
     scene.cycles.use_denoising=False
@@ -492,11 +541,11 @@ def preview(scene,roster):
         lamp=bpy.context.object
         lamp.data.color,lamp.data.energy,lamp.data.shape,lamp.data.size=color,energy,"DISK",size
         lamp.rotation_euler=(v(0,-1,1)-lamp.location).to_track_quat("-Z","Y").to_euler()
-    bpy.ops.object.camera_add(location=(.1,12,10.5))
+    bpy.ops.object.camera_add(location=(1.15,15,7.6))
     scene.camera=bpy.context.object
     scene.camera.rotation_euler=(v(0,-1.7,1.0)-scene.camera.location).to_track_quat("-Z","Y").to_euler()
     scene.camera.data.type="ORTHO"
-    scene.camera.data.ortho_scale=12.3
+    scene.camera.data.ortho_scale=11.8
     scene.render.resolution_x,scene.render.resolution_y,scene.render.resolution_percentage=1280,850,100
     scene.render.filepath=str(OUT.parents[1].parent/"zsr-character-preview.png")
     bpy.ops.render.render(write_still=True)

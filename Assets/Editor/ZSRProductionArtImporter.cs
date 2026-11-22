@@ -9,6 +9,8 @@ namespace ZombieSurvivalRun.EditorTools
     {
         const string Folder = "Assets/Resources/ProductionArt/";
 
+        public override uint GetVersion() => 2;
+
         void OnPreprocessModel()
         {
             if (!assetPath.StartsWith(Folder) || Path.GetExtension(assetPath) != ".fbx") return;
@@ -18,6 +20,9 @@ namespace ZombieSurvivalRun.EditorTools
             importer.importAnimation = true;
             importer.optimizeGameObjects = false;
             importer.preserveHierarchy = true;
+            importer.bakeAxisConversion = true;
+            importer.useFileScale = true;
+            importer.globalScale = 1f;
             importer.importCameras = false;
             importer.importLights = false;
             importer.materialImportMode = ModelImporterMaterialImportMode.None;
@@ -31,11 +36,12 @@ namespace ZombieSurvivalRun.EditorTools
             importer.textureType = name.EndsWith("_normal") ? TextureImporterType.NormalMap : TextureImporterType.Default;
             importer.wrapMode = name.StartsWith("Highway") ? TextureWrapMode.Repeat : TextureWrapMode.Clamp;
             importer.mipmapEnabled = true;
+            importer.npotScale = TextureImporterNPOTScale.None;
             importer.isReadable = false;
             importer.anisoLevel = name.StartsWith("Highway") ? 4 : 1;
             var android = importer.GetPlatformTextureSettings("Android");
             android.overridden = true;
-            android.maxTextureSize = name == "Horizon" ? 1024 : 512;
+            android.maxTextureSize = name == "Horizon" || name == "CharacterAtlas" ? 1024 : 512;
             android.format = name == "Highway_normal" ? TextureImporterFormat.ASTC_5x5 : TextureImporterFormat.ASTC_6x6;
             importer.SetPlatformTextureSettings(android);
         }

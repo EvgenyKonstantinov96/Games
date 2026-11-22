@@ -2,7 +2,7 @@
 
 ## Что входит
 
-- Собственные FBX Макса, Евы, Walker, Runner, Armored, Brute, Toxic, Crawler и Boss с одним скинированным мешем, UV и 16–18 костями на персонажа. У Евы компактный рюкзак, аптечка на поясе и отдельный силуэт. У оружия есть привязка к правой руке и точка вылета.
+- FBX Макса, Евы, Walker, Runner, Armored, Brute, Toxic, Crawler и Boss содержат по одному скинированному мешу, UV и 16–18 костей. Лица и одежда героев используют переработанные ресурсы MakeHuman CC0. Экипировка и анимации созданы для проекта. У оружия есть привязка к правой руке и точка вылета.
 - В FBX записаны ключевые позы покоя, движения, стрельбы, перезарядки, попадания, атаки и смерти. Шаги рассчитываются по точкам контакта в Blender при создании клипов. События игры выбирают диапазоны готовых клипов.
 - Новый атлас, бесшовные цветовая карта и карта нормалей асфальта, панорама первой главы, тёплые отражатели вдоль трассы и холодная заполняющая подсветка, дым и огонь на разбитых машинах. Габариты полос и препятствий сохранены.
 - Один общий материал персонажей и один skinned renderer на модель. Импортёр задаёт Android ASTC для новых текстур и отключает несвязанные с игровыми моделями камеры и свет.
@@ -12,21 +12,24 @@
 
 ## Проверено
 
+[Проверка визуальной регрессии и портретный кадр](VISUAL_REGRESSION_RU.md).
+
 Blender 4.3.2 экспортировал и повторно импортировал все девять FBX. Проверка подтвердила иерархию, точки крепления оружия, UV, нормализованные веса вершин, наличие меняющихся поз и 168 кадров анимации. Числа костей, вершин и треугольников записаны в [логе](ART_FBX_ROUNDTRIP.txt).
 
 ```sh
 blender -b -t 4 --python-exit-code 1 --python Tools/Art/check_characters.py -- Assets/Resources/ProductionArt
 ```
 
-В окружении отсутствуют Unity и Android SDK. Компиляция Unity, анимации с импортированным Animator, попадание текстур в Android-сборку, FPS и сравнение игрового кадра с концептом остаются BLOCKED. Превью сделано в Blender. Статусы проверок Unity из RESULTS_100.md не повышались.
+Редактор Unity 6000.3.28f1 загружен и запущен в batchmode, но завершился с кодом 198 до импорта проекта. Unity Licensing сообщает об отсутствии действительной лицензии. Компиляция всего проекта в Unity, проверка Animator, URP-кадр, Android-сборка и замеры FPS остаются BLOCKED. Статусы проверок из RESULTS_100.md сохранены.
 
 В Unity проверка импорта доступна в меню **Zombie Survival Run 1.0 → Check Shipped Character Pack**. Для журнала CI можно вызвать `ZombieSurvivalRun.EditorTools.ZSRProductionArtValidation.Validate` через `-batchmode -quit -executeMethod`. Эта проверка Unity в данном окружении не запускалась.
 
 ## Пересборка ресурсов
 
 ```sh
-python Tools/Art/build_textures.py
-blender -b -t 4 --python-exit-code 1 --python Tools/Art/build_characters.py -- Assets/Resources/ProductionArt --preview
+python Tools/Art/build_textures.py --skin-pack /path/to/makehuman_system_assets_cc0.zip
+blender -b -t 4 --python-exit-code 1 --python Tools/Art/build_characters.py -- Assets/Resources/ProductionArt \
+  --makehuman-data /path/to/makehuman/makehuman/data --skin-pack /path/to/makehuman_system_assets_cc0.zip --preview
 ```
 
-Генерация текстур требует Python с NumPy и Pillow. Панорама входит в Git в готовом виде.
+Генерация текстур требует NumPy и Pillow. Использована ревизия MakeHuman `a8bc2d54ff0ac92e78ff71431b1023eda42bf482` и официальный [системный ZIP CC0](https://files.makehumancommunity.org/asset_packs/makehuman_system_assets/makehuman_system_assets_cc0.zip), SHA-256 `b542127a8e25547c7c29c19f2d1d2adb9a664c80396ecd694095dbc8028a0107`. Готовые FBX и карты уже лежат в Unity-проекте.

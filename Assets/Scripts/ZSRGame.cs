@@ -166,6 +166,20 @@ namespace ZombieSurvivalRun
             RenderSettings.ambientGroundColor = new Color(.10f, .13f, .18f);
             RenderSettings.skybox = null;
 
+            // A new Unity scene can already contain the template directional light.
+            // An unsaved template must use the same light rig as ZSR_Main.
+            var activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            if (string.IsNullOrEmpty(activeScene.path))
+            {
+                foreach (var sceneRoot in activeScene.GetRootGameObjects())
+                {
+                    if (sceneRoot.name == "Directional Light" &&
+                        sceneRoot.TryGetComponent<Light>(out var templateSun) &&
+                        templateSun.type == LightType.Directional)
+                        templateSun.enabled = false;
+                }
+            }
+
             var sun = new GameObject("Warm sunset key light").AddComponent<Light>();
             sun.transform.SetParent(worldRoot.transform, false);
             sun.type = LightType.Directional;
@@ -181,8 +195,8 @@ namespace ZombieSurvivalRun
             var cool = new GameObject("Blue fill light").AddComponent<Light>();
             cool.transform.SetParent(worldRoot.transform, false);
             cool.type = LightType.Directional;
-            cool.intensity = .46f;
-            cool.color = new Color(.32f, .58f, 1f);
+            cool.intensity = .62f;
+            cool.color = new Color(.50f, .66f, 1f);
             cool.transform.rotation = Quaternion.Euler(31, 27, 0);
 
             camera3D = Camera.main;

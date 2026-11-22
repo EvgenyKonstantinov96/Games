@@ -11,6 +11,7 @@ namespace ZombieSurvivalRun.EditorTools
         public static void Validate()
         {
             var errors = new List<string>();
+            ZSRVisuals.Init();
             foreach (string name in new[]
             {
                 "Max", "Eva", "Walker", "Runner", "Armored", "Brute", "Toxic", "Crawler", "Boss"
@@ -45,15 +46,64 @@ namespace ZombieSurvivalRun.EditorTools
                         importedTake = true;
                 }
                 if (!importedTake) errors.Add(name + ": baked motion timeline missing");
+                else CheckGameplayRig(name, errors);
             }
 
             foreach (string name in new[] { "CharacterAtlas", "Highway", "Highway_normal", "Horizon", "ParticleSoft" })
                 if (Resources.Load<Texture2D>("ProductionArt/" + name) == null)
                     errors.Add(name + ": Texture2D missing");
 
+            if (ZSRVisuals.AsphaltDeluxe.mainTexture == null ||
+                ZSRVisuals.SkylineMaterials[0].mainTexture == null)
+                errors.Add("Gameplay asphalt or skyline material has no texture");
+
             if (errors.Count > 0)
                 throw new InvalidOperationException("[ZSR ART] " + string.Join("\n[ZSR ART] ", errors));
-            Debug.Log("[ZSR ART] All nine FBX skins, motion timelines, sockets and five textures imported.");
+            Debug.Log("[ZSR ART] All nine character rigs fit gameplay bounds. FBX motion and environment resources loaded.");
+        }
+
+        static void CheckGameplayRig(string name, List<string> errors)
+        {
+            var host = new GameObject("Character frame calibration check");
+            var baked = new Mesh();
+            try
+            {
+                bool hero = name == "Max" || name == "Eva";
+                var rig = ZSRBundledCharacter.Create(host.transform, name, hero, WeaponType.Rifle);
+                if (rig == null)
+                {
+                    errors.Add(name + ": gameplay factory could not build the rig");
+                    return;
+                }
+
+                var skin = rig.GetComponentInChildren<SkinnedMeshRenderer>();
+                skin.BakeMesh(baked);
+                Vector3 lo = Vector3.one * float.PositiveInfinity;
+                Vector3 hi = Vector3.one * float.NegativeInfinity;
+                foreach (var vertex in baked.vertices)
+                {
+                    var point = host.transform.InverseTransformPoint(skin.transform.TransformPoint(vertex));
+                    lo = Vector3.Min(lo, point);
+                    hi = Vector3.Max(hi, point);
+                }
+                Vector3 size = hi - lo;
+                if (baked.vertexCount == 0 || size.y < 1.25f || size.y > 2.6f ||
+                    size.x > 2f || size.z > 2f || lo.y < -.30f)
+                    errors.Add(name + ": outside gameplay rig bounds " + lo + " .. " + hi);
+
+                if (hero)
+                {
+                    var muzzle = rig.Muzzle;
+                    var point = muzzle == null ? Vector3.zero : host.transform.InverseTransformPoint(muzzle.position);
+                    if (point.y < .65f || point.y > 2.25f || point.z <= .2f || point.z > 2f)
+                        errors.Add(name + ": muzzle is outside the playable rig " + point);
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(baked);
+                UnityEngine.Object.DestroyImmediate(host);
+            }
         }
     }
 }

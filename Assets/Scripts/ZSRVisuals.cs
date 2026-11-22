@@ -80,7 +80,8 @@ namespace ZombieSurvivalRun
                 ConcreteDark.mainTextureScale = new Vector2(2f, 5f);
                 Sidewalk.mainTextureScale = new Vector2(2f, 6f);
             }
-            AsphaltDeluxe = MatWithTexture(Color.white,"ProductionArt/Highway",.41f,new Vector2(2f,8f));
+            AsphaltDeluxe = MatWithTexture(Color.white, "ProductionArt/Highway", .28f, new Vector2(2f, 8f),
+                new Color(.12f, .145f, .17f), "Textures/asphalt_v102");
             ConcreteDeluxe = MatWithTexture(Color.white,"Textures/worn_concrete_v7",.13f,new Vector2(2.2f,5f));
             ClothTextured = MatWithTexture(Color.white,"Textures/fabric_survivor",.20f);
             RedClothTextured = MatWithTexture(Color.white,"Textures/jacket_eva_pbr",.24f);
@@ -97,17 +98,21 @@ namespace ZombieSurvivalRun
             ToxicGlow=Mat(new Color(.48f,1.00f,.12f),.16f,3f);
             for(int i=0;i<3;i++)
             {
-                var unlit = Shader.Find("Universal Render Pipeline/Unlit");
+                var unlit = Resources.Load<Shader>("ProductionArt/ZSRPanorama");
+                if (unlit == null) unlit = Shader.Find("Universal Render Pipeline/Unlit");
                 if(unlit==null)unlit=Shader.Find("Unlit/Texture");
                 SkylineMaterials[i]=new Material(unlit==null?shader:unlit);
                 SkylineMaterials[i].name="Cinematic city panorama chapter "+(i+1);
-                var sky = Resources.Load<Texture2D>(i == 0 ? "ProductionArt/Horizon" : "Skyline/city_chapter_" + (i+1) + "_v100");
+                var sky = i == 0 ? Resources.Load<Texture2D>("ProductionArt/Horizon") : null;
+                if (sky == null) sky = Resources.Load<Texture2D>("Skyline/city_chapter_" + (i+1) + "_v100");
                 if(sky!=null)
                 {
                     SkylineMaterials[i].mainTexture=sky;
                     if(SkylineMaterials[i].HasProperty("_BaseMap"))SkylineMaterials[i].SetTexture("_BaseMap",sky);
                 }
-                if(SkylineMaterials[i].HasProperty("_BaseColor"))SkylineMaterials[i].SetColor("_BaseColor",Color.white);
+                Color skyTint = sky != null ? Color.white : new Color(.16f, .23f, .34f);
+                SkylineMaterials[i].color = skyTint;
+                if (SkylineMaterials[i].HasProperty("_BaseColor")) SkylineMaterials[i].SetColor("_BaseColor", skyTint);
                 if(SkylineMaterials[i].HasProperty("_Cull"))SkylineMaterials[i].SetFloat("_Cull",0f);
             }
         }
@@ -127,10 +132,16 @@ namespace ZombieSurvivalRun
             return m;
         }
 
-        public static Material MatWithTexture(Color tint,string resource,float smooth=.2f,Vector2? tiling=null)
+        public static Material MatWithTexture(Color tint, string resource, float smooth = .2f,
+            Vector2? tiling = null, Color? missingTextureColor = null, string alternateResource = null)
         {
-            var m=Mat(tint,smooth);
-            var tex=Resources.Load<Texture2D>(resource);
+            var tex = Resources.Load<Texture2D>(resource);
+            if (tex == null && alternateResource != null)
+            {
+                resource = alternateResource;
+                tex = Resources.Load<Texture2D>(resource);
+            }
+            var m = Mat(tex == null && missingTextureColor.HasValue ? missingTextureColor.Value : tint, smooth);
             if(tex!=null)
             {
                 m.mainTexture=tex;
@@ -262,7 +273,8 @@ namespace ZombieSurvivalRun
         public static GameObject CityPanorama(Transform parent,int chapter)
         {
             var go=Shape("Distant city art - BACKGROUND ONLY",PrimitiveType.Quad,parent,
-                new Vector3(0f,35f,145f),new Vector3(250f,164f,1f),SkylineMaterials[Mathf.Clamp(chapter,0,2)],new Vector3(0,180,0));
+                new Vector3(0f, 29f, 175f), new Vector3(250f, 166f, 1f),
+                SkylineMaterials[Mathf.Clamp(chapter, 0, 2)]);
             return go;
         }
         public static Transform Pivot(string name,Transform parent,Vector3 pos)
@@ -288,7 +300,11 @@ namespace ZombieSurvivalRun
                 ? ShadowCastingMode.On:ShadowCastingMode.Off;
             renderer.receiveShadows=true;
             var collider=o.GetComponent<Collider>();
-            if(collider!=null) Object.Destroy(collider);
+            if (collider != null)
+            {
+                if (Application.isPlaying) Object.Destroy(collider);
+                else Object.DestroyImmediate(collider);
+            }
             return o;
         }
         public static GameObject Box(string n,Transform p,Vector3 a,Vector3 b,Material m,Vector3? r=null)

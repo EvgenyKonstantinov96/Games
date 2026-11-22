@@ -46,15 +46,21 @@ namespace ZombieSurvivalRun
                 return null;
             }
 
-            var root = new GameObject(name + " / original skinned character");
+            var root = new GameObject(name + " / skinned character");
             root.transform.SetParent(parent, false);
-            var instance = Instantiate(model, root.transform, false);
+            var placement = ZSRVisuals.Pivot("Model alignment", root.transform, Vector3.zero);
+            var instance = Instantiate(model, placement, false);
             var skin = instance.GetComponentInChildren<SkinnedMeshRenderer>(true);
             var pelvis = FindBone(instance.transform, "Pelvis");
             var forward = FindBone(instance.transform, "ForwardMarker");
             var grip = hero ? FindBone(instance.transform, "WeaponGrip") : null;
             var barrel = hero ? FindBone(instance.transform, "WeaponForward") : null;
-            if (skin == null || pelvis == null || forward == null || (hero && (grip == null || barrel == null)))
+            var head = FindBone(instance.transform, "Head");
+            var leftAnkle = FindBone(instance.transform, "FootL");
+            var rightAnkle = FindBone(instance.transform, "FootR");
+            if (skin == null || pelvis == null || forward == null || head == null ||
+                leftAnkle == null || rightAnkle == null || (hero && (grip == null || barrel == null)) ||
+                !AlignRig(placement, name, pelvis, forward, head, leftAnkle, rightAnkle))
             {
                 Debug.LogError("[ZSR ART] Invalid rig hierarchy in " + name + ".");
                 if (Application.isPlaying) Destroy(root);
@@ -62,13 +68,10 @@ namespace ZombieSurvivalRun
                 return null;
             }
 
-            Vector3 front = root.transform.InverseTransformDirection(forward.position - pelvis.position);
-            front.y = 0f;
-            if (front.sqrMagnitude > .000001f)
-                instance.transform.localRotation = Quaternion.Inverse(Quaternion.LookRotation(front));
             if (atlasMaterial == null)
             {
-                atlasMaterial = ZSRVisuals.MatWithTexture(Color.white, ResourceRoot + "CharacterAtlas", .17f);
+                atlasMaterial = ZSRVisuals.MatWithTexture(Color.white, ResourceRoot + "CharacterAtlas", .17f,
+                    missingTextureColor: new Color(.23f, .26f, .29f));
                 atlasMaterial.name = "ZSR Character Atlas / shared";
             }
             skin.sharedMaterial = atlasMaterial;
@@ -83,6 +86,38 @@ namespace ZombieSurvivalRun
             if (hero) actor.AttachWeapon(grip, barrel, weapon);
             if (Application.isPlaying) actor.CreateGraph(animator, take);
             return actor;
+        }
+
+        static bool AlignRig(Transform placement, string name, Transform pelvis, Transform marker,
+            Transform head, Transform leftAnkle, Transform rightAnkle)
+        {
+            // Work in the actor's local units. The enemy class scale and the
+            // imported FBX root's axis/unit transforms both remain intact.
+            var actor = placement.parent;
+            Vector3 ankles = (leftAnkle.position + rightAnkle.position) * .5f;
+            var rise = actor.InverseTransformVector(head.position - ankles);
+            var forward = actor.InverseTransformVector(marker.position - pelvis.position);
+            if (rise.sqrMagnitude < .00000001f) return false;
+            Vector3 up = rise.normalized;
+            forward = Vector3.ProjectOnPlane(forward, up);
+            if (forward.sqrMagnitude < .00000001f) return false;
+
+            float height = name switch
+            {
+                "Eva" => 1.81f, "Max" => 1.94f, "Walker" => 1.89f, "Runner" => 1.86f,
+                "Armored" => 1.98f, "Brute" => 2.10f, "Toxic" => 1.84f,
+                "Crawler" => 1.72f, "Boss" => 2.14f, _ => 1.90f
+            };
+            const float ankleHeight = .095f;
+            float rigToGameUnits = (height * .86f - ankleHeight) / rise.magnitude;
+            if (float.IsNaN(rigToGameUnits) || rigToGameUnits < .0001f || rigToGameUnits > 1000f)
+                return false;
+
+            placement.localRotation = Quaternion.Inverse(Quaternion.LookRotation(forward, up));
+            placement.localScale = Vector3.one * rigToGameUnits;
+            var planted = actor.InverseTransformPoint((leftAnkle.position + rightAnkle.position) * .5f);
+            placement.localPosition = new Vector3(-planted.x, ankleHeight - planted.y, -planted.z);
+            return true;
         }
 
         static Transform FindBone(Transform root, string name)
@@ -105,6 +140,13 @@ namespace ZombieSurvivalRun
                 referenceScale.y / Mathf.Max(.0001f, Mathf.Abs(socketScale.y)),
                 referenceScale.z / Mathf.Max(.0001f, Mathf.Abs(socketScale.z)));
             var gun = ZSRVisuals.Rifle(socket, weapon);
+            float weaponScale = weapon switch
+            {
+                WeaponType.Pistol => .37f, WeaponType.Rifle => .51f,
+                WeaponType.Shotgun => .55f, WeaponType.Minigun => .60f, _ => .51f
+            };
+            gun.localScale = Vector3.one * weaponScale;
+            gun.localPosition = Vector3.up * .065f;
             var muzzle = new Vector3(0f, .04f, .65f);
             float maxZ = float.NegativeInfinity;
             foreach (var filter in gun.GetComponentsInChildren<MeshFilter>(true))
