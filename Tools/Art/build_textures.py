@@ -4,7 +4,7 @@ from io import BytesIO
 from pathlib import Path
 from zipfile import ZipFile
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 OUT = Path(__file__).resolve().parents[2] / "Assets/Resources/ProductionArt"
 OUT.mkdir(parents=True, exist_ok=True)
@@ -17,9 +17,23 @@ PAL = [
 ]
 parser = ArgumentParser()
 parser.add_argument("--skin-pack", type=Path, required=True)
+parser.add_argument("--characters-only", action="store_true")
 args = parser.parse_args()
+def skin_relief(source,strength):
+    gray=source.convert("L")
+    return (np.asarray(gray,dtype=float)-np.asarray(gray.filter(ImageFilter.GaussianBlur(2.1))))*strength/255
+
+
+def normal_tile(height):
+    dy,dx=np.gradient(height)
+    vectors=np.stack((-dx*9,dy*9,np.ones_like(height)),axis=-1)
+    vectors/=np.linalg.norm(vectors,axis=-1,keepdims=True)
+    return Image.fromarray(np.uint8(np.clip(vectors*127.5+127.5,0,255)))
+
+
 N = 64
 atlas = Image.new("RGB", (1024,1024), "#302e2c")
+normals_atlas = Image.new("RGB", atlas.size, (128,128,255))
 y,x = np.mgrid[:N,:N]
 for i, rgb in enumerate(PAL):
     noise = rng.normal(0,3.4,(N,N)) + 3*np.sin(x*.24+y*.15)
@@ -36,7 +50,37 @@ for i, rgb in enumerate(PAL):
             d=int(rng.integers(2,10))
             c=tuple(min(255, int(v+d)) for v in rgb)
             draw.line((a,b,min(62,a+d//2),max(0,b-d)),fill=c,width=1)
-    atlas.paste(im.resize((128,128),Image.Resampling.BILINEAR),((i%8)*128,(i//8)*128))
+    origin=((i%8)*128,(i//8)*128)
+    yy,xx=np.mgrid[:128,:128]
+    u,v=(xx-63.5)/63.5,(yy-63.5)/63.5
+    detail=np.random.default_rng(9413+i)
+    panels=np.asarray(im.resize((128,128),Image.Resampling.BILINEAR),dtype=float)
+    fabric=i in (0,1,2,6,7,8)
+    coated=i in (3,4,5,23)
+    skin=i in (9,10,11,12,13,14)
+    if fabric:
+        stitch=np.cos(u*43-v*18)*np.sin(v*57+u*7)
+        rumple=np.sin(u*2.6+v*7)*np.cos(v*10.4-u*2.5)
+        dust=np.maximum(0,np.sin(u*7.1-v*3.9)*np.cos(v*8.8+u*2.6))
+        height=.017*stitch+.030*rumple
+        panels+=((stitch*2.1+rumple*4.7+dust*4.6)[:,:,None])
+    elif coated:
+        edge=np.maximum(abs(u),abs(v))**6
+        scratch=(np.cos(u*42+v*81) > .963)*np.maximum(0,np.cos(u*18-v*4))
+        height=-.027*edge-.015*scratch
+        panels+=(edge*10.3-scratch*6.0)[:,:,None]
+    elif skin:
+        grain=detail.normal(0,1,(128,128))
+        mottle=np.sin(u*11+v*21)*np.cos(v*17-u*3)
+        veins=np.exp(-((u+.1*np.sin(v*3)-v*.5)*27)**2)
+        height=grain*.0024 + mottle*.0038
+        if i in (11,12,13,14):
+            panels+=mottle[:,:,None]*np.array([10,6,3])
+            panels+=veins[:,:,None]*np.array([-7,-3,4])
+    else:
+        height=.011*detail.normal(0,.30,(128,128))
+    atlas.paste(Image.fromarray(np.uint8(np.clip(panels,0,255))),origin)
+    normals_atlas.paste(normal_tile(height),origin)
 skins = [
     ("young_caucasian_male", (1.00,.93,.87)),
     ("young_caucasian_female", (1.00,.94,.89)),
@@ -58,14 +102,21 @@ with ZipFile(args.skin_pack) as pack:
             y,x = np.mgrid[:256,:256]
             mottling = np.sin(x*.17+y*.23)*np.cos(y*.22-x*.08)
             pixels *= 1 + .044*mottling[:,:,None]
-        atlas.paste(Image.fromarray(np.uint8(np.clip(pixels,0,255))), (i%4*256,512+i//4*256))
+        origin=(i%4*256,512+i//4*256)
+        atlas.paste(Image.fromarray(np.uint8(np.clip(pixels,0,255))),origin)
+        normals_atlas.paste(normal_tile(skin_relief(source,.095)),origin)
     for i, name in enumerate(("male_casualsuit04", "female_casualsuit01")):
         path=f"clothes/{name}/{name}_diffuse.png"
         source=Image.open(BytesIO(pack.read(path))).convert("L").resize((256,128),Image.Resampling.LANCZOS)
         grays = np.asarray(source,dtype=float) / 255
         cloth=np.uint8(28 + grays[:,:,None] * np.asarray([48,53,58]))
-        atlas.paste(Image.fromarray(cloth),(i*256,384))
+        origin=(i*256,384)
+        atlas.paste(Image.fromarray(cloth),origin)
+        normals_atlas.paste(normal_tile(skin_relief(source,.22)),origin)
 atlas.save(OUT/"CharacterAtlas.png",optimize=True)
+normals_atlas.save(OUT/"CharacterAtlas_normal.png",optimize=True)
+if args.characters_only:
+    raise SystemExit(0)
 
 n=512
 y,x=np.mgrid[:n,:n]

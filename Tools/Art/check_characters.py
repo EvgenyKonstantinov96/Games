@@ -19,6 +19,7 @@ for path in sorted(ROOT.glob("*.fbx")):
         assert {"WeaponGrip","WeaponForward"} <= names, path
     assert any(m.type=="ARMATURE" and m.object==rig for m in skin.modifiers), path
     assert skin.data.uv_layers and len(skin.data.vertices) < 5500, path
+    assert skin.data.has_custom_normals and all(p.use_smooth for p in skin.data.polygons), path
     assert all(abs(sum(g.weight for g in v.groups)-1.0) < .001 for v in skin.data.vertices), path
     action=rig.animation_data.action
     start,end=action.frame_range
@@ -33,4 +34,5 @@ for path in sorted(ROOT.glob("*.fbx")):
         points.append(rig.pose.bones["Pelvis"].matrix.copy())
     assert (points[1].translation-points[2].translation).length > .005, path
     assert (points[0].translation-points[-1].translation).length > .2, path
-    print(f"PASS {path.stem:7} {len(names)} bones, {len(skin.data.vertices)} verts, {tri_count} triangles, {start:g}–{end:g} frames",flush=True)
+    print(f"PASS {path.stem:7} {len(names)} bones, {len(skin.data.vertices)} verts, {tri_count} triangles, "
+          f"{start:g}–{end:g} frames, smooth custom normals",flush=True)

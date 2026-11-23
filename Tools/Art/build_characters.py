@@ -101,30 +101,88 @@ class Character:
                 bone.parent = self.rig.data.edit_bones[parent]
         bpy.ops.object.mode_set(mode="OBJECT")
 
+    def loft(self, rings, materials, sides, ripple, lateral=None):
+        """Build a shared vertex ring at each section and put the UV seam on loops."""
+        base = len(self.vertices)
+        for j, (point, rx, ry, weights) in enumerate(rings):
+            tangent = (rings[min(j + 1, len(rings) - 1)][0] - rings[max(j - 1, 0)][0]).normalized()
+            if lateral is None:
+                width = tangent.cross(v(0,1,0))
+                if width.length_squared < .04:
+                    width = tangent.cross(v(0,0,1))
+            else:
+                width = lateral - tangent * lateral.dot(tangent)
+            width.normalize()
+            depth = tangent.cross(width)
+            for k in range(sides):
+                u = k / sides
+                turn = math.tau * u
+                wrinkle = 1 + ripple * (math.sin(turn * 3 + j*.48) + .42*math.sin(turn * 7 - j*.61))
+                p = point + width*(rx*math.cos(turn)*wrinkle) + depth*(ry*math.sin(turn)*wrinkle)
+                self.vertices.append(tuple(p))
+                self.weights.append(weights)
+        for j, material in enumerate(materials):
+            for k in range(sides):
+                u, u_next = k/sides, (k+1)/sides
+                t, t_next = j/(len(rings)-1), (j+1)/(len(rings)-1)
+                row = base + j*sides
+                next_k = (k+1)%sides
+                self.faces.append((row+k,row+next_k,row+sides+next_k,row+sides+k))
+                self.tiles.append((material, ((u,t),(u_next,t),(u_next,t_next),(u,t_next))))
+
     def surface(self, start, end, rings, tile, bone, sides=10, seam=None):
         """Form a tapered, optionally creased and dual-weighted surface along an axis."""
         start, end = Vector(start), Vector(end)
-        axis = (end-start).normalized()
-        width = axis.cross(v(0,1,0))
-        if width.length < .2:
-            width = axis.cross(v(0,0,1))
-        width.normalize()
-        depth = axis.cross(width).normalized()
-        base = len(self.vertices)
+        sections = []
         for j, (t, rx, ry) in enumerate(rings):
-            for k in range(sides+1):
-                turn = math.tau * (k%sides)/sides
-                wrinkle = 1 + .042*math.sin(k%sides*2.8+j*7.1)
-                p = start.lerp(end,t) + width*(rx*math.cos(turn)*wrinkle) + depth*(ry*math.sin(turn)*wrinkle)
-                self.vertices.append(tuple(p))
-                mix = .32 if seam and (j <= 1 if seam[1] else j >= len(rings)-2) else 0
-                self.weights.append({bone:1-mix, seam[0]:mix} if mix else {bone:1})
-        for j in range(len(rings)-1):
-            for k in range(sides):
-                a = base+j*(sides+1)+k
-                self.faces.append((a,a+1,a+sides+2,a+sides+1))
-                self.tiles.append((tile, ((k/sides,j/(len(rings)-1)), ((k+1)/sides,j/(len(rings)-1)),
-                    ((k+1)/sides,(j+1)/(len(rings)-1)), (k/sides,(j+1)/(len(rings)-1)))))
+            weight = .32 if seam and (j <= 1 if seam[1] else j >= len(rings)-2) else 0
+            weights = {bone:1-weight, seam[0]:weight} if weight else {bone:1}
+            sections.append((start.lerp(end,t),rx,ry,weights))
+        self.loft(sections,[tile]*(len(sections)-1),sides,.012)
+
+    def limb(self, side, leg):
+        if leg:
+            names = ("Thigh", "Shin", "Foot")
+            widths = (.108,.071,.048)
+            first_material = self.cloth if self.name != "Boss" else 14
+            second_material = first_material if self.name not in ("Crawler","Toxic") else self.skin
+        else:
+            names = ("UpperArm", "Forearm", "Hand")
+            widths = (.080,.056,.037)
+            first_material = self.cloth if self.hero or self.name in ("Armored","Walker","Runner") else self.skin
+            second_material = 3 if self.name=="Armored" else self.skin
+            if self.name == "Walker" and side == "L":
+                first_material = self.skin
+        upper, lower, tip = (name+side for name in names)
+        a,b,_ = self.bones[upper]
+        c = self.bones[lower][1]
+        multiplier = 1.22 if self.tank else .88 if self.name=="Eva" else 1
+        if self.tank and not leg:
+            multiplier *= 1.32
+        peak,joint,end = (r*multiplier for r in widths)
+        start = .004 if leg else .025
+        shape = (
+            (a.lerp(b,-.16), start, start, 0, 0),
+            (a.lerp(b,-.05), peak*.84, peak*.83, 0, 0),
+            (a.lerp(b,.17), peak, peak*.90, 0, 0),
+            (a.lerp(b,.43), peak*.89, peak*.79, 0, 0),
+            (a.lerp(b,.72), (peak+joint)*.49, joint*.97, 0, 0),
+            (a.lerp(b,.92), joint*.98, joint*.91, .26, 0),
+            (b, joint*.96, joint*.94, .50, 0),
+            (b.lerp(c,.12), joint*.99, joint*.92, .76, 0),
+            (b.lerp(c,.31), joint*1.02, joint*.87, 1, 0),
+            (b.lerp(c,.63), (joint+end)*.49, (joint+end)*.40, 1, 0),
+            (b.lerp(c,.87), end*1.08, end*.89, 1, 0),
+            (c, end, end*.85, 1, .28),
+            (b.lerp(c,1.06), end*.76, end*.64, 1, .54),
+        )
+        rings = []
+        for point,rx,ry,mix,tip_mix in shape:
+            weights = {upper:1-mix,lower:mix-tip_mix,tip:tip_mix}
+            rings.append((point,rx,ry,{key:weight for key,weight in weights.items() if weight > 0}))
+        stripe = 6 if self.name == "Toxic" and leg else second_material
+        mats = [first_material]*6+[stripe]+[second_material]*5
+        self.loft(rings,mats,10 if self.hero else 11,.016,v(1,0,0))
 
     def volume(self, p, radius, tile, bone, sides=10):
         x, y, z = radius
@@ -133,67 +191,64 @@ class Character:
                      tile, bone, sides)
 
     def panel(self, p, size, tile, bone, slant=0):
-        """Chamfered equipment panel with its own face UVs."""
+        """Rounded corner silhouette with a rolled edge on armor, webbing and packs."""
         x,y,z = p
         w,d,h = [a*.5 for a in size]
-        edge = min(w,h)*.23
-        outline = [(-w+edge,-h),(w-edge,-h),(w,-h+edge),(w,h-edge),
-                   (w-edge,h),(-w+edge,h),(-w,h-edge),(-w,-h+edge)]
-        base=len(self.vertices)
-        profiles = ((-d,1),(d,1)) if d < .036 else ((-d,.85),(-d*.66,1),(d*.66,1),(d,.85))
+        radius = min(w,h)*.33
+        outline = []
+        angular_steps = 3 if min(w,h) > .047 else 2
+        for sx,sz,angle in ((1,-1,-90),(1,1,0),(-1,1,90),(-1,-1,180)):
+            for i in range(angular_steps):
+                turn = math.radians(angle + 90*i/(angular_steps-1))
+                outline.append((sx*(w-radius)+radius*math.cos(turn),sz*(h-radius)+radius*math.sin(turn)))
+        base = len(self.vertices)
+        profiles = ((-d,.94),(d,.94)) if d < .013 else ((-d,.80),(-d*.63,1),(d*.63,1),(d,.80))
         for offset, scale in profiles:
             for a,b in outline:
-                self.vertices.append((x+a*scale+slant*b, y+offset, z+b*scale))
+                self.vertices.append((x+a*scale+slant*b,y+offset,z+b*scale))
                 self.weights.append({bone:1.})
-        last = 8*(len(profiles)-1)
-        indices = [tuple(reversed(range(8))), tuple(range(last,last+8))]
-        indices += [(r*8+i,r*8+(i+1)%8,(r+1)*8+(i+1)%8,(r+1)*8+i)
-                    for r in range(len(profiles)-1) for i in range(8)]
+        sides = len(outline)
+        last = sides*(len(profiles)-1)
+        indices = [tuple(range(sides)),tuple(reversed(range(last,last+sides)))]
+        for r in range(len(profiles)-1):
+            row = r*sides
+            for i in range(sides):
+                following = (i+1)%sides
+                indices.append((row+i,row+sides+i,row+sides+following,row+following))
         for face in indices:
-            self.faces.append(tuple(base+i for i in reversed(face)))
-            self.tiles.append((tile, tuple((.5+(outline[i%8][0]/w)*.49,
-                                            .5+(outline[i%8][1]/h)*.49) for i in reversed(face))))
+            self.faces.append(tuple(base+i for i in face))
+            self.tiles.append((tile, tuple((.5+(outline[i%sides][0]/w)*.48,
+                                            .5+(outline[i%sides][1]/h)*.48) for i in face)))
 
     def limbs(self):
         for side,s in (("L",-1),("R",1)):
-            for name, widths, material, seam in (
-                ("Thigh", (.104,.099,.071), 2 if self.hero else self.cloth, ("Shin"+side, False)),
-                ("Shin", (.072,.076,.048), 2 if self.hero else self.cloth, ("Thigh"+side, True)),
-                ("UpperArm", (.083,.077,.053), self.cloth if self.hero or self.name=="Armored" else self.skin, ("Forearm"+side, False)),
-                ("Forearm", (.062,.068,.039), self.skin, ("UpperArm"+side, True)),
-                ("Hand", (.044,.049,.032), 3 if self.hero else self.skin, None),
-            ):
-                if self.hero and name in ("Thigh","Shin"):
-                    continue
-                bone = name+side
-                a,b,_=self.bones[bone]
-                m = 1.22 if self.tank else .88 if self.name == "Eva" else 1
-                if self.tank and name in ("UpperArm","Forearm","Hand"):
-                    m *= 1.36
-                u,w,e = [r*m for r in widths]
-                self.surface(a,b,[(-.12,u*.38,u*.45),(-.025,u,u*.84),(.20,u*1.02,u*.85),
-                    (.40,w,w*.81),(.56,w*1.05,w*.78),(.72,(w+e)*.51,(w+e)*.40),
-                    (.91,e,e*.88),(1.09,e*.79,e*.70),(1.14,.001,.001)],material,bone,10,seam)
+            self.limb(side, leg=False)
+            if not self.hero:
+                self.limb(side, leg=True)
             knee = self.bones["Shin"+side][0]
             foot = self.bones["Foot"+side][0]
-            self.volume(foot+v(0,.058,-.042), (.070,.135,.050), 3, "Foot"+side)
-            self.panel(foot+v(0,.046,-.076), (.139,.25,.028), 8, "Foot"+side)
+            self.volume(foot+v(0,.057,-.042), (.069,.131,.052), 3, "Foot"+side,10)
+            self.panel(foot+v(0,.050,-.074), (.137,.242,.022), 8, "Foot"+side)
+            hand = self.bones["Hand"+side][0]
+            fingers = self.bones["Hand"+side][1]
+            mitt = 3 if self.hero or self.name=="Armored" else self.skin
+            self.surface(hand,fingers,[(0,.033,.031),(.25,.041,.033),(.56,.044,.032),
+                         (.82,.035,.024),(1,.005,.007)],mitt,"Hand"+side,10)
             if self.hero or self.name=="Armored":
-                self.panel(knee+v(0,.071,0), (.133,.041,.147), 4, "Shin"+side)
-                self.panel(knee+v(0,.094,.006), (.096,.018,.089), 5, "Shin"+side)
-                self.panel(knee+v(0,.107,.006), (.080,.007,.064), 4, "Shin"+side)
-                self.panel(foot+v(0,.046,-.013),(.101,.119,.062),3,"Foot"+side)
-                for lace in range(3):
-                    self.panel(foot+v(0,.058+lace*.021,.024-lace*.010),
-                               (.081,.011,.008),8,"Foot"+side)
+                self.panel(knee+v(0,.067,0), (.139,.044,.154), 3, "Shin"+side)
+                self.panel(knee+v(0,.092,.013), (.111,.015,.108), 4, "Shin"+side)
+                self.panel(knee+v(0,.101,.034), (.072,.008,.012), self.trim, "Shin"+side)
+                self.panel(foot+v(0,.053,-.008),(.097,.125,.055),3,"Foot"+side)
+                self.panel(foot+v(0,.066,.021),(.078,.046,.009),8,"Foot"+side)
                 thigh=self.bones["Thigh"+side][0]
-                self.panel(thigh+v(s*.065,-.015,-.16),(.120,.18,.19),0,"Thigh"+side,.10*s)
-                wrist=self.bones["Hand"+side][0]
-                self.volume(wrist+v(0,.027,.009),(.047,.063,.035),3,"Hand"+side)
-            if not self.hero:
-                hand=self.bones["Hand"+side][1]
+                self.panel(thigh+v(s*.069,-.010,-.16),(.103,.135,.156),0,"Thigh"+side,.10*s)
+                self.panel(hand+v(0,.016,.026),(.063,.028,.020),4,"Hand"+side)
+            else:
                 for finger in range(3):
-                    self.volume(hand+v((finger-1)*.022,.012,-.018),(.011,.023,.035),self.skin,"Hand"+side,6)
+                    p = fingers + v((finger-1)*.021,.008,-.014)
+                    self.surface(p,p+v((finger-1)*.006,.012,-.044),
+                                 [(0,.012,.010),(.42,.011,.009),(.78,.008,.007),(1,.001,.001)],
+                                 self.skin,"Hand"+side,6)
 
     def sculpt(self):
         h,w,hip=self.h,self.shoulder,self.hips
@@ -203,17 +258,20 @@ class Character:
             self.surface(v(0,0,h*.43),v(0,0,h*.66),
                          [(0,hip*.30,.078),(.14,hip*.48,.122),(.43,hip*.58,.133),(.68,hip*.54,.127),
                           (.84,hip*.45,.105),(1,hip*.44,.112)],self.cloth,"Pelvis",14,("Chest",False))
-        self.surface(v(0,.0,h*.59),v(0,.03,h*.86),
-                     [(0,w*.28,.095),(.16,w*.31,.115),(.39,w*.42,.147),(.60,w*.48,.156),
-                      (.77,w*.51,.144),(.90,w*.46,.109),(1,w*.23,.069)],self.cloth,"Chest",16,("Pelvis",True))
+        waist = .34 if self.hero else .26 if self.name in ("Runner","Crawler") else .30
+        back = .143 if self.hero else .126 if self.name=="Runner" else .167
+        self.surface(v(0,0,h*.57),v(0,.03,h*.86),
+                     [(0,w*waist,.096),(.13,w*(waist+.036),.108),(.32,w*.405,back*.96),
+                      (.53,w*.467,back),(.69,w*.50,back*.98),(.83,w*.49,back*.87),
+                      (.93,w*.389,back*.71),(1,w*.22,.068)],self.cloth,"Chest",18,("Pelvis",True))
         self.volume((0,.039,h*.866),(.056,.058,.072),self.skin,"Head")
         head_z=h*.944
         append_face(self, FACE_DATA)
         eyeY = .121
         for side in (-1,1):
             x=side*(.034 if self.name=="Eva" else .038)
-            self.volume((x,eyeY,head_z),(.020,.015,.014),16,"Head",10)
-            self.volume((x,eyeY+.013,head_z),(.008,.003,.008),3 if self.hero else self.trim,"Head",8)
+            self.volume((x,eyeY,head_z),(.020,.015,.014),16,"Head",8)
+            self.volume((x,eyeY+.013,head_z),(.008,.003,.008),3 if self.hero else self.trim,"Head",6)
         if self.hero:
             for i in range(5):
                 x=(i-2)*.032
@@ -235,17 +293,29 @@ class Character:
 
     def hero_kit(self):
         h,w=self.h,self.shoulder
-        self.panel((0,.122,h*.719),(w*.60,.094,.288),4,"Chest")
-        self.panel((0,-.126,h*.717),(w*.68,.150,.281),0,"Chest")
-        self.panel((0,-.198,h*.695),(w*.58,.029,.194),2,"Chest")
-        self.panel((0,-.217,h*.696),(w*.48,.012,.028),self.trim,"Chest")
+        self.panel((0,.126,h*.719),(w*.61,.082,.287),4,"Chest")
+        pack_center = v(0,-.151,h*.711)
+        self.panel(pack_center,(w*.69,.154,.277),0,"Chest")
+        self.panel(pack_center+v(0,-.078,-.022),(w*.54,.027,.186),2,"Chest")
+        self.panel(pack_center+v(0,-.096,.036),(w*.43,.012,.020),self.trim,"Chest")
+        self.panel(pack_center+v(0,-.098,.018),(w*.31,.005,.008),8,"Chest")
+        self.panel(pack_center+v(0,-.036,-.142),(w*.57,.071,.034),3,"Chest")
+        if self.name == "Max":
+            self.panel(pack_center+v(-w*.30,-.015,.054),(.075,.058,.131),3,"Chest")
+            mast = pack_center+v(-w*.34,-.015,.113)
+            self.surface(mast,mast+v(-.016,-.006,.110),
+                         [(0,.009,.009),(.16,.008,.008),(.88,.005,.005),(1,.002,.002)],
+                         4,"Chest",6)
+        else:
+            self.panel(pack_center+v(-w*.17,-.096,-.044),(.070,.008,.054),1,"Chest")
+            self.panel(pack_center+v(-w*.17,-.101,-.044),(.032,.004,.009),16,"Chest")
+            self.panel(pack_center+v(-w*.17,-.101,-.044),(.009,.004,.032),16,"Chest")
         for s in (-1,1):
-            self.panel((s*w*.25,-.230,h*.724),(.031,.021,.256),3,"Chest",s*.14)
-            self.panel((s*w*.225,-.242,h*.715),(.028,.016,.027),4,"Chest",s*.14)
-            self.panel((s*w*.316,-.193,h*.672),(.107,.068,.116),8 if self.name=="Eva" else 0,"Chest")
-            self.panel((s*w*.316,-.232,h*.710),(.091,.017,.031),4,"Chest")
-            for i in range(3):
-                self.panel((s*w*.22,-.252,h*(.655+i*.020)),(.106,.006,.010),3,"Chest")
+            self.panel((s*w*.25,-.234,h*.720),(.030,.016,.238),3,"Chest",s*.14)
+            self.panel((s*w*.228,-.245,h*.685),(.025,.012,.023),4,"Chest",s*.14)
+            self.panel((s*w*.318,-.198,h*.671),(.089,.061,.107),8 if self.name=="Eva" else 0,"Chest")
+            self.panel((s*w*.318,-.232,h*.702),(.080,.014,.028),4,"Chest")
+            self.panel((s*w*.22,-.251,h*.664),(.087,.006,.012),3,"Chest")
             self.panel((s*w*.26,.156,h*.704),(.069,.055,.155),0,"Chest",s*.05)
             self.volume((s*w*.458,.023,h*.806),(.081,.103,.064),self.cloth,"Chest",10)
             self.panel((s*w*.44,.022,h*.815),(.092,.181,.069),4,"Chest",s*.61)
@@ -259,21 +329,32 @@ class Character:
             self.volume((0,.018,h*.977),(.118,.125,.092),4,"Head",14)
             self.panel((0,.127,h*.957),(.178,.028,.054),3,"Head")
             self.panel((0,.146,h*.956),(.125,.012,.017),5,"Head")
-            self.panel((0,.145,h*.73),(w*.75,.103,.30),4,"Chest")
+            self.panel((0,.143,h*.745),(w*.72,.092,.267),4,"Chest")
+            self.panel((0,.184,h*.699),(w*.63,.038,.095),3,"Chest")
+            self.panel((0,.202,h*.681),(w*.50,.018,.060),4,"Chest")
             for s in (-1,1):
-                self.panel((s*w*.48,.029,h*.804),(.216,.248,.145),4,"Chest",s*.38)
-                self.panel((s*w*.50,.155,h*.803),(.125,.016,.044),5,"Chest",s*.38)
+                self.panel((s*w*.48,.031,h*.807),(.185,.228,.134),4,"Chest",s*.28)
+                self.panel((s*w*.51,.135,h*.775),(.141,.034,.065),3,"Chest",s*.28)
+                self.panel((s*w*.50,.156,h*.818),(.083,.012,.026),5,"Chest",s*.24)
         elif self.tank:
             for s in (-1,1):
-                for rib in range(4):
-                    self.volume((s*w*(.14+.031*rib),.142,h*(.63+.028*rib)),
-                        (.071,.044,.025),self.skin,"Chest",8)
-                self.volume((s*w*.43,.005,h*.798),(w*.25,.166,.156),self.skin,"Chest",14)
-                self.panel((s*w*.26,.16,h*.746),(.091,.065,.39),4,"Chest",s*.48)
-                for i in range(3):
-                    a=v(s*w*(.36+i*.073),-.151,h*(.75+i*.031))
-                    b=a+v(s*(.10+i*.03),-.063,.13+i*.02)
-                    self.surface(a,b,[(0,.058,.053),(.28,.045,.039),(.62,.026,.024),(1,.001,.001)],19,"Chest")
+                for rib in range(3):
+                    self.volume((s*w*(.166+.031*rib),.151,h*(.641+.032*rib)),
+                        (.066,.029,.027),self.skin,"Chest",8)
+                self.volume((s*w*.425,.002,h*.793),(w*.243,.153,.150),self.skin,"Chest",14)
+                if self.name=="Boss":
+                    self.panel((s*w*.263,.156,h*.745),(.093,.064,.350),4,"Chest",s*.54)
+                    for i in range(3):
+                        a=v(s*w*(.335+i*.073),-.151,h*(.744+i*.034))
+                        b=a+v(s*(.094+i*.026),-.072,.057+i*.067)
+                        self.surface(a,b,[(0,.052,.047),(.21,.045,.040),(.46,.028,.027),
+                                     (.74,.016,.014),(1,.001,.001)],19,"Chest",9)
+                else:
+                    self.panel((s*w*.241,.148,h*.721),(.100,.051,.313),8,"Chest",s*.52)
+            if self.name=="Brute":
+                self.panel((-.323,.017,h*.794),(.236,.261,.168),4,"Chest",-.29)
+                self.panel((-.366,.142,h*.779),(.145,.033,.073),5,"Chest",-.24)
+                self.panel((.101,-.131,h*.702),(.225,.090,.168),0,"Chest",.08)
             if self.name=="Boss":
                 for s in (-1,1):
                     self.volume((s*.059,.136,h*.966),(.057,.029,.034),14,"Head")
@@ -285,11 +366,15 @@ class Character:
                 self.volume((0,.238,h*.716),(.077,.035,.076),22,"Chest",12)
                 self.panel((0,.232,h*.607),(.180,.052,.082),22,"Chest")
         elif self.name=="Toxic":
-            for i in range(10):
+            for i in range(8):
                 ang=2.4*i
-                p=(math.cos(ang)*w*.40,-.105+math.sin(ang)*.097,h*(.64+.021*i))
-                r=.035+self.random.random()*.050
-                self.volume(p,(r,r*.93,r*1.22),21,"Chest")
+                p=(math.cos(ang)*w*.38,-.106+math.sin(ang)*.083,h*(.664+.023*i))
+                r=.036+self.random.random()*.040
+                self.volume(p,(r,r*.96,r*1.17),21,"Chest")
+            self.volume((w*.40,.010,h*.785),(.094,.106,.073),12,"Chest",10)
+            for i in range(3):
+                self.volume((w*(.41+i*.08),.068+i*.026,h*(.784-i*.018)),
+                            (.026,.022,.024),21,"Chest",8)
         else:
             for i in range(5):
                 self.panel((.115-i*.047,.155,h*(.68+i*.024)),(.069,.020,.023),15,"Chest",.42)
@@ -301,8 +386,9 @@ class Character:
                 for i in range(6):
                     self.volume((0,-.125,h*(.57+.043*i)),(.053,.033,.044),19,"Chest",8)
             if self.name=="Runner":
-                self.panel((0,.154,h*.773),(.31,.025,.063),8,"Chest")
-                self.panel((0,.139,h*.566),(.13,.038,.11),7,"Pelvis")
+                self.panel((0,.152,h*.768),(.298,.023,.044),8,"Chest",.18)
+                self.panel((.081,.159,h*.726),(.086,.018,.039),16,"Chest",.18)
+                self.panel((.035,.131,h*.566),(.136,.028,.081),7,"Pelvis")
         if self.name not in ("Armored","Boss"):
             self.panel((0,.155,h*.903),(.083,.019,.034),15,"Head")
             for i in range(4):
@@ -346,6 +432,15 @@ class Character:
                 tex=nodes.new("ShaderNodeTexImage")
                 tex.image=bpy.data.images.load(str(atlas),check_existing=True)
                 material.node_tree.links.new(tex.outputs["Color"],shader.inputs["Base Color"])
+            normal_atlas=OUT/"CharacterAtlas_normal.png"
+            if normal_atlas.exists():
+                normal_texture=nodes.new("ShaderNodeTexImage")
+                normal_texture.image=bpy.data.images.load(str(normal_atlas),check_existing=True)
+                normal_texture.image.colorspace_settings.name="Non-Color"
+                normal_map=nodes.new("ShaderNodeNormalMap")
+                normal_map.inputs["Strength"].default_value=.35
+                material.node_tree.links.new(normal_texture.outputs["Color"],normal_map.inputs["Color"])
+                material.node_tree.links.new(normal_map.outputs["Normal"],shader.inputs["Normal"])
         skin.data.materials.append(material)
 
     def aim_bone(self, name, origin, direction):
@@ -461,7 +556,7 @@ class Character:
         bpy.ops.export_scene.fbx(filepath=str(OUT/(self.name+".fbx")),use_selection=True,
             object_types={"ARMATURE","MESH"},axis_forward="-Z",axis_up="Y",add_leaf_bones=False,
             bake_anim_use_all_bones=True,bake_anim_use_nla_strips=False,bake_anim_use_all_actions=False,
-            bake_anim_simplify_factor=1.0, mesh_smooth_type="OFF",path_mode="STRIP")
+            bake_anim_simplify_factor=1.0, mesh_smooth_type="FACE",path_mode="STRIP")
         print(f"BUILT {self.name}: {len(self.vertices)} vertices, {len(self.faces)} faces")
 
 
@@ -513,8 +608,17 @@ def preview_weapon(actor):
 
 
 def preview(scene,roster):
-    for i, actor in enumerate(roster):
-        actor.rig.location = ((i%5-2)*2.2, 0 if i<5 else -3.6,0)
+    layouts = {
+        "Max": (-1.15, 0, .16), "Eva": (1.15, 0, -.18),
+        "Walker": (-4.35, 0, -.19), "Runner": (4.33, 0, .21),
+        "Armored": (-4.55, -3.65, .16), "Brute": (-2.10, -3.75, .08),
+        "Boss": (.24, -3.86, -.03), "Toxic": (2.58, -3.74, -.20),
+        "Crawler": (4.70, -3.70, -.23),
+    }
+    for actor in roster:
+        x,y,yaw=layouts[actor.name]
+        actor.rig.location = (x,y,0)
+        actor.rig.rotation_euler.z = yaw
         if actor.name in ("Brute","Boss"):
             actor.rig.scale *= 1.16
     scene.frame_set(40)

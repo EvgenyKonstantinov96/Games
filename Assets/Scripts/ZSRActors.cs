@@ -135,6 +135,7 @@ namespace ZombieSurvivalRun
             if(g==null||body==null)return;
             float dt=g.FrameStep;
             bool running=g.IsRunning;
+            float gaitRate = (Selection == 0 ? 1f : 1.07f) * g.RunPaceMultiplier;
             if (production != null)
             {
                 if (running)
@@ -143,7 +144,7 @@ namespace ZombieSurvivalRun
                     p.x = Mathf.SmoothDamp(p.x, TargetX, ref velocityX, .14f, 21f, dt);
                     transform.position = p;
                 }
-                production.Tick(running, Selection == 0 ? 1f : 1.07f);
+                production.Tick(running, gaitRate);
                 production.SetLateralLean(running ? velocityX : 0f);
                 hitT = Mathf.MoveTowards(hitT, 0, dt * 3.2f);
                 return;
@@ -158,7 +159,7 @@ namespace ZombieSurvivalRun
                 }
                 rigged.transform.localEulerAngles = new Vector3(0, 0,
                     Mathf.Clamp(-velocityX * 2.0f, -10, 10) + hitT * 4f);
-                if (running) rigged.SetRunningSpeed(Selection == 0 ? 1f : 1.07f);
+                if (running) rigged.SetRunningSpeed(gaitRate);
                 hitT = Mathf.MoveTowards(hitT, 0, dt * 3.2f);
                 return;
             }
@@ -167,7 +168,7 @@ namespace ZombieSurvivalRun
                 var p=transform.position;
                 p.x=Mathf.SmoothDamp(p.x,TargetX,ref velocityX,.14f,21f,dt);
                 transform.position=p;
-                stride+=dt*(Selection==0?10.2f:11.2f);
+                stride += dt * (Selection == 0 ? 10.2f : 11.2f) * g.RunPaceMultiplier;
             }
             float gait=running?Mathf.Sin(stride):0f;
             float leftLift=running?Mathf.Max(0,-gait):0f;

@@ -20,6 +20,16 @@ namespace ZombieSurvivalRun
         public const int MaxLevels = 15;
         public const int MaxUpgradeLevel = 5;
 
+        const float RunCameraHeight = 2.96f;
+        const float RunCameraDepth = -6.82f;
+        const float RunCameraLookHeight = .85f;
+        const float RunCameraLookDepth = 15.8f;
+        const float RunCameraFollow = .94f;
+        const float RunCameraLead = .33f;
+        const float RunCameraFov = 56f;
+        const float RunCameraReferenceAspect = .45f;
+        const float RunLaneLimit = 4.3f;
+
         public static ZSRGame Instance { get; private set; }
         public ZSRState State { get; private set; } = ZSRState.Menu;
         public bool IsRunning => State == ZSRState.Playing;
@@ -28,7 +38,10 @@ namespace ZombieSurvivalRun
         public int UnlockedLevel { get; private set; } = 1;
         public int SelectedHero { get; private set; }
         public WeaponType Weapon { get; private set; } = WeaponType.Rifle;
-        public float RunSpeed => 11.7f + Mathf.Min(4.6f, (Level - 1) * .22f);
+        float BaseRunSpeed => 11.7f + (Level - 1) * .22f;
+        public float RunSpeed => BaseRunSpeed + Mathf.Max(0, Level - 5) * .23f;
+        // Scale approach depths and the hero's stride with the extra pace.
+        internal float RunPaceMultiplier => RunSpeed / BaseRunSpeed;
         // The road, enemies, pickups and obstacles must advance by the same capped step.
         public float FrameStep => Mathf.Min(Time.deltaTime, .05f);
         public float LevelLength => IsBossLevel ? 84f + Chapter * 4f : 66f + StageInChapter * 4f + Chapter * 2f;
@@ -76,7 +89,6 @@ namespace ZombieSurvivalRun
         int damageMultiplier = 1;
         bool reloading, bossSpawned;
         string notice = "";
-        Vector3 camVelocity;
         BonusKind activeBonus = BonusKind.DoubleDamage;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -214,13 +226,11 @@ namespace ZombieSurvivalRun
             cameraData.renderType = CameraRenderType.Base;
             cameraData.renderPostProcessing = true;
             camera3D.allowHDR = true;
-            camera3D.fieldOfView = 52f;
             camera3D.nearClipPlane = .1f;
             camera3D.farClipPlane = 200f;
             camera3D.clearFlags = CameraClearFlags.SolidColor;
             camera3D.backgroundColor = new Color(.14f, .18f, .25f);
-            camera3D.transform.position = new Vector3(0, 3.48f, -8.35f);
-            camera3D.transform.LookAt(new Vector3(0, 1.52f, 16.5f));
+            FrameRunCamera(0f);
             if (camera3D.GetComponent<AudioListener>() == null) camera3D.gameObject.AddComponent<AudioListener>();
 
             audioSource = gameObject.AddComponent<AudioSource>();
@@ -363,10 +373,9 @@ namespace ZombieSurvivalRun
             reloading = false;
             bossSpawned = false;
             boss = null;
-            camVelocity = Vector3.zero;
             shake = 0f;
             Notify(LevelTitle, 2.5f);
-            camera3D.transform.position = new Vector3(0, 3.48f, -8.35f);
+            FrameRunCamera(0f);
         }
 
         static bool ExpiredRunObject(GameObject obj) => obj == null;
@@ -442,12 +451,6 @@ namespace ZombieSurvivalRun
             else if (drone != null) { Destroy(drone); drone = null; }
 
             shake = Mathf.MoveTowards(shake, 0, dt * 2.8f);
-            float camX = Hero.PositionX * .20f;
-            var desired = new Vector3(camX + UnityEngine.Random.Range(-shake, shake) * .12f, 3.48f, -8.35f);
-            camera3D.transform.position = Vector3.SmoothDamp(camera3D.transform.position, desired, ref camVelocity, .17f, 60f, dt);
-            camera3D.transform.rotation = Quaternion.Slerp(camera3D.transform.rotation,
-                Quaternion.LookRotation(new Vector3(Hero.PositionX * .50f, 1.52f, 16.5f) - camera3D.transform.position), dt * 5f);
-
             if (Hero.Health <= 0) { Finish(false); return; }
             if (Elapsed >= LevelLength)
             {
@@ -458,6 +461,30 @@ namespace ZombieSurvivalRun
                 }
                 else Finish(true);
             }
+        }
+
+        void LateUpdate()
+        {
+            if (IsRunning)
+            {
+                float jitter = Mathf.PerlinNoise(Time.unscaledTime * 20f, .37f) * 2f - 1f;
+                FrameRunCamera(Hero.PositionX, jitter * shake * .09f);
+            }
+        }
+
+        void FrameRunCamera(float heroX, float shakeOffset = 0f)
+        {
+            float aspect = Mathf.Max(.1f, camera3D.aspect);
+            float halfAngle = RunCameraFov * Mathf.Deg2Rad * .5f;
+            float extraWidth = Mathf.Max(1f, RunCameraReferenceAspect / aspect);
+            float fov = 2f * Mathf.Atan(Mathf.Tan(halfAngle) * extraWidth) * Mathf.Rad2Deg;
+            if (Mathf.Abs(camera3D.fieldOfView - fov) > .01f) camera3D.fieldOfView = fov;
+
+            // Follow the hero's already damped position after movement. Aim into
+            // the road so its forward edges stay readable during a turn.
+            var position = new Vector3(heroX * RunCameraFollow + shakeOffset, RunCameraHeight, RunCameraDepth);
+            var focus = new Vector3(heroX * RunCameraLead, RunCameraLookHeight, RunCameraLookDepth);
+            camera3D.transform.SetPositionAndRotation(position, Quaternion.LookRotation(focus - position));
         }
 
         void HandleInput(float dt)
@@ -485,7 +512,7 @@ namespace ZombieSurvivalRun
                 if (p.y > Screen.height * .22f && p.y < Screen.height * .80f)
                     Hero.TargetX += Mouse.current.delta.ReadValue().x / Mathf.Max(1f, Screen.width) * 11f;
             }
-            Hero.TargetX = Mathf.Clamp(Hero.TargetX, -4.3f, 4.3f);
+            Hero.TargetX = Mathf.Clamp(Hero.TargetX, -RunLaneLimit, RunLaneLimit);
         }
 
         ZSRZombie FindTarget()
@@ -563,7 +590,7 @@ namespace ZombieSurvivalRun
                 // Slight stagger avoids overlapping identical silhouettes in the camera.
                 float lane = ((i % 3) - 1) * 2.72f + start;
                 float distance = 36f + (i / 3) * 4.4f + UnityEngine.Random.Range(-.9f, .9f);
-                SpawnEnemy(kind, Mathf.Clamp(lane, -3.95f, 3.95f), distance);
+                SpawnEnemy(kind, Mathf.Clamp(lane, -3.95f, 3.95f), distance * RunPaceMultiplier);
             }
         }
 
@@ -593,7 +620,7 @@ namespace ZombieSurvivalRun
             {
                 var go = new GameObject("Gold coin");
                 go.transform.SetParent(worldRoot.transform, false);
-                go.AddComponent<ZSRPickup>().Build(x, 36 + i * 2.4f, 25 + Chapter * 10);
+                go.AddComponent<ZSRPickup>().Build(x, (36 + i * 2.4f) * RunPaceMultiplier, 25 + Chapter * 10);
                 temporary.Add(go);
             }
         }
@@ -611,8 +638,9 @@ namespace ZombieSurvivalRun
             BonusKind second = shieldTimer <= 0f && Level >= 2 ? BonusKind.Shield : BonusKind.RapidFire;
             if (Level >= 5 && UnityEngine.Random.value > .57f) second = BonusKind.Turret;
             if (second == first) second = first == BonusKind.Heal ? BonusKind.Shield : BonusKind.RapidFire;
-            a.Build(first, -2.5f, 39f);
-            b.Build(second, 2.5f, 39f);
+            float depth = 39f * RunPaceMultiplier;
+            a.Build(first, -2.5f, depth);
+            b.Build(second, 2.5f, depth);
             temporary.Add(a.gameObject); temporary.Add(b.gameObject);
             Notify("ВЫБЕРИ УЛУЧШЕНИЕ", 2f);
         }
@@ -621,7 +649,7 @@ namespace ZombieSurvivalRun
         {
             var o = new GameObject("Wrecked vehicle");
             o.transform.SetParent(worldRoot.transform, false);
-            o.AddComponent<ZSRObstacle>().Build(UnityEngine.Random.value > .5f ? -2.9f : 2.9f, 43f, Chapter);
+            o.AddComponent<ZSRObstacle>().Build(UnityEngine.Random.value > .5f ? -2.9f : 2.9f, 43f * RunPaceMultiplier, Chapter);
             temporary.Add(o);
         }
 

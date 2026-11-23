@@ -1,9 +1,9 @@
-PASS Armored 16 bones, 3350 verts, 5642 triangles, 1–168 frames
-PASS Boss    16 bones, 4022 verts, 6523 triangles, 1–168 frames
-PASS Brute   16 bones, 3740 verts, 6038 triangles, 1–168 frames
-PASS Crawler 16 bones, 3237 verts, 5323 triangles, 1–168 frames
-PASS Eva     18 bones, 4167 verts, 7275 triangles, 1–168 frames
-PASS Max     18 bones, 4100 verts, 7171 triangles, 1–168 frames
-PASS Runner  16 bones, 2944 verts, 4898 triangles, 1–168 frames
-PASS Toxic   16 bones, 3492 verts, 5702 triangles, 1–168 frames
-PASS Walker  16 bones, 2961 verts, 4926 triangles, 1–168 frames
+PASS Armored 16 bones, 2907 verts, 5342 triangles, 1–168 frames, smooth custom normals
+PASS Boss    16 bones, 3415 verts, 6015 triangles, 1–168 frames, smooth custom normals
+PASS Brute   16 bones, 2991 verts, 5342 triangles, 1–168 frames, smooth custom normals
+PASS Crawler 16 bones, 2680 verts, 4775 triangles, 1–168 frames, smooth custom normals
+PASS Eva     18 bones, 4034 verts, 7411 triangles, 1–168 frames, smooth custom normals
+PASS Max     18 bones, 3965 verts, 7287 triangles, 1–168 frames, smooth custom normals
+PASS Runner  16 bones, 2455 verts, 4410 triangles, 1–168 frames, smooth custom normals
+PASS Toxic   16 bones, 2995 verts, 5294 triangles, 1–168 frames, smooth custom normals
+PASS Walker  16 bones, 2488 verts, 4474 triangles, 1–168 frames, smooth custom normals
