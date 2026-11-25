@@ -12,6 +12,6 @@
 | `TrackGateLabels.png` | Original sign artwork rasterized with DejaVu Sans Condensed Bold under the [DejaVu font license](https://dejavu-fonts.github.io/License.html). | Six bonus labels. The repository includes the atlas image. |
 | `combat_*.obj` | Original drone, rotor, grenade and medkit authored in `Tools/Art/build_combat_props.py`. | Combat props using the shared track atlas. |
 | `Assets/Resources/Audio/*.ogg` | Original synthesized score and effects composed in `Tools/Art/build_audio.py`. | Two looping music cues and six gameplay sounds. |
-| `docs/design/*-blender.jpg` | Blender renders of the shipped meshes and textures. | Character and portrait composition reviews. |
+| `docs/design/*-blender.jpg`, `docs/design/run-cycle-blender.gif` | Blender renders of the shipped meshes and textures. | Character, motion, and portrait composition reviews. |
 
 The existing Polyfork license and source notes in the repository continue to apply to their listed external assets.

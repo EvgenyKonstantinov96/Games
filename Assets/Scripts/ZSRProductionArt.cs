@@ -375,13 +375,13 @@ namespace ZombieSurvivalRun
             currentState = hash;
         }
 
-        public void PlayRun()
+        public void PlayRun(float stridePhase = 0f)
         {
             dead = false;
             hitUntil = 0f;
             shootUntil = 0f;
             currentState = 0;
-            if (bundled != null) { bundled.ResetMotion(); return; }
+            if (bundled != null) { bundled.ResetMotion(stridePhase); return; }
             ChangeState("Run", 0f);
             if(motion != null) motion.Running = true;
         }

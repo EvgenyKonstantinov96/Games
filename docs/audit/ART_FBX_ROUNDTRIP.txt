@@ -1,9 +1,16 @@
 PASS Armored 16 bones, 2907 verts, 5342 triangles, 1–168 frames, smooth custom normals
-PASS Boss    16 bones, 3415 verts, 6015 triangles, 1–168 frames, smooth custom normals
-PASS Brute   16 bones, 2991 verts, 5342 triangles, 1–168 frames, smooth custom normals
-PASS Crawler 16 bones, 2680 verts, 4775 triangles, 1–168 frames, smooth custom normals
+PASS Boss    16 bones, 3611 verts, 6279 triangles, 1–168 frames, smooth custom normals
+PASS Brute   16 bones, 3079 verts, 5394 triangles, 1–168 frames, smooth custom normals
+PASS Crawler 16 bones, 2704 verts, 4719 triangles, 1–168 frames, smooth custom normals
+GAIT Eva     L ankle-roll 56.3 degrees, support 0.006..0.007 m, rearward travel 0.748 m, loop error 0.0025 m
+GAIT Eva     R ankle-roll 56.2 degrees, support 0.006..0.006 m, rearward travel 0.746 m, loop error 0.0021 m
 PASS Eva     18 bones, 4034 verts, 7411 triangles, 1–217 frames, smooth custom normals, medkit and throw poses
+GAIT Max     L ankle-roll 56.0 degrees, support 0.006..0.007 m, rearward travel 0.813 m, loop error 0.0027 m
+GAIT Max     R ankle-roll 55.9 degrees, support 0.006..0.006 m, rearward travel 0.811 m, loop error 0.0024 m
 PASS Max     18 bones, 3965 verts, 7287 triangles, 1–217 frames, smooth custom normals, medkit and throw poses
-PASS Runner  16 bones, 2455 verts, 4410 triangles, 1–168 frames, smooth custom normals
-PASS Toxic   16 bones, 2995 verts, 5294 triangles, 1–168 frames, smooth custom normals
-PASS Walker  16 bones, 2488 verts, 4474 triangles, 1–168 frames, smooth custom normals
+GAIT Runner  ankle travel L/R 0.959/0.962 m, ankle lift L/R 0.262/0.269 m
+PASS Runner  16 bones, 2431 verts, 4278 triangles, 1–168 frames, smooth custom normals
+GAIT Toxic   ankle travel L/R 0.527/0.409 m, ankle lift L/R 0.140/0.086 m
+PASS Toxic   16 bones, 3035 verts, 5330 triangles, 1–168 frames, smooth custom normals
+GAIT Walker  ankle travel L/R 0.509/0.385 m, ankle lift L/R 0.131/0.083 m
+PASS Walker  16 bones, 2376 verts, 4230 triangles, 1–168 frames, smooth custom normals

@@ -11,7 +11,7 @@ OUT.mkdir(parents=True, exist_ok=True)
 rng = np.random.default_rng(7341)
 PAL = [
     (67,69,53), (114,41,36), (49,57,63), (35,39,43), (64,75,84), (189,103,38),
-    (68,69,52), (57,52,52), (104,82,59), (158,110,84), (165,119,102), (107,110,82),
+    (106,91,108), (51,87,97), (104,82,59), (158,110,84), (165,119,102), (107,110,82),
     (124,119,79), (115,82,77), (101,64,68), (93,47,44), (179,172,145), (49,31,25),
     (74,70,53), (148,135,110), (41,38,31), (143,193,45), (235,63,37), (80,76,70),
 ]
@@ -64,6 +64,12 @@ for i, rgb in enumerate(PAL):
         dust=np.maximum(0,np.sin(u*7.1-v*3.9)*np.cos(v*8.8+u*2.6))
         height=.017*stitch+.030*rumple
         panels+=((stitch*2.1+rumple*4.7+dust*4.6)[:,:,None])
+        if i in (6,7):
+            soil=(np.sin(u*5.4+v*8.8)*np.cos(v*7.3-u*3.4)+.21*dust)
+            panels-=np.maximum(0,soil-.22)[:,:,None]*np.array([36,32,31])
+            if i==7:
+                faded_print=(abs(v+.30)<.069)&(soil<.52)&(abs(u)<.69)
+                panels[faded_print] += np.array([32,30,23])
     elif coated:
         edge=np.maximum(abs(u),abs(v))**6
         scratch=(np.cos(u*42+v*81) > .963)*np.maximum(0,np.cos(u*18-v*4))

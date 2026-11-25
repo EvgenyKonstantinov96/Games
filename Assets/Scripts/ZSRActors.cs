@@ -339,7 +339,7 @@ namespace ZombieSurvivalRun
             if(torso!=null)torso.localEulerAngles=Vector3.zero;
             gameObject.SetActive(true);
             if (rigged != null) rigged.PlayRun();
-            if (production != null) production.PlayRun();
+            if (production != null) production.PlayRun(phase / (2f * Mathf.PI));
         }
 
         public void TakeHit(int damage, Vector3 source)

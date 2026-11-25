@@ -9,8 +9,9 @@ from pathlib import Path
 from zipfile import ZipFile
 
 import bpy
-from mathutils import Matrix, Vector
+from mathutils import Matrix, Quaternion, Vector
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from gait import eased_keys, foot_target
 from makehuman_faces import append_face
 from survivor_clothing import append_pants
 
@@ -49,6 +50,8 @@ class Character:
         self.hero = self.name in ("Max", "Eva")
         self.crawler = self.name == "Crawler"
         self.tank = self.name in ("Brute", "Boss")
+        self.trousers = {"Walker": 2, "Runner": 8, "Toxic": 2, "Crawler": 8,
+                         "Brute": 20}.get(self.name, self.cloth)
         self.random = random.Random(self.name)
         self.bones = {}
         self.vertices, self.faces, self.weights, self.tiles = [], [], [], []
@@ -144,14 +147,16 @@ class Character:
         if leg:
             names = ("Thigh", "Shin", "Foot")
             widths = (.108,.071,.048)
-            first_material = self.cloth if self.name != "Boss" else 14
-            second_material = first_material if self.name not in ("Crawler","Toxic") else self.skin
+            first_material = self.trousers
+            second_material = self.skin if (self.name == "Crawler" or
+                self.name in ("Toxic","Runner") and side == "R" or
+                self.name == "Walker" and side == "L") else first_material
         else:
             names = ("UpperArm", "Forearm", "Hand")
             widths = (.080,.056,.037)
             first_material = self.cloth if self.hero or self.name in ("Armored","Walker","Runner") else self.skin
             second_material = 3 if self.name=="Armored" else self.skin
-            if self.name == "Walker" and side == "L":
+            if self.name == "Walker" and side == "L" or self.name == "Runner" and side == "R":
                 first_material = self.skin
         upper, lower, tip = (name+side for name in names)
         a,b,_ = self.bones[upper]
@@ -227,12 +232,18 @@ class Character:
                 self.limb(side, leg=True)
             knee = self.bones["Shin"+side][0]
             foot = self.bones["Foot"+side][0]
-            # Keep a sculpted heel and a flatter, tapered toe under the same
-            # skin/triangle budget as the old oval boot.
+            bare = self.name=="Crawler" or self.name in ("Runner","Toxic","Brute","Boss") and side=="R"
+            sole_tile = self.skin if bare else 3 if self.hero or self.name=="Armored" else 20
             self.surface(foot+v(0,-.079,-.045),foot+v(0,.200,-.045),
                          [(0,.031,.018),(.13,.054,.045),(.33,.067,.052),
-                          (.56,.069,.044),(.84,.061,.033),(1,.027,.016)],3,"Foot"+side,10)
-            self.panel(foot+v(0,.050,-.074), (.137,.242,.022), 8, "Foot"+side)
+                          (.56,.069,.044),(.84,.061,.033),(1,.027,.016)],sole_tile,"Foot"+side,10)
+            if bare:
+                for i in range(4):
+                    point=foot+v((i-1.5)*.023,.144-.004*i,-.06)
+                    self.surface(point,point+v(0,.068-.010*i,0),
+                                 [(0,.014,.013),(.50,.013,.014),(1,.002,.002)],self.skin,"Foot"+side,6)
+            else:
+                self.panel(foot+v(0,.050,-.074), (.137,.242,.022), 8 if self.hero or self.name=="Armored" else 20, "Foot"+side)
             hand = self.bones["Hand"+side][0]
             fingers = self.bones["Hand"+side][1]
             mitt = 3 if self.hero or self.name=="Armored" else self.skin
@@ -261,7 +272,7 @@ class Character:
         else:
             self.surface(v(0,0,h*.43),v(0,0,h*.66),
                          [(0,hip*.30,.078),(.14,hip*.48,.122),(.43,hip*.58,.133),(.68,hip*.54,.127),
-                          (.84,hip*.45,.105),(1,hip*.44,.112)],self.cloth,"Pelvis",14,("Chest",False))
+                          (.84,hip*.45,.105),(1,hip*.44,.112)],self.trousers,"Pelvis",14,("Chest",False))
         waist = .34 if self.hero else .26 if self.name in ("Runner","Crawler") else .30
         back = .143 if self.hero else .126 if self.name=="Runner" else .167
         self.surface(v(0,0,h*.57),v(0,.03,h*.86),
@@ -327,6 +338,18 @@ class Character:
         self.panel((0,0,h*.533),(self.hips*1.20,.252,.079),3,"Pelvis")
         self.panel((0,.136,h*.536),(.066,.027,.045),5,"Pelvis")
 
+    def fabric_flap(self, top, low, tile, bone):
+        """A double-sided irregular fabric edge draped off the skinned cloth."""
+        points = tuple(top)+tuple(low)
+        first=len(self.vertices)
+        self.vertices.extend(tuple(point) for point in points)
+        self.vertices.extend(tuple(point+v(0,-.002,0)) for point in points)
+        self.weights.extend({bone:1.0} for _ in range(8))
+        for face in ((0,1,2),(0,2,3),(6,5,4),(7,6,4)):
+            self.faces.append(tuple(first+i for i in face))
+            uv=((.04,.94),(.96,.89),(.88,.12),(.17,.04))
+            self.tiles.append((tile,tuple(uv[i%4] for i in face)))
+
     def infection(self):
         h,w=self.h,self.shoulder
         if self.name=="Armored":
@@ -347,18 +370,17 @@ class Character:
                         (.066,.029,.027),self.skin,"Chest",8)
                 self.volume((s*w*.425,.002,h*.793),(w*.243,.153,.150),self.skin,"Chest",14)
                 if self.name=="Boss":
-                    self.panel((s*w*.263,.156,h*.745),(.093,.064,.350),4,"Chest",s*.54)
                     for i in range(3):
                         a=v(s*w*(.335+i*.073),-.151,h*(.744+i*.034))
                         b=a+v(s*(.094+i*.026),-.072,.057+i*.067)
                         self.surface(a,b,[(0,.052,.047),(.21,.045,.040),(.46,.028,.027),
                                      (.74,.016,.014),(1,.001,.001)],19,"Chest",9)
-                else:
-                    self.panel((s*w*.241,.148,h*.721),(.100,.051,.313),8,"Chest",s*.52)
             if self.name=="Brute":
-                self.panel((-.323,.017,h*.794),(.236,.261,.168),4,"Chest",-.29)
-                self.panel((-.366,.142,h*.779),(.145,.033,.073),5,"Chest",-.24)
-                self.panel((.101,-.131,h*.702),(.225,.090,.168),0,"Chest",.08)
+                self.volume((-.35,.061,h*.807),(.186,.136,.156),13,"Chest",14)
+                for i in range(3):
+                    self.volume((-.31-i*.037,.166,h*(.776-.022*i)),(.067,.041,.073),14,"Chest",10)
+                self.fabric_flap((v(-.22,.126,h*.635),v(.01,.156,h*.63)),
+                                 (v(.10,.171,h*.545),v(-.28,.173,h*.56)),20,"Chest")
             if self.name=="Boss":
                 for s in (-1,1):
                     self.volume((s*.059,.136,h*.966),(.057,.029,.034),14,"Head")
@@ -366,9 +388,10 @@ class Character:
                 self.volume((0,.154,h*.906),(.071,.037,.055),15,"Head",12)
                 for x in (-.052,-.033,-.014,.014,.033,.052):
                     self.panel((x,.187,h*.925),(.013,.019,.021),19,"Head")
-                self.panel((0,.182,h*.711),(.246,.091,.245),4,"Chest")
-                self.volume((0,.238,h*.716),(.077,.035,.076),22,"Chest",12)
-                self.panel((0,.232,h*.607),(.180,.052,.082),22,"Chest")
+                self.volume((0,.176,h*.713),(.132,.081,.14),14,"Chest",14)
+                for i in range(4):
+                    self.volume(((i-1.5)*.048,.241,h*(.72+.018*i)),(.051,.043,.054),
+                                22 if i in (1,2) else 13,"Chest",12)
         elif self.name=="Toxic":
             for i in range(8):
                 ang=2.4*i
@@ -380,19 +403,26 @@ class Character:
                 self.volume((w*(.41+i*.08),.068+i*.026,h*(.784-i*.018)),
                             (.026,.022,.024),21,"Chest",8)
         else:
-            for i in range(5):
-                self.panel((.115-i*.047,.155,h*(.68+i*.024)),(.069,.020,.023),15,"Chest",.42)
+            # Open, irregular hems and contrasting undersides read as civilian
+            # fabric at portrait distance, where narrow surface marks disappear.
+            for i in range(3):
+                left=-.17+i*.106
+                y=.119+(.02 if i==1 else 0)
+                self.fabric_flap((v(left,y,h*.625),v(left+.1,y,h*.639)),
+                                 (v(left+.086,y+.013,h*(.574+i*.013)),
+                                  v(left-.036,y+.028,h*(.535+.028*(i%2)))),self.cloth,"Chest")
             if self.name=="Walker":
-                self.panel((-.081,.164,h*.724),(.103,.027,.164),6,"Chest",-.28)
-                self.panel((.063,.142,h*.655),(.085,.020,.123),11,"Chest",.33)
-                self.panel((.089,.123,h*.908),(.026,.057,.046),15,"Head",.4)
+                self.fabric_flap((v(-.23,.042,h*.798),v(-.134,.128,h*.807)),
+                                 (v(-.18,.133,h*.687),v(-.273,.061,h*.742)),6,"Chest")
+                self.panel((.087,.123,h*.908),(.026,.057,.046),15,"Head",.4)
             if self.crawler:
                 for i in range(6):
                     self.volume((0,-.125,h*(.57+.043*i)),(.053,.033,.044),19,"Chest",8)
             if self.name=="Runner":
-                self.panel((0,.152,h*.768),(.298,.023,.044),8,"Chest",.18)
-                self.panel((.081,.159,h*.726),(.086,.018,.039),16,"Chest",.18)
-                self.panel((.035,.131,h*.566),(.136,.028,.081),7,"Pelvis")
+                self.surface(v(-.125,-.050,h*.841),v(.103,-.104,h*.754),
+                             [(0,.026,.017),(.17,.052,.052),(.58,.058,.049),(1,.02,.018)],7,"Chest",12)
+                self.fabric_flap((v(.14,.13,h*.806),v(.24,.049,h*.808)),
+                                 (v(.252,.088,h*.707),v(.17,.146,h*.745)),7,"Chest")
         if self.name not in ("Armored","Boss"):
             self.panel((0,.155,h*.903),(.083,.019,.034),15,"Head")
             for i in range(4):
@@ -447,16 +477,19 @@ class Character:
                 material.node_tree.links.new(normal_map.outputs["Normal"],shader.inputs["Normal"])
         skin.data.materials.append(material)
 
-    def aim_bone(self, name, origin, direction):
+    def aim_bone(self, name, origin, direction, twist=0):
         bone=self.rig.pose.bones[name]
         rest=bone.bone.matrix_local
         rotation=(rest.to_quaternion() @ v(0,1,0)).rotation_difference(direction.normalized())
-        target=(rotation @ rest.to_quaternion()).to_matrix().to_4x4()
+        orientation = rotation @ rest.to_quaternion()
+        if twist:
+            orientation = Quaternion(direction.normalized(), twist) @ orientation
+        target=orientation.to_matrix().to_4x4()
         target.translation=origin
         bone.matrix=target
         bpy.context.view_layer.update()
 
-    def leg_pose(self, side, foot, pole):
+    def leg_pose(self, side, foot, pole, toe=None):
         thigh,shin="Thigh"+side,"Shin"+side
         hip=self.rig.pose.bones[thigh].head.copy()
         a=(self.bones[thigh][1]-self.bones[thigh][0]).length
@@ -469,23 +502,12 @@ class Character:
         knee=hip+axis*along+bend*math.sqrt(max(.0,a*a-along*along))
         self.aim_bone(thigh,hip,knee-hip)
         self.aim_bone(shin,knee,foot-knee)
-        self.aim_bone("Foot"+side,foot,v(0,.16,-.06))
+        self.aim_bone("Foot"+side,foot,toe if toe is not None else v(0,.16,-.06))
 
     def animate(self):
         # Contact, compression, passing and extension poses. Feet are solved against
         # a contact plane, with class-specific stride, crouch, and upper-body poses.
         h=self.h
-        stride={"Max":.53,"Eva":.48,"Walker":.30,"Runner":.60,"Armored":.31,
-                "Brute":.36,"Toxic":.31,"Crawler":.25,"Boss":.35}[self.name]
-        locomotion=[(.00,.00,0),(.20,-.055,0),(.48,-.026,0),(.56,.015,.030),
-                    (.67,.036,.145),(.83,.019,.200),(1,.00,0)]
-        footfall=[(.0,1.0),(.20,.34),(.48,-1.0),(.56,-.98),(.67,-.74),(.83,.18),(1,1.0)]
-        def interp(table,t,col):
-            for a,b in zip(table,table[1:]):
-                if t<=b[0]:
-                    return a[col]+(b[col]-a[col])*(t-a[0])/(b[0]-a[0])
-            return table[-1][col]
-
         motions = [("Idle",IDLE,30),("Move",MOVE,24),("Fire",FIRE,24),("Reload",RELOAD,30),
                    ("Hit",HIT,8),("Attack",ATTACK,18),("Death",DEATH,21)]
         if self.hero:
@@ -499,34 +521,55 @@ class Character:
                     bone.matrix_basis=Matrix.Identity(4)
                     bone.rotation_mode="QUATERNION"
                 bpy.context.view_layer.update()
-                moving=state in ("Move","Fire","Medkit","Throw")
+                moving=state in ("Move","Fire","Reload","Medkit","Throw")
                 f=t%1
-                impact=interp([(0,0),(.16,1),(.36,.46),(1,0)],t,1)
-                death=interp([(0,0),(.19,.12),(.52,.61),(.8,.97),(1,1)],t,1) if state=="Death" else 0
-                fire=interp([(0,1),(.12,.57),(.32,.12),(.45,0),(1,0)],t,1) if state=="Fire" else 0
+                impact=eased_keys([(0,0),(.16,1),(.36,.46),(1,0)],t)
+                death=eased_keys([(0,0),(.19,.12),(.52,.61),(.8,.97),(1,1)],t) if state=="Death" else 0
+                fire=eased_keys([(0,1),(.12,.57),(.32,.12),(.45,0),(1,0)],t) if state=="Fire" else 0
                 rear=impact if state=="Hit" else 0
                 key={"Toxic":.42,"Boss":.68,"Brute":.63}.get(self.name,.54)
-                attack=interp([(0,0),(.25,-.48),(key,1),(1,0)],t,1) if state=="Attack" else 0
-                reload=interp([(0,0),(.24,1),(.67,1),(1,0)],t,1) if state=="Reload" else 0
-                care=interp([(0,0),(.24,1),(.70,1),(1,0)],t,1) if state=="Medkit" else 0
-                swing_throw=interp([(0,0),(.17,-.38),(.31,-1),(.42,.85),(.61,.64),(1,0)],t,1) if state=="Throw" else 0
-                crouch=.45 if self.crawler else .072 if moving else .044
+                attack=eased_keys([(0,0),(.25,-.48),(key,1),(1,0)],t) if state=="Attack" else 0
+                reload=eased_keys([(0,0),(.24,1),(.67,1),(1,0)],t) if state=="Reload" else 0
+                care=eased_keys([(0,0),(.24,1),(.70,1),(1,0)],t) if state=="Medkit" else 0
+                swing_throw=eased_keys([(0,0),(.17,-.38),(.31,-1),(.42,.85),(.61,.64),(1,0)],t) if state=="Throw" else 0
+                crouch=.47 if self.crawler else .117 if moving else .061
                 crouch += (1 if self.tank else .70)*.59*death
-                contact=interp(locomotion,(f*2)%1,1) if moving else 0
-                pelvis=self.bones["Pelvis"][0]+v(0,-.17*death,-crouch+contact)
-                self.aim_bone("Pelvis",pelvis,v(.037*attack,.52*death,.99))
-                chest=self.rig.pose.bones["Chest"].head.copy()
-                pitch=.79 if self.crawler else .22 if self.name=="Runner" else .065
-                self.aim_bone("Chest",chest,v(.085*rear,pitch+.46*attack-.30*rear-.10*fire+.90*death,1-.71*death))
+                swing = math.sin(math.tau*f) if moving else 0.
+                # The pelvis yields under the new support leg and rises
+                # through push-off. Counter-rotation keeps the chest balanced.
+                contact=eased_keys(((0,-.018),(.21,-.057),(.68,.036),(1,-.018)),(f*2)%1) if moving else 0
+                pelvis=self.bones["Pelvis"][0]+v(.035*swing,.025-.17*death,-crouch+contact)
+                placements = {}
                 for side,s in (("L",-1),("R",1)):
-                    phase=(f+(0 if s==-1 else .5))%1
                     foot=self.bones["Foot"+side][0].copy()
-                    foot.y+=interp(footfall,phase,1)*stride*.53 if moving else s*.045
-                    foot.z+=interp(locomotion,phase,2) if moving else 0
-                    foot.y-=.35*death
-                    if self.crawler:
-                        foot.y-=.32
-                    self.leg_pose(side,foot,v(0,1,0))
+                    if moving:
+                        foot,toe,phase=foot_target(self.name,side,f,foot)
+                        hip,knee,_=self.bones["Thigh"+side]
+                        ankle=self.bones["Shin"+side][1]
+                        span=(knee-hip).length+(ankle-knee).length-.026
+                        horizontal=(foot.x-hip.x-pelvis.x)**2+(foot.y-hip.y-pelvis.y)**2
+                        if span*span>horizontal:
+                            pelvis.z=min(pelvis.z,foot.z+math.sqrt(span*span-horizontal))
+                    else:
+                        phase=0
+                        toe=None
+                        foot.y+=s*.045-.35*death
+                        if self.crawler: foot.y-=.32
+                    placements[side]=(foot,toe,phase)
+                pelvis_roll = .068*swing if self.hero else .17*swing
+                self.aim_bone("Pelvis",pelvis,v(pelvis_roll+.037*attack,.08+.47*death,.99),.095*swing)
+                chest=self.rig.pose.bones["Chest"].head.copy()
+                pitch={"Crawler":1.22,"Runner":.31,"Walker":.24,"Brute":.18,
+                       "Toxic":.28,"Boss":.13,"Armored":.155}.get(self.name,.11)
+                droop = .14 if self.name in ("Walker","Toxic") else 0
+                self.aim_bone("Chest",chest,v(droop-.067*swing+.085*rear,
+                              pitch+.46*attack-.30*rear-.10*fire+.90*death,1-.71*death),-.05*swing)
+                if droop and not death:
+                    head=self.rig.pose.bones["Head"]
+                    self.aim_bone("Head",head.head.copy(),v(-.20+.045*swing,.21+.082*swing,.99))
+                for side,s in (("L",-1),("R",1)):
+                    foot,toe,phase=placements[side]
+                    self.leg_pose(side,foot,v(s*.19,1,0),toe)
                     if self.hero:
                         arm=self.rig.pose.bones["UpperArm"+side]
                         if side=="L" and (care or swing_throw):
@@ -549,16 +592,24 @@ class Character:
                     else:
                         arm=self.rig.pose.bones["UpperArm"+side]
                         origin=arm.head.copy()
-                        swing=interp(footfall,(phase+.5)%1,1) if moving else -.06*s
+                        reach_swing=math.cos(math.tau*(phase+.14)) if moving else -.06*s
                         if self.crawler:
-                            hand=v(s*self.shoulder*.72,.34+stride*swing,.14+.17*max(0.,swing))
+                            hand=v(s*self.shoulder*.72,.34+.21*reach_swing,.14+.17*max(0.,reach_swing))
                             self.aim_bone(arm.name,origin,(hand-origin)+v(s*.12,0,-.14))
                             elbow=self.rig.pose.bones["Forearm"+side].head.copy()
                             self.aim_bone("Forearm"+side,elbow,hand-elbow)
                         else:
                             reach={"Boss":1.1,"Brute":.93,"Toxic":.28}.get(self.name,.78)
+                            lead = {"Walker":.68 if side=="L" else .12,
+                                    "Runner":.51 if side=="L" else .23,
+                                    "Toxic":.64 if side=="R" else .11}.get(self.name,.31)
                             self.aim_bone(arm.name,origin,
-                                v(s*(.16+.36*death+.25*attack),.20+.52*swing+reach*attack,-.81+.45*attack))
+                                v(s*(.17+.36*death+.25*attack),lead+.34*reach_swing+reach*attack,-.79+.43*attack))
+                            if self.name in ("Walker","Runner","Toxic") and not death:
+                                forearm=self.rig.pose.bones["Forearm"+side]
+                                elbow=forearm.head.copy()
+                                self.aim_bone(forearm.name,elbow,v(s*.15,lead+.34+.2*reach_swing,
+                                                                 -.81+.24*reach_swing+.47*attack))
                 for bone in self.rig.pose.bones:
                     if bone.name in ("ForwardMarker","WeaponGrip","WeaponForward"):
                         continue

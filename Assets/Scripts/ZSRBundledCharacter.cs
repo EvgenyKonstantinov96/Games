@@ -19,7 +19,7 @@ namespace ZombieSurvivalRun
         AnimationMixerPlayable mixer;
         AnimationClipPlayable currentPose, previousPose;
         Motion motion;
-        float age, blend, rate = 1f, actionSpeed = 1f;
+        float age, gaitTime, blend, rate = 1f, actionSpeed = 1f;
         bool moving, hero, firing, hasItemClips;
         Transform muzzleFlash, weaponSocket;
         float flashTime, recoil, aimTime, kick;
@@ -197,10 +197,11 @@ namespace ZombieSurvivalRun
             Sample();
         }
 
-        public void ResetMotion()
+        public void ResetMotion(float stridePhase)
         {
             motion = Motion.Idle;
             age = 0f;
+            gaitTime = Mathf.Repeat(stridePhase, 1f) * Durations[(int)Motion.Move] / Fps;
             blend = 0f;
             moving = false;
             recoil = 0f;
@@ -211,7 +212,7 @@ namespace ZombieSurvivalRun
         public void Tick(bool run, float speed)
         {
             moving = run;
-            rate = hero ? speed : 1f;
+            rate = Mathf.Clamp(speed, .55f, 1.75f);
             if (motion == Motion.Idle || motion == Motion.Move)
                 Change(run ? Motion.Move : Motion.Idle);
         }
@@ -259,10 +260,8 @@ namespace ZombieSurvivalRun
         {
             if (motion == Motion.Death || (motion == next && !restart)) return;
             if (graph.IsValid()) previousPose.SetTime(currentPose.GetTime());
-            float phase = (motion == Motion.Move && next == Motion.Fire) ||
-                (motion == Motion.Fire && next == Motion.Move) ? age : 0f;
             motion = next;
-            age = phase;
+            age = 0f;
             blend = next == Motion.Fire ? .035f : .09f;
         }
 
@@ -279,15 +278,22 @@ namespace ZombieSurvivalRun
                 aimTime = Mathf.Max(0f, aimTime - dt);
             }
             if (!hero && motion != Motion.Death && game != null && !game.IsRunning) return;
+            if (moving)
+                gaitTime = Mathf.Repeat(gaitTime + dt * rate, Durations[(int)Motion.Move] / Fps);
             int index = (int)motion;
-            float speed = motion == Motion.Reload ? actionSpeed :
-                motion == Motion.Move || motion == Motion.Fire ? rate : 1f;
+            float speed = motion == Motion.Reload ? actionSpeed : 1f;
             age += dt * speed;
             float duration = Durations[index] / Fps;
             if (age >= duration && motion != Motion.Death)
             {
                 if (motion == Motion.Idle || motion == Motion.Move) age %= duration;
-                else Change(moving ? Motion.Move : Motion.Idle);
+                else if (motion != Motion.Fire || aimTime <= 0f)
+                {
+                    // These baked actions finish at the first stride pose.
+                    if (motion == Motion.Reload || motion == Motion.Medkit || motion == Motion.Throw)
+                        gaitTime = 0f;
+                    Change(moving ? Motion.Move : Motion.Idle);
+                }
             }
             blend = Mathf.Max(0f, blend - dt);
             Sample();
@@ -312,7 +318,8 @@ namespace ZombieSurvivalRun
         void Sample()
         {
             int index = (int)motion;
-            currentPose.SetTime((Starts[index] + Mathf.Min(age * Fps, Durations[index])) / Fps);
+            float time = motion == Motion.Move || motion == Motion.Fire ? gaitTime : age;
+            currentPose.SetTime((Starts[index] + Mathf.Min(time * Fps, Durations[index])) / Fps);
             float outgoing = Mathf.Clamp01(blend / .09f);
             mixer.SetInputWeight(0, 1f - outgoing);
             mixer.SetInputWeight(1, outgoing);
