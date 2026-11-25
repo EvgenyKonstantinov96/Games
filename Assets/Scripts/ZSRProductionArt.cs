@@ -122,6 +122,7 @@ namespace ZombieSurvivalRun
 
         ZSRBundledCharacter bundled;
         public Transform MuzzlePoint => bundled != null ? bundled.Muzzle : null;
+        public Transform ItemHand => bundled != null ? bundled.ItemHand : null;
 
         static ZSRProductionArt CreateBundled(Transform parent, string name, bool hero,
             WeaponType weapon)
@@ -385,12 +386,13 @@ namespace ZombieSurvivalRun
             if(motion != null) motion.Running = true;
         }
 
-        public void SetLateralLean(float movement)
+        public void SetLateralLean(float movement, float dt)
         {
             if (dead) return;
-            float tilt = Mathf.Clamp(-movement * .85f, -6f, 6f);
-            lateralLean = Mathf.Lerp(lateralLean, tilt, 1f - Mathf.Exp(-Time.deltaTime * 11f));
-            transform.localRotation = Quaternion.Euler(0f, 0f, lateralLean);
+            float tilt = Mathf.Clamp(-movement * 1.48f, -11f, 11f);
+            lateralLean = Mathf.Lerp(lateralLean, tilt, 1f - Mathf.Exp(-dt * 10f));
+            transform.localRotation = Quaternion.Euler(Mathf.Abs(lateralLean) * .15f,
+                -lateralLean * .40f, lateralLean);
         }
 
         public void Tick(bool running, float speed)
@@ -426,15 +428,20 @@ namespace ZombieSurvivalRun
             if(motion != null) motion.Running = false;
         }
 
-        public void Fire()
+        public void Fire(Vector3 target)
         {
             if (dead) return;
-            if (bundled != null) { bundled.Fire(); return; }
+            if (bundled != null) { bundled.Fire(target); return; }
             shootUntil = Time.time + .20f;
             if (muzzle == null) return;
             muzzle.SetActive(true);
             CancelInvoke(nameof(HideMuzzle));
             Invoke(nameof(HideMuzzle), .06f);
+        }
+
+        public void UseItem(bool medkit)
+        {
+            if (!dead && bundled != null) bundled.UseItem(medkit);
         }
 
         public void Reload(float seconds)

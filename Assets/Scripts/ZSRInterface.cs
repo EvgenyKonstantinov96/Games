@@ -325,6 +325,7 @@ namespace ZombieSurvivalRun
             Label("ZOMBIE SURVIVAL", 16, 61, 358, 54, 30, Color.white);
             Label("RUN", 28, 107, 334, 62, 44, new Color(1, .34f, .17f));
             Label("МЕГАПОЛИС ПОСЛЕДНЕГО РУБЕЖА", 10, 153, 370, 26, 12, TextMuted);
+            Button(g.MusicLabel, 257, 182, 121, 40, Cyan, g.CycleMusic, 11);
             // Characters are part of the full-height wallpaper, with no clipped middle rectangle.
             Block("level banner", 27, H - 232, 336, 34, new Color(.025f, .04f, .055f, .83f));
             Label("УРОВЕНЬ " + g.Level + "/15  •  " + g.LevelTitle, 29, H - 231, 332, 31, 12, Color.white);
@@ -538,7 +539,9 @@ namespace ZombieSurvivalRun
             }
             hudMed.text = "× " + g.Medkits;
             hudGrenade.text = "× " + g.Grenades;
-            hudDrone.text = "× " + g.Drones;
+            hudDrone.text = g.DroneSeconds > 0f
+                ? "× " + g.Drones + "   •   " + Mathf.CeilToInt(g.DroneSeconds) + " СЕК"
+                : "× " + g.Drones;
             if (progressFill != null) progressFill.sizeDelta = new Vector2(289 * g.Progress, 8);
             if (hpFill != null) hpFill.sizeDelta = new Vector2(222 * (g.Hero.Health / (float)Mathf.Max(1, g.Hero.MaxHealth)), 10);
         }
@@ -555,8 +558,9 @@ namespace ZombieSurvivalRun
             ModalDark();
             Label("ПАУЗА", 32, H * .25f + 24, 326, 57, 30, Color.white);
             Button("ПРОДОЛЖИТЬ", 39, H * .25f + 112, 312, 68, Orange, () => g.TogglePause(), 20);
-            Button("ЗАНОВО", 39, H * .25f + 192, 312, 60, Cyan, () => g.Retry(), 18);
-            Button("В МЕНЮ", 39, H * .25f + 264, 312, 62, Cyan, () => g.GoMenu(), 18);
+            Button("ЗАНОВО", 39, H * .25f + 188, 312, 47, Cyan, () => g.Retry(), 18);
+            Button("В МЕНЮ", 39, H * .25f + 242, 312, 47, Cyan, () => g.GoMenu(), 18);
+            Button(g.MusicLabel, 39, H * .25f + 297, 312, 46, Cyan, g.CycleMusic, 14);
         }
 
         void ResultScreen(ZSRGame g, bool victory)

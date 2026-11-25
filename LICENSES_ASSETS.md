@@ -10,6 +10,8 @@
 | `zsr_city_*.obj`, `city_facades.png`, `city_facades_emission.png` | Original facade geometry and textures authored in `Tools/Art/build_city_meshes.py` and `build_city_facades.py`. | Street buildings and background city layers. |
 | `track_*.obj`, `TrackPropAtlas.png` | Original weathering and meshes adapted from the existing Lux props in `Tools/Art/build_track_props.py`. | Shared finish for obstacles and gate pylons. |
 | `TrackGateLabels.png` | Original sign artwork rasterized with DejaVu Sans Condensed Bold under the [DejaVu font license](https://dejavu-fonts.github.io/License.html). | Six bonus labels. The repository includes the atlas image. |
+| `combat_*.obj` | Original drone, rotor, grenade and medkit authored in `Tools/Art/build_combat_props.py`. | Combat props using the shared track atlas. |
+| `Assets/Resources/Audio/*.ogg` | Original synthesized score and effects composed in `Tools/Art/build_audio.py`. | Two looping music cues and six gameplay sounds. |
 | `docs/design/*-blender.jpg` | Blender renders of the shipped meshes and textures. | Character and portrait composition reviews. |
 
 The existing Polyfork license and source notes in the repository continue to apply to their listed external assets.

@@ -7,11 +7,11 @@ namespace ZombieSurvivalRun
     /// <summary>Plays the authored timeline shipped inside each character FBX.</summary>
     public sealed class ZSRBundledCharacter : MonoBehaviour
     {
-        enum Motion { Idle, Move, Fire, Reload, Hit, Attack, Death }
+        enum Motion { Idle, Move, Fire, Reload, Hit, Attack, Death, Medkit, Throw }
         const float Fps = 30f;
         const string ResourceRoot = "ProductionArt/";
-        static readonly int[] Starts = { 0, 32, 58, 84, 116, 126, 146 };
-        static readonly int[] Durations = { 30, 24, 24, 30, 8, 18, 21 };
+        static readonly int[] Starts = { 0, 32, 58, 84, 116, 126, 146, 170, 198 };
+        static readonly int[] Durations = { 30, 24, 24, 30, 8, 18, 21, 24, 18 };
         static Material atlasMaterial;
         static readonly System.Collections.Generic.Dictionary<string, AnimationClip> Takes = new();
 
@@ -20,11 +20,14 @@ namespace ZombieSurvivalRun
         AnimationClipPlayable currentPose, previousPose;
         Motion motion;
         float age, blend, rate = 1f, actionSpeed = 1f;
-        bool moving, hero, firing;
+        bool moving, hero, firing, hasItemClips;
         Transform muzzleFlash, weaponSocket;
-        float flashTime, recoil;
+        float flashTime, recoil, aimTime, kick;
+        Vector3 aimPoint;
+        Quaternion socketRest;
 
         public Transform Muzzle { get; private set; }
+        public Transform ItemHand { get; private set; }
 
         public static ZSRBundledCharacter Create(Transform parent, string name, bool hero, WeaponType weapon)
         {
@@ -83,6 +86,8 @@ namespace ZombieSurvivalRun
 
             var actor = root.AddComponent<ZSRBundledCharacter>();
             actor.hero = hero;
+            actor.hasItemClips = hero && take.length >= 7.16f;
+            if (hero) actor.ItemHand = FindBone(instance.transform, "HandL");
             if (hero) actor.AttachWeapon(grip, barrel, weapon);
             if (Application.isPlaying) actor.CreateGraph(animator, take);
             return actor;
@@ -133,6 +138,12 @@ namespace ZombieSurvivalRun
             socket.SetParent(grip, false);
             weaponSocket = socket;
             socket.rotation = Quaternion.LookRotation(barrel.position - grip.position, transform.up);
+            socketRest = socket.localRotation;
+            kick = weapon switch
+            {
+                WeaponType.Pistol => .043f, WeaponType.Shotgun => .105f,
+                WeaponType.Minigun => .025f, _ => .057f
+            };
             Vector3 referenceScale = transform.lossyScale;
             Vector3 socketScale = socket.lossyScale;
             socket.localScale = new Vector3(
@@ -160,8 +171,12 @@ namespace ZombieSurvivalRun
                 muzzle = tip + Vector3.forward * .025f;
             }
             Muzzle = ZSRVisuals.Pivot("Muzzle", socket, muzzle);
-            muzzleFlash = ZSRVisuals.Sphere("Muzzle flash", Muzzle, Vector3.zero,
-                new Vector3(.085f, .085f, .16f), ZSRVisuals.OrangeGlow).transform;
+            muzzleFlash = ZSRVisuals.Pivot("Muzzle flash", Muzzle, Vector3.zero);
+            ZSRVisuals.Sphere("Hot muzzle core", muzzleFlash, new Vector3(0, 0, .055f),
+                new Vector3(.09f, .09f, .22f), ZSRVisuals.GoldGlow);
+            ZSRVisuals.Box("Muzzle flare", muzzleFlash, new Vector3(0, 0, .035f),
+                new Vector3(.21f, .026f, .095f), ZSRVisuals.OrangeGlow);
+            muzzleFlash.localScale = Vector3.one * (weapon == WeaponType.Shotgun ? 1.6f : 1f);
             muzzleFlash.gameObject.SetActive(false);
         }
 
@@ -189,6 +204,7 @@ namespace ZombieSurvivalRun
             blend = 0f;
             moving = false;
             recoil = 0f;
+            aimTime = 0f;
             HideFlash();
         }
 
@@ -200,14 +216,23 @@ namespace ZombieSurvivalRun
                 Change(run ? Motion.Move : Motion.Idle);
         }
 
-        public void Fire()
+        public void Fire(Vector3 target)
         {
             firing = true;
-            flashTime = .055f;
-            recoil = .035f;
+            flashTime = .045f;
+            recoil = kick;
+            aimPoint = target;
+            aimTime = .19f;
+            ApplyAim();
             if (muzzleFlash != null) muzzleFlash.gameObject.SetActive(true);
-            if (motion != Motion.Reload && motion != Motion.Hit && motion != Motion.Death)
+            if (motion == Motion.Move || motion == Motion.Idle)
                 Change(Motion.Fire);
+        }
+
+        public void UseItem(bool medkit)
+        {
+            aimTime = 0f;
+            if (hasItemClips) Change(medkit ? Motion.Medkit : Motion.Throw, true);
         }
 
         public void Reload(float seconds)
@@ -219,13 +244,14 @@ namespace ZombieSurvivalRun
         public void Attack() => Change(Motion.Attack, true);
         public void Hit()
         {
-            if (motion != Motion.Reload && motion != Motion.Attack)
+            if (motion != Motion.Reload && motion != Motion.Attack && motion != Motion.Medkit && motion != Motion.Throw)
                 Change(Motion.Hit, true);
         }
 
         public void Die()
         {
             HideFlash();
+            aimTime = 0f;
             Change(Motion.Death, true);
         }
 
@@ -249,10 +275,8 @@ namespace ZombieSurvivalRun
             if (firing && (flashTime -= dt) <= 0f) HideFlash();
             if (weaponSocket != null)
             {
-                recoil = Mathf.MoveTowards(recoil, 0f, dt * .48f);
-                // Converting a world offset also accounts for imported FBX bone scale.
-                Vector3 offset = weaponSocket.parent.InverseTransformVector(-weaponSocket.forward * recoil);
-                weaponSocket.localPosition = offset;
+                recoil = Mathf.MoveTowards(recoil, 0f, dt * .80f);
+                aimTime = Mathf.Max(0f, aimTime - dt);
             }
             if (!hero && motion != Motion.Death && game != null && !game.IsRunning) return;
             int index = (int)motion;
@@ -267,6 +291,22 @@ namespace ZombieSurvivalRun
             }
             blend = Mathf.Max(0f, blend - dt);
             Sample();
+            ApplyAim();
+        }
+
+        void ApplyAim()
+        {
+            if (weaponSocket == null) return;
+            var hand = weaponSocket.parent;
+            Quaternion rest = hand.rotation * socketRest;
+            Vector3 toTarget = aimPoint - weaponSocket.position;
+            if (aimTime > 0f && toTarget.sqrMagnitude > .01f)
+            {
+                var aim = Quaternion.RotateTowards(rest, Quaternion.LookRotation(toTarget, transform.up), 28f);
+                weaponSocket.rotation = Quaternion.Slerp(rest, aim, Mathf.Clamp01(aimTime * 19f));
+            }
+            else weaponSocket.localRotation = socketRest;
+            weaponSocket.localPosition = hand.InverseTransformVector(-weaponSocket.forward * recoil);
         }
 
         void Sample()

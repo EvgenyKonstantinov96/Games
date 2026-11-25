@@ -15,7 +15,8 @@ for path in sorted(ROOT.glob("*.fbx")):
     skin,=[o for o in bpy.context.scene.objects if o.type=="MESH"]
     names=set(rig.data.bones.keys())
     assert {"Pelvis","Chest","Head","ForwardMarker","HandL","HandR"} <= names, path
-    if path.stem in {"Max","Eva"}:
+    hero=path.stem in {"Max","Eva"}
+    if hero:
         assert {"WeaponGrip","WeaponForward"} <= names, path
     assert any(m.type=="ARMATURE" and m.object==rig for m in skin.modifiers), path
     assert skin.data.uv_layers and len(skin.data.vertices) < 5500, path
@@ -34,5 +35,13 @@ for path in sorted(ROOT.glob("*.fbx")):
         points.append(rig.pose.bones["Pelvis"].matrix.copy())
     assert (points[1].translation-points[2].translation).length > .005, path
     assert (points[0].translation-points[-1].translation).length > .2, path
+    if hero:
+        assert end-start >= 215, action.frame_range
+        poses=[]
+        for frame in (1,183,207):
+            scene.frame_set(frame)
+            poses.append(rig.pose.bones["HandL"].head.copy()-rig.pose.bones["Chest"].head.copy())
+        assert (poses[1]-poses[0]).length > .09 and (poses[2]-poses[0]).length > .09, path
     print(f"PASS {path.stem:7} {len(names)} bones, {len(skin.data.vertices)} verts, {tri_count} triangles, "
-          f"{start:g}–{end:g} frames, smooth custom normals",flush=True)
+          f"{start:g}–{end:g} frames, smooth custom normals"
+          + (", medkit and throw poses" if hero else ""),flush=True)

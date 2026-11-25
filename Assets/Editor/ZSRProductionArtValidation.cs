@@ -34,15 +34,15 @@ namespace ZombieSurvivalRun.EditorTools
                     bones.Add(child.name);
                 if (!bones.Contains("Pelvis") || !bones.Contains("ForwardMarker"))
                     errors.Add(name + ": body anchors missing");
-                if ((name == "Max" || name == "Eva") &&
-                    (!bones.Contains("WeaponGrip") || !bones.Contains("WeaponForward")))
-                    errors.Add(name + ": weapon anchors missing");
+                bool hero = name == "Max" || name == "Eva";
+                if (hero && (!bones.Contains("WeaponGrip") || !bones.Contains("WeaponForward") || !bones.Contains("HandL")))
+                    errors.Add(name + ": weapon or item anchors missing");
 
                 bool importedTake = false;
                 foreach (var subAsset in AssetDatabase.LoadAllAssetsAtPath(path))
                 {
                     if (subAsset is AnimationClip clip && !clip.legacy &&
-                        !clip.name.StartsWith("__preview__", StringComparison.Ordinal) && clip.length >= 5.5f)
+                        !clip.name.StartsWith("__preview__", StringComparison.Ordinal) && clip.length >= (hero ? 7.16f : 5.5f))
                         importedTake = true;
                 }
                 if (!importedTake) errors.Add(name + ": baked motion timeline missing");
@@ -53,13 +53,23 @@ namespace ZombieSurvivalRun.EditorTools
                 if (Resources.Load<Texture2D>("ProductionArt/" + name) == null)
                     errors.Add(name + ": Texture2D missing");
 
+            foreach (string name in new[] { "combat_drone", "combat_rotor", "combat_grenade", "combat_medkit" })
+            {
+                var model = Resources.Load<GameObject>("Meshes/" + name);
+                if (model == null || model.GetComponentInChildren<MeshFilter>() == null)
+                    errors.Add(name + ": combat mesh missing");
+            }
+            foreach (string name in new[] { "Menu", "Run", "Pistol", "Rifle", "Shotgun", "Minigun", "Drone", "Blast" })
+                if (Resources.Load<AudioClip>("Audio/" + name) == null)
+                    errors.Add(name + ": audio clip missing");
+
             if (ZSRVisuals.AsphaltDeluxe.mainTexture == null ||
                 ZSRVisuals.SkylineMaterials[0].mainTexture == null)
                 errors.Add("Gameplay asphalt or skyline material has no texture");
 
             if (errors.Count > 0)
                 throw new InvalidOperationException("[ZSR ART] " + string.Join("\n[ZSR ART] ", errors));
-            Debug.Log("[ZSR ART] All nine character rigs fit gameplay bounds. FBX motion and environment resources loaded.");
+            Debug.Log("[ZSR ART] Nine character rigs, environment, combat meshes and audio loaded.");
         }
 
         static void CheckGameplayRig(string name, List<string> errors)

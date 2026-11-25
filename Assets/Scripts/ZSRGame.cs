@@ -59,6 +59,7 @@ namespace ZombieSurvivalRun
         public int Grenades { get; private set; }
         public int Medkits { get; private set; }
         public int Drones { get; private set; }
+        public float DroneSeconds => droneTimer;
         public bool BossAlive => boss != null && boss.Alive && boss.gameObject.activeInHierarchy;
         public float BossHealthFraction => BossAlive ? boss.HealthFraction : 0f;
         public string LevelTitle => LevelNames[Mathf.Clamp(Level - 1, 0, LevelNames.Length - 1)];
@@ -79,10 +80,17 @@ namespace ZombieSurvivalRun
         readonly Dictionary<ZombieType, Queue<ZSRZombie>> pools = new Dictionary<ZombieType, Queue<ZSRZombie>>();
         readonly List<GameObject> temporary = new List<GameObject>();
         readonly List<ZSRRoadChunk> road = new List<ZSRRoadChunk>();
-        GameObject worldRoot, shieldEffect, drone, skyline;
+        readonly List<ZSRGrenadeFlight> grenadesInFlight = new();
+        GameObject worldRoot, shieldEffect, skyline;
+        ZSRSupportDrone drone;
+        ZSRCombatEffects combatEffects;
+        ZSRRunMusic music;
+        readonly AudioClip[] weaponAudio = new AudioClip[4];
         Camera camera3D;
         AudioSource audioSource;
-        AudioClip shotAudio, coinAudio, hitAudio, boomAudio, winAudio;
+        AudioClip droneAudio, coinAudio, hitAudio, boomAudio, winAudio;
+        public string MusicLabel => music != null ? music.Label : "МУЗЫКА";
+        public void CycleMusic() { if (music != null) music.Cycle(); }
         ZSRZombie boss;
         float shootTimer, reloadTimer, waveTimer, coinTimer, gateTimer, carTimer;
         float bonusTimer, shieldTimer, magnetTimer, droneTimer, noticeTimer, shake, droneShotTimer;
@@ -121,10 +129,13 @@ namespace ZombieSurvivalRun
             BuildScene();
             gameObject.AddComponent<ZSRInterface>();
 
-            shotAudio = Synth("gun", .12f, 130, 63, .32f);
+            music = gameObject.AddComponent<ZSRRunMusic>();
+            for (int i = 0; i < weaponAudio.Length; i++)
+                weaponAudio[i] = Resources.Load<AudioClip>("Audio/" + ((WeaponType)i)) ?? Synth("gun", .12f, 130, 63, .32f);
+            droneAudio = Resources.Load<AudioClip>("Audio/Drone") ?? weaponAudio[0];
             coinAudio = Synth("coin", .13f, 620, 1050, .33f);
             hitAudio = Synth("hit", .16f, 100, 65, .36f);
-            boomAudio = Synth("boom", .35f, 90, 32, .45f);
+            boomAudio = Resources.Load<AudioClip>("Audio/Blast") ?? Synth("boom", .35f, 90, 32, .45f);
             winAudio = Synth("win", .28f, 360, 770, .32f);
         }
 
@@ -166,6 +177,7 @@ namespace ZombieSurvivalRun
         {
             worldRoot = new GameObject("3D WORLD / generated geometry, level props, characters");
             worldRoot.transform.SetParent(transform, false);
+            combatEffects = worldRoot.AddComponent<ZSRCombatEffects>();
 
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
@@ -387,7 +399,16 @@ namespace ZombieSurvivalRun
             boss = null;
             foreach (var o in temporary) if (o != null) Destroy(o);
             temporary.Clear();
-            if (drone != null) { Destroy(drone); drone = null; }
+            ClearCombat();
+        }
+
+        void ClearCombat()
+        {
+            if (drone != null) { drone.gameObject.SetActive(false); Destroy(drone.gameObject); drone = null; }
+            droneTimer = 0f;
+            foreach (var grenade in grenadesInFlight) grenade.Discard();
+            grenadesInFlight.Clear();
+            combatEffects.Clear();
         }
 
         void Update()
@@ -396,7 +417,10 @@ namespace ZombieSurvivalRun
             temporary.RemoveAll(ExpiredRunObject);
             float dt = FrameStep;
             HandleInput(dt);
+            if (!IsRunning) return;
             Elapsed += dt;
+            UpdateGrenades(dt);
+            combatEffects.Tick(dt, RunSpeed, Hero.ItemOrigin);
 
             foreach (var chunk in road) chunk.Tick(dt * RunSpeed);
             if (shieldEffect != null && shieldEffect.activeSelf) shieldEffect.transform.Rotate(0, 115f * dt, 0);
@@ -431,24 +455,14 @@ namespace ZombieSurvivalRun
                 Notify("СУПЕР-БОСС НА ПОДХОДЕ!", 2.6f);
             }
 
-            if (!reloading && shootTimer <= 0) Shoot();
+            if (!reloading && !Hero.IsUsingItem && shootTimer <= 0) Shoot();
             if (reloading)
             {
                 reloadTimer -= dt;
                 if (reloadTimer <= 0) { reloading = false; Ammo = Magazine; Notify("ПЕРЕЗАРЯЖЕНО", .55f); }
             }
 
-            if (droneTimer > 0)
-            {
-                droneShotTimer -= dt;
-                if (droneShotTimer <= 0)
-                {
-                    droneShotTimer = Mathf.Max(.35f, .90f - ItemLevel(ItemType.Drone) * .1f);
-                    var target = FindTarget();
-                    if (target != null) target.TakeHit(22 + ItemLevel(ItemType.Drone) * 12, Hero.Muzzle);
-                }
-            }
-            else if (drone != null) { Destroy(drone); drone = null; }
+            UpdateDrone(dt);
 
             shake = Mathf.MoveTowards(shake, 0, dt * 2.8f);
             if (Hero.Health <= 0) { Finish(false); return; }
@@ -465,6 +479,7 @@ namespace ZombieSurvivalRun
 
         void LateUpdate()
         {
+            if (music != null) music.Mix(State, Time.unscaledDeltaTime);
             if (IsRunning)
             {
                 float jitter = Mathf.PerlinNoise(Time.unscaledTime * 20f, .37f) * 2f - 1f;
@@ -515,14 +530,16 @@ namespace ZombieSurvivalRun
             Hero.TargetX = Mathf.Clamp(Hero.TargetX, -RunLaneLimit, RunLaneLimit);
         }
 
-        ZSRZombie FindTarget()
+        ZSRZombie FindTarget() => FindTarget(Hero.PositionX, .6f);
+
+        ZSRZombie FindTarget(float lateralCenter, float minDepth)
         {
             ZSRZombie best = null;
             float score = float.MaxValue;
             foreach (var z in enemies)
             {
-                if (z == null || !z.Alive || !z.gameObject.activeInHierarchy || z.DistanceZ < .6f || z.DistanceZ > 52) continue;
-                float dist = Mathf.Abs(z.X - Hero.PositionX);
+                if (z == null || !z.Alive || !z.gameObject.activeInHierarchy || z.DistanceZ < minDepth || z.DistanceZ > 52) continue;
+                float dist = Mathf.Abs(z.X - lateralCenter);
                 if (dist > 7.3f) continue;
                 float s = z.DistanceZ + dist * .5f;
                 if (s < score) { score = s; best = z; }
@@ -537,22 +554,32 @@ namespace ZombieSurvivalRun
             float rate = Weapon == WeaponType.Pistol ? .33f : Weapon == WeaponType.Rifle ? .13f : Weapon == WeaponType.Shotgun ? .57f : .065f;
             if (SelectedHero == 1) rate *= .90f;
             if (activeBonus == BonusKind.RapidFire && bonusTimer > 0) rate *= .62f;
-            shootTimer = rate;
-            Hero.Fire();
-            shake = .16f;
-            audioSource.PlayOneShot(shotAudio, Weapon == WeaponType.Minigun ? .30f : .60f);
+            // Carry the fraction of the frame after the scheduled shot without
+            // building a backlog during reloads, item use, or a pause.
+            shootTimer = Mathf.Max(-FrameStep, shootTimer) + rate;
+            Vector3 aim = target.AimPoint;
+            Hero.Fire(aim);
+            Vector3 muzzle = Hero.Muzzle;
+            shake = Mathf.Max(shake, Weapon == WeaponType.Shotgun ? .29f : .15f);
+            audioSource.PlayOneShot(weaponAudio[(int)Weapon], Weapon == WeaponType.Minigun ? .38f : .68f);
             Ammo--;
             int damage = (Weapon == WeaponType.Pistol ? 27 : Weapon == WeaponType.Rifle ? 22 : Weapon == WeaponType.Shotgun ? 55 : 13) + WeaponLevel * 5;
             damage *= damageMultiplier;
             if (Weapon == WeaponType.Shotgun)
             {
-                target.TakeHit(damage, Hero.Muzzle);
+                target.TakeHit(damage, muzzle);
                 foreach (var z in enemies)
                     if (z != null && z != target && z.Alive && Mathf.Abs(z.X - target.X) < 1.7f && Mathf.Abs(z.DistanceZ - target.DistanceZ) < 2.5f)
-                        z.TakeHit(damage / 3, Hero.Muzzle);
+                        z.TakeHit(damage / 3, muzzle);
             }
-            else target.TakeHit(damage, Hero.Muzzle);
-            Trace(Hero.Muzzle, target.AimPoint);
+            else target.TakeHit(damage, muzzle);
+            var tracerColor = new Color(1f, .74f, .27f);
+            combatEffects.Streak(muzzle, aim, tracerColor, Weapon == WeaponType.Shotgun ? .08f : .06f);
+            if (Weapon == WeaponType.Shotgun)
+            {
+                combatEffects.Streak(muzzle, aim + new Vector3(.58f, .16f, .22f), tracerColor, .043f);
+                combatEffects.Streak(muzzle, aim + new Vector3(-.49f, -.19f, -.16f), tracerColor, .043f);
+            }
             if (Ammo <= 0)
             {
                 reloading = true;
@@ -560,15 +587,6 @@ namespace ZombieSurvivalRun
                 Hero.Reload(reloadTimer);
                 Notify("ПЕРЕЗАРЯДКА", .9f);
             }
-        }
-
-        void Trace(Vector3 start, Vector3 end)
-        {
-            var fx = new GameObject("bullet tracer");
-            fx.transform.position = (start + end) * .5f;
-            fx.transform.rotation = Quaternion.LookRotation(end - start);
-            ZSRVisuals.Box("streak", fx.transform, Vector3.zero, new Vector3(.045f, .045f, Vector3.Distance(start, end)), ZSRVisuals.GoldGlow);
-            fx.AddComponent<ZSRLifetime>().Duration = .07f;
         }
 
         // Small mixed formations from the first level: enemies are recognizable from a distance.
@@ -665,31 +683,51 @@ namespace ZombieSurvivalRun
             else if (k == BonusKind.DoubleDamage) { damageMultiplier = 2; activeBonus = k; bonusTimer = 10f + Chapter; Notify("ДВОЙНОЙ УРОН", 1.8f); }
             else if (k == BonusKind.RapidFire) { damageMultiplier = 1; activeBonus = k; bonusTimer = 11f; Notify("ТУРБО-СТРЕЛЬБА", 1.8f); }
             else if (k == BonusKind.Magnet) { magnetTimer = 12f; Notify("МАГНИТ МОНЕТ", 1.8f); }
-            else if (k == BonusKind.Heal) { Hero.Health = Mathf.Min(Hero.MaxHealth, Hero.Health + 45); Notify("ЗДОРОВЬЕ +45", 1.8f); }
+            else if (k == BonusKind.Heal) HealHero(45, false);
             else if (k == BonusKind.Turret) { StartDrone(); Notify("ПОДДЕРЖКА С ВОЗДУХА", 1.8f); }
         }
 
         public void ThrowGrenade()
         {
-            if (!IsRunning || Grenades <= 0) return;
+            if (!IsRunning || Grenades <= 0 || Hero.IsUsingItem) return;
             Grenades--;
-            shake = .65f;
-            audioSource.PlayOneShot(boomAudio, .8f);
-            float radius = 4.6f + ItemLevel(ItemType.Grenade) * .42f;
-            int grenadeDamage = 105 + ItemLevel(ItemType.Grenade) * 38;
-            // Explode near the closest live target; otherwise at a fixed point ahead.
-            var primary = FindTarget();
-            Vector3 blast = primary != null ? primary.transform.position + Vector3.up * 1.0f :
-                Hero.transform.position + new Vector3(0, 1.0f, 14f);
-            ZSRVisuals.Explosion(blast, 2.0f + ItemLevel(ItemType.Grenade) * .20f, ZSRVisuals.OrangeGlow, .38f);
-            int hits = 0;
-            foreach (var z in new List<ZSRZombie>(enemies))
+            Hero.UseItem(false);
+            var target = FindTarget();
+            Vector3 destination = target != null ? target.transform.position : Hero.transform.position + Vector3.forward * 22f;
+            destination.y = .12f;
+            grenadesInFlight.Add(new ZSRGrenadeFlight(worldRoot.transform, combatEffects, Hero.ItemOrigin,
+                target, destination, ItemLevel(ItemType.Grenade)));
+        }
+
+        void UpdateGrenades(float dt)
+        {
+            for (int i = grenadesInFlight.Count - 1; i >= 0; i--)
             {
-                if (z == null || !z.Alive || !z.gameObject.activeInHierarchy) continue;
-                float range = Vector3.Distance(z.AimPoint, blast);
-                if (range > radius) continue;
-                float falloff = 1f - .52f * (range / radius);
-                z.TakeHit(Mathf.Max(1, Mathf.RoundToInt(grenadeDamage * falloff)), blast);
+                var grenade = grenadesInFlight[i];
+                if (!grenade.Tick(dt, RunSpeed, Hero.ItemOrigin)) continue;
+                Detonate(grenade.Position, grenade.ItemLevel);
+                grenade.Discard();
+                grenadesInFlight.RemoveAt(i);
+            }
+        }
+
+        void Detonate(Vector3 position, int itemLevel)
+        {
+            shake = Mathf.Max(shake, .65f);
+            audioSource.PlayOneShot(boomAudio, .85f);
+            float radius = 4.6f + itemLevel * .42f;
+            int grenadeDamage = 105 + itemLevel * 38;
+            combatEffects.Explode(position, radius);
+            // Damage still uses the existing radial falloff. The effect starts on the ground.
+            Vector3 damageCenter = position + Vector3.up * .88f;
+            int hits = 0;
+            foreach (var zombie in enemies)
+            {
+                if (zombie == null || !zombie.Alive || !zombie.gameObject.activeInHierarchy) continue;
+                float distance = Vector3.Distance(zombie.AimPoint, damageCenter);
+                if (distance > radius) continue;
+                float falloff = 1f - .52f * (distance / radius);
+                zombie.TakeHit(Mathf.Max(1, Mathf.RoundToInt(grenadeDamage * falloff)), damageCenter);
                 hits++;
             }
             Notify("ГРАНАТА • " + hits + " ЦЕЛЕЙ", 1.6f);
@@ -697,26 +735,50 @@ namespace ZombieSurvivalRun
 
         public void UseMedkit()
         {
-            if (!IsRunning || Medkits <= 0 || Hero.Health >= Hero.MaxHealth) return;
+            if (!IsRunning || Medkits <= 0 || Hero.Health >= Hero.MaxHealth || Hero.IsUsingItem) return;
             Medkits--;
-            int heal = 40 + ItemLevel(ItemType.Medkit) * 18;
-            Hero.Health = Mathf.Min(Hero.MaxHealth, Hero.Health + heal);
-            Notify("АПТЕЧКА +" + heal, 1.5f);
+            Hero.UseItem(true);
+            HealHero(40 + ItemLevel(ItemType.Medkit) * 18, true);
             audioSource.PlayOneShot(winAudio, .35f);
+        }
+
+        void HealHero(int amount, bool useKit)
+        {
+            int restored = Mathf.Max(0, Mathf.Min(amount, Hero.MaxHealth - Hero.Health));
+            Hero.Health += restored;
+            if (restored > 0)
+                combatEffects.Heal(Hero.ItemOrigin, Hero.transform.position + Vector3.up * 1.15f, useKit);
+            Notify((useKit ? "АПТЕЧКА +" : "ЗДОРОВЬЕ +") + restored + " HP", 1.5f);
         }
 
         public void StartDrone()
         {
-            if (drone != null) Destroy(drone);
-            var droneRoot = new GameObject("drone fire support");
-            droneRoot.transform.SetParent(Hero.transform, false);
-            droneRoot.transform.localPosition = new Vector3(-1.2f, 3.1f, .2f);
-            drone = droneRoot;
-            ZSRVisuals.Box("aircraft", drone.transform, Vector3.zero, new Vector3(.65f, .14f, .38f), ZSRVisuals.Gunmetal);
-            for (int i = -1; i <= 1; i += 2)
-                ZSRVisuals.Cylinder("rotor", drone.transform, new Vector3(i * .46f, .10f, 0), new Vector3(.38f, .015f, .38f), ZSRVisuals.Steel);
+            if (drone == null) drone = ZSRSupportDrone.Launch(worldRoot.transform, Hero.transform.position);
             droneTimer = 10f + ItemLevel(ItemType.Drone) * 2f;
             droneShotTimer = .25f;
+        }
+
+        void UpdateDrone(float dt)
+        {
+            if (drone == null) return;
+            if (droneTimer <= 0f)
+            {
+                Destroy(drone.gameObject);
+                drone = null;
+                return;
+            }
+            var target = FindTarget(drone.transform.position.x, drone.transform.position.z + .65f);
+            Vector3 aim = target != null ? target.AimPoint : drone.transform.position + Vector3.forward * 12f;
+            drone.Tick(Hero.PositionX, aim, dt);
+            droneShotTimer -= dt;
+            if (droneShotTimer > 0f || target == null) return;
+            int itemLevel = ItemLevel(ItemType.Drone);
+            droneShotTimer = Mathf.Max(.35f, .90f - itemLevel * .1f);
+            Vector3 origin = drone.Muzzle;
+            drone.Fire();
+            combatEffects.Streak(origin, aim, new Color(.24f, 1f, .88f), .073f);
+            audioSource.PlayOneShot(droneAudio, .41f);
+            target.TakeHit(22 + itemLevel * 12, origin);
         }
 
         public void UseDrone()
@@ -742,7 +804,7 @@ namespace ZombieSurvivalRun
         public void SpawnImpact(Vector3 position, bool armor)
         {
             if (!IsRunning) return;
-            ZSRVisuals.Explosion(position, .70f, armor ? ZSRVisuals.BlueGlow : ZSRVisuals.RedGlow, .21f);
+            combatEffects.Hit(position, armor);
             audioSource.PlayOneShot(hitAudio, .13f);
         }
 
@@ -773,6 +835,7 @@ namespace ZombieSurvivalRun
         {
             if (!victory) Hero.Die();
             State = victory ? ZSRState.Victory : ZSRState.Defeat;
+            ClearCombat();
             if (victory)
             {
                 Earned += 320 + Level * 95 + (IsBossLevel ? 450 : 0);
@@ -792,8 +855,14 @@ namespace ZombieSurvivalRun
         }
 
         public void Notify(string t, float seconds) { notice = t; noticeTimer = seconds; }
-        void OnApplicationPause(bool p) { if (p && IsRunning) State = ZSRState.Paused; }
-        public void TogglePause() { if (State == ZSRState.Playing) State = ZSRState.Paused; else if (State == ZSRState.Paused) State = ZSRState.Playing; }
+        void OnApplicationPause(bool paused) { if (paused && IsRunning) TogglePause(); }
+        public void TogglePause()
+        {
+            if (State != ZSRState.Playing && State != ZSRState.Paused) return;
+            bool pause = State == ZSRState.Playing;
+            State = pause ? ZSRState.Paused : ZSRState.Playing;
+            combatEffects.SetPaused(pause);
+        }
         public void GoMenu() { ClearRun(); State = ZSRState.Menu; Hero.gameObject.SetActive(false); worldRoot.SetActive(false); }
         public void GoHeroes() { State = ZSRState.Heroes; }
         public void GoArsenal() { State = ZSRState.Arsenal; }

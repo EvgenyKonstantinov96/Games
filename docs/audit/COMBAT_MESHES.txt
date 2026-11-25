@@ -1,0 +1,4 @@
+PASS combat_drone: 388 triangles, UV, custom normals
+PASS combat_grenade: 132 triangles, UV, custom normals
+PASS combat_medkit: 144 triangles, UV, custom normals
+PASS combat_rotor: 68 triangles, UV, custom normals

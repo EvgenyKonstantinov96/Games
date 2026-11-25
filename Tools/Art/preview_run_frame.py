@@ -236,6 +236,23 @@ for part in ("lux_weapon_rifle", "lux_weapon_rifle_steel"):
     weapon = mesh_asset(part,grip+Vector((0,0,.065)),metal,gun_yaw)
     weapon.scale = (.51,)*3
 
+if "--combat" in sys.argv:
+    mesh_asset("combat_drone",(-.65,1.48,2.31),props)
+    for x in (-1,1):
+        for y in (-1,1):
+            mesh_asset("combat_rotor",(-.65+x*.45,1.48+y*.38,2.418),props,(x+y)*.42)
+    beacon=paint("Drone lamps",(.1,.70,1),emissive=True)
+    cube("Rear beacon",(-.65,1.131,2.327),(.19,.022,.032),beacon)
+    cube("Port beacon",(-1.10,.987,2.34),(.058,.026,.038),beacon)
+    grenade=mesh_asset("combat_grenade",(.91,5.6,2.40),props,.2)
+    grenade.rotation_euler.x=.72
+    fuse=paint("Grenade fuse",(1,.43,.1),emissive=True)
+    cube("Fuse",(.91,5.55,2.49),(.045,.045,.037),fuse)
+    for i in range(4):
+        t=i/4
+        cube("Grenade flight trace",(.87-.56*t,5.4-1.44*t,2.39-.36*t),
+             (.065-.047*t,.22-.12*t,.049-.031*t),fuse)
+
 bpy.ops.object.camera_add()
 scene.camera=bpy.context.object
 scene.camera.data.sensor_fit="VERTICAL"

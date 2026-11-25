@@ -36,7 +36,7 @@ CAST = [
     ("Crawler", 1.72, .44, .31, 7, 11, 8),
     ("Boss", 2.14, .92, .50, 14, 14, 22),
 ]
-IDLE, MOVE, FIRE, RELOAD, HIT, ATTACK, DEATH = (1, 33, 59, 85, 117, 127, 147)
+IDLE, MOVE, FIRE, RELOAD, HIT, ATTACK, DEATH, MEDKIT, THROW = (1, 33, 59, 85, 117, 127, 147, 171, 199)
 
 
 def v(x, y, z):
@@ -194,7 +194,7 @@ class Character:
         """Rounded corner silhouette with a rolled edge on armor, webbing and packs."""
         x,y,z = p
         w,d,h = [a*.5 for a in size]
-        radius = min(w,h)*.33
+        radius = min(w,h)*.43
         outline = []
         angular_steps = 3 if min(w,h) > .047 else 2
         for sx,sz,angle in ((1,-1,-90),(1,1,0),(-1,1,90),(-1,-1,180)):
@@ -202,7 +202,7 @@ class Character:
                 turn = math.radians(angle + 90*i/(angular_steps-1))
                 outline.append((sx*(w-radius)+radius*math.cos(turn),sz*(h-radius)+radius*math.sin(turn)))
         base = len(self.vertices)
-        profiles = ((-d,.94),(d,.94)) if d < .013 else ((-d,.80),(-d*.63,1),(d*.63,1),(d,.80))
+        profiles = ((-d,.94),(d,.94)) if d < .013 else ((-d,.84),(-d*.73,1),(d*.73,1),(d,.84))
         for offset, scale in profiles:
             for a,b in outline:
                 self.vertices.append((x+a*scale+slant*b,y+offset,z+b*scale))
@@ -227,7 +227,11 @@ class Character:
                 self.limb(side, leg=True)
             knee = self.bones["Shin"+side][0]
             foot = self.bones["Foot"+side][0]
-            self.volume(foot+v(0,.057,-.042), (.069,.131,.052), 3, "Foot"+side,10)
+            # Keep a sculpted heel and a flatter, tapered toe under the same
+            # skin/triangle budget as the old oval boot.
+            self.surface(foot+v(0,-.079,-.045),foot+v(0,.200,-.045),
+                         [(0,.031,.018),(.13,.054,.045),(.33,.067,.052),
+                          (.56,.069,.044),(.84,.061,.033),(1,.027,.016)],3,"Foot"+side,10)
             self.panel(foot+v(0,.050,-.074), (.137,.242,.022), 8, "Foot"+side)
             hand = self.bones["Hand"+side][0]
             fingers = self.bones["Hand"+side][1]
@@ -482,8 +486,11 @@ class Character:
                     return a[col]+(b[col]-a[col])*(t-a[0])/(b[0]-a[0])
             return table[-1][col]
 
-        for state,start,count in (("Idle",IDLE,30),("Move",MOVE,24),("Fire",FIRE,24),
-                                  ("Reload",RELOAD,30),("Hit",HIT,8),("Attack",ATTACK,18),("Death",DEATH,21)):
+        motions = [("Idle",IDLE,30),("Move",MOVE,24),("Fire",FIRE,24),("Reload",RELOAD,30),
+                   ("Hit",HIT,8),("Attack",ATTACK,18),("Death",DEATH,21)]
+        if self.hero:
+            motions += [("Medkit",MEDKIT,24),("Throw",THROW,18)]
+        for state,start,count in motions:
             for step in range(count+1):
                 frame=start+step
                 bpy.context.scene.frame_set(frame)
@@ -492,7 +499,7 @@ class Character:
                     bone.matrix_basis=Matrix.Identity(4)
                     bone.rotation_mode="QUATERNION"
                 bpy.context.view_layer.update()
-                moving=state in ("Move","Fire")
+                moving=state in ("Move","Fire","Medkit","Throw")
                 f=t%1
                 impact=interp([(0,0),(.16,1),(.36,.46),(1,0)],t,1)
                 death=interp([(0,0),(.19,.12),(.52,.61),(.8,.97),(1,1)],t,1) if state=="Death" else 0
@@ -501,6 +508,8 @@ class Character:
                 key={"Toxic":.42,"Boss":.68,"Brute":.63}.get(self.name,.54)
                 attack=interp([(0,0),(.25,-.48),(key,1),(1,0)],t,1) if state=="Attack" else 0
                 reload=interp([(0,0),(.24,1),(.67,1),(1,0)],t,1) if state=="Reload" else 0
+                care=interp([(0,0),(.24,1),(.70,1),(1,0)],t,1) if state=="Medkit" else 0
+                swing_throw=interp([(0,0),(.17,-.38),(.31,-1),(.42,.85),(.61,.64),(1,0)],t,1) if state=="Throw" else 0
                 crouch=.45 if self.crawler else .072 if moving else .044
                 crouch += (1 if self.tank else .70)*.59*death
                 contact=interp(locomotion,(f*2)%1,1) if moving else 0
@@ -520,7 +529,17 @@ class Character:
                     self.leg_pose(side,foot,v(0,1,0))
                     if self.hero:
                         arm=self.rig.pose.bones["UpperArm"+side]
-                        if reload:
+                        if side=="L" and (care or swing_throw):
+                            origin=arm.head.copy()
+                            direction=(arm.tail-origin).normalized()
+                            direction += v(-.58*care-.34*abs(swing_throw),.35*swing_throw-.36*care,-.56*swing_throw)
+                            self.aim_bone(arm.name,origin,direction)
+                            wrist=self.rig.pose.bones["ForearmL"]
+                            elbow=wrist.head.copy()
+                            wrist_dir=(wrist.tail-elbow).normalized()
+                            wrist_dir += v(-.49*care-.24*abs(swing_throw),.12*care+.62*swing_throw,.26*care-.85*swing_throw)
+                            self.aim_bone(wrist.name,elbow,wrist_dir)
+                        elif reload:
                             origin=arm.head.copy()
                             self.aim_bone(arm.name,origin,v(-s*.22,.32,-.40-.23*reload))
                         elif fire or rear:
@@ -571,6 +590,7 @@ def main():
         actor.skeleton()
         actor.sculpt()
         actor.skin_mesh()
+        scene.frame_end=217 if actor.hero else 168
         actor.animate()
         actor.export()
         roster.append(actor)

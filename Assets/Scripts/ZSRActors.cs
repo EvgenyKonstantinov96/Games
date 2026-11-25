@@ -22,7 +22,11 @@ namespace ZombieSurvivalRun
         GameObject flash, model;
         ZSRSkinnedArt rigged;
         ZSRProductionArt production;
-        float stride, recoil, muzzleTime, velocityX, hitT;
+        float stride, recoil, muzzleTime, velocityX, hitT, itemTime;
+        public bool IsUsingItem => itemTime > 0f;
+        public Vector3 ItemOrigin => production != null && production.ItemHand != null
+            ? production.ItemHand.position + transform.forward * .055f
+            : transform.TransformPoint(new Vector3(-.32f, 1.30f, .23f));
 
         public void Build(int selection, WeaponType gun)
         {
@@ -123,9 +127,22 @@ namespace ZombieSurvivalRun
         {
             Build(selection,weaponType);
             MaxHealth=selection==0?132:112;Health=MaxHealth;
-            TargetX=0;transform.position=Vector3.zero;velocityX=0;stride=0;recoil=0;hitT=0;
+            TargetX=0;transform.position=Vector3.zero;velocityX=0;stride=0;recoil=0;hitT=0;itemTime=0;
         }
-        public void Fire(){recoil=.14f;muzzleTime=.066f;if(production!=null){production.Fire();return;}if(rigged!=null){rigged.Fire();return;}if(flash!=null)flash.SetActive(true);}
+        public void Fire(Vector3 aim)
+        {
+            recoil = .14f;
+            muzzleTime = .066f;
+            if (production != null) production.Fire(aim);
+            else if (rigged != null) rigged.Fire();
+            else if (flash != null) flash.SetActive(true);
+        }
+
+        public void UseItem(bool medkit)
+        {
+            itemTime = medkit ? .8f : .6f;
+            if (production != null) production.UseItem(medkit);
+        }
         public void Hit(){hitT=.20f;if(production!=null)production.Hit();}
         public void Reload(float seconds) { if (production != null) production.Reload(seconds); }
         public void Die() { if (production != null) production.Die(); }
@@ -135,6 +152,7 @@ namespace ZombieSurvivalRun
             if(g==null||body==null)return;
             float dt=g.FrameStep;
             bool running=g.IsRunning;
+            if (running && itemTime > 0f) itemTime = Mathf.Max(0f, itemTime - dt);
             float gaitRate = (Selection == 0 ? 1f : 1.07f) * g.RunPaceMultiplier;
             if (production != null)
             {
@@ -145,7 +163,8 @@ namespace ZombieSurvivalRun
                     transform.position = p;
                 }
                 production.Tick(running, gaitRate);
-                production.SetLateralLean(running ? velocityX : 0f);
+                float steering = running ? velocityX + (TargetX - transform.position.x) * 1.7f : 0f;
+                production.SetLateralLean(steering, dt);
                 hitT = Mathf.MoveTowards(hitT, 0, dt * 3.2f);
                 return;
             }
@@ -158,7 +177,7 @@ namespace ZombieSurvivalRun
                     transform.position = p;
                 }
                 rigged.transform.localEulerAngles = new Vector3(0, 0,
-                    Mathf.Clamp(-velocityX * 2.0f, -10, 10) + hitT * 4f);
+                    Mathf.Clamp(-(velocityX + (TargetX - transform.position.x) * 1.5f) * 1.48f, -11f, 11f) + hitT * 4f);
                 if (running) rigged.SetRunningSpeed(gaitRate);
                 hitT = Mathf.MoveTowards(hitT, 0, dt * 3.2f);
                 return;
