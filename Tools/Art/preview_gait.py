@@ -79,5 +79,12 @@ scene.render.resolution_percentage = 100
 scene.render.image_settings.file_format = "PNG"
 scene.render.fps = 30
 scene.frame_start,scene.frame_end = 33,56
-scene.render.filepath = str(output)+"/"
-bpy.ops.render.render(animation=True)
+if "--still" in args:
+    scene.cycles.samples = 40
+    scene.render.resolution_x, scene.render.resolution_y = 1152, 648
+    scene.frame_set(int(args[args.index("--still")+1]))
+    scene.render.filepath = str(output/"still.png")
+    bpy.ops.render.render(write_still=True)
+else:
+    scene.render.filepath = str(output)+"/"
+    bpy.ops.render.render(animation=True)

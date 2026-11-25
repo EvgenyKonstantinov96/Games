@@ -10,20 +10,82 @@ ROOT=Path(sys.argv[sys.argv.index("--")+1])
 CAST={"Max","Eva","Walker","Runner","Armored","Brute","Toxic","Crawler","Boss"}
 assert {f.stem for f in ROOT.glob("*.fbx")}==CAST
 
+
+def check_anatomy(skin, rig, scene, path, hero):
+    mesh = skin.data
+    adjacent = [[] for _ in mesh.vertices]
+    for edge in mesh.edges:
+        a, b = edge.vertices
+        adjacent[a].append(b)
+        adjacent[b].append(a)
+    remaining = set(range(len(mesh.vertices)))
+    largest = set()
+    while remaining:
+        first = remaining.pop()
+        component, todo = {first}, [first]
+        while todo:
+            for vertex in adjacent[todo.pop()]:
+                if vertex in remaining:
+                    remaining.remove(vertex)
+                    component.add(vertex)
+                    todo.append(vertex)
+        if len(component) > len(largest):
+            largest = component
+    assert len(largest) > len(mesh.vertices)*.64, (path, len(largest))
+    weights = {skin.vertex_groups[group.group].name for i in largest
+               for group in mesh.vertices[i].groups if group.weight > .28}
+    joints = {f"{part}{side}" for part in ("Clavicle", "Thigh", "Shin", "UpperArm", "Forearm", "Hand")
+              for side in ("L", "R")}
+    digits = {f"Finger{digit}{side}" for digit in range(1, 6) for side in ("L", "R")}
+    assert joints | digits | {"Spine", "Pelvis", "Chest", "Head"} <= weights, (path, weights)
+
+    reference = []
+    for edge in mesh.edges:
+        a, b = edge.vertices
+        rest = (mesh.vertices[a].co-mesh.vertices[b].co).length
+        if rest >= .017 and a in largest and b in largest:
+            reference.append((a,b,rest))
+    peak = 0.
+    feet = {side: [] for side in ("L", "R")}
+    frames = [1, *range(33, 57), 73, 94, 122, 133, 154]
+    if hero:
+        frames += [182, 189, 207, 211]
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    for frame in frames:
+        scene.frame_set(frame)
+        posed = skin.evaluated_get(depsgraph).data.vertices
+        strain = sorted((posed[a].co-posed[b].co).length/rest for a,b,rest in reference)
+        assert strain[-1] < 3.6 and strain[int(len(strain)*.01)] > .30, (path, frame, strain[-1])
+        peak = max(peak, strain[int(len(strain)*.99)])
+        if 33 <= frame < 57:
+            for side in feet:
+                foot = rig.pose.bones["Foot"+side]
+                forefoot = rig.pose.bones["Forefoot"+side]
+                relative = foot.matrix.to_quaternion().inverted() @ forefoot.matrix.to_quaternion()
+                feet[side].append(relative @ Vector((0,1,0)))
+    toe_arc = [max(math.degrees(directions[0].angle(pose)) for pose in directions)
+               for directions in feet.values()]
+    assert peak < 1.85 and min(toe_arc) > 10, (path, peak, toe_arc)
+    print(f"ANATOMY {path.stem:7} {len(largest)} vertices in continuous body, "
+          f"{len(frames)} poses, worst 99th-percentile edge stretch {peak:.2f}x, "
+          f"forefoot flexion {toe_arc[0]:.1f}/{toe_arc[1]:.1f} degrees", flush=True)
+
+
 for path in sorted(ROOT.glob("*.fbx")):
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.import_scene.fbx(filepath=str(path), use_anim=True, anim_offset=0)
     rig,=[o for o in bpy.context.scene.objects if o.type=="ARMATURE"]
     skin,=[o for o in bpy.context.scene.objects if o.type=="MESH"]
     names=set(rig.data.bones.keys())
-    assert {"Pelvis","Chest","Head","ForwardMarker","HandL","HandR"} <= names, path
+    assert {"Pelvis","Spine","Chest","Head","ForwardMarker","HandL","HandR","ForefootL","ForefootR"} <= names, path
     hero=path.stem in {"Max","Eva"}
     if hero:
         assert {"WeaponGrip","WeaponForward"} <= names, path
     assert any(m.type=="ARMATURE" and m.object==rig for m in skin.modifiers), path
     assert skin.data.uv_layers and len(skin.data.vertices) < 5500, path
     assert skin.data.has_custom_normals and all(p.use_smooth for p in skin.data.polygons), path
-    assert all(abs(sum(g.weight for g in v.groups)-1.0) < .001 for v in skin.data.vertices), path
+    assert all(1 <= len(v.groups) <= 4 and abs(sum(g.weight for g in v.groups)-1.0) < .001
+               for v in skin.data.vertices), path
     action=rig.animation_data.action
     start,end=action.frame_range
     assert end-start >= 166, (path,action.frame_range)
@@ -37,6 +99,7 @@ for path in sorted(ROOT.glob("*.fbx")):
         points.append(rig.pose.bones["Pelvis"].matrix.copy())
     assert (points[1].translation-points[2].translation).length > .005, path
     assert (points[0].translation-points[-1].translation).length > .2, path
+    check_anatomy(skin, rig, scene, path, hero)
     if hero:
         assert end-start >= 215, action.frame_range
         poses=[]

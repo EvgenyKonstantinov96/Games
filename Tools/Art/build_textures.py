@@ -111,14 +111,16 @@ with ZipFile(args.skin_pack) as pack:
         origin=(i%4*256,512+i//4*256)
         atlas.paste(Image.fromarray(np.uint8(np.clip(pixels,0,255))),origin)
         normals_atlas.paste(normal_tile(skin_relief(source,.095)),origin)
-    for i, name in enumerate(("male_casualsuit04", "female_casualsuit01")):
+    for i, name in enumerate(("shoes02", "shoes05")):
         path=f"clothes/{name}/{name}_diffuse.png"
         source=Image.open(BytesIO(pack.read(path))).convert("L").resize((256,128),Image.Resampling.LANCZOS)
         grays = np.asarray(source,dtype=float) / 255
-        cloth=np.uint8(28 + grays[:,:,None] * np.asarray([48,53,58]))
+        colors = np.array(((15,18,19),(27,24,22))[i])
+        contrast = np.array(((76,79,82),(102,103,98))[i])
+        footwear=np.uint8(colors + grays[:,:,None] * contrast)
         origin=(i*256,384)
-        atlas.paste(Image.fromarray(cloth),origin)
-        normals_atlas.paste(normal_tile(skin_relief(source,.22)),origin)
+        atlas.paste(Image.fromarray(footwear),origin)
+        normals_atlas.paste(normal_tile(skin_relief(source,.18)),origin)
 atlas.save(OUT/"CharacterAtlas.png",optimize=True)
 normals_atlas.save(OUT/"CharacterAtlas_normal.png",optimize=True)
 if args.characters_only:

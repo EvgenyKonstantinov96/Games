@@ -12,15 +12,14 @@ import bpy
 from mathutils import Matrix, Quaternion, Vector
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from gait import eased_keys, foot_target
-from makehuman_faces import append_face
-from survivor_clothing import append_pants
+from makehuman_body import Body, SIDES
 
 OUT = Path(sys.argv[sys.argv.index("--") + 1]).resolve()
 OUT.mkdir(parents=True, exist_ok=True)
 FPS = 30
 if "--makehuman-data" not in sys.argv:
-    raise SystemExit("Pass --makehuman-data /path/to/makehuman/data to build the anatomically shaped heads.")
-FACE_DATA = Path(sys.argv[sys.argv.index("--makehuman-data") + 1])
+    raise SystemExit("Pass --makehuman-data /path/to/makehuman/data to build the anatomical meshes.")
+HUMAN_DATA = Path(sys.argv[sys.argv.index("--makehuman-data") + 1])
 if "--skin-pack" not in sys.argv:
     raise SystemExit("Pass --skin-pack /path/to/makehuman_system_assets_cc0.zip.")
 CLOTHING = ZipFile(sys.argv[sys.argv.index("--skin-pack") + 1])
@@ -55,6 +54,7 @@ class Character:
         self.random = random.Random(self.name)
         self.bones = {}
         self.vertices, self.faces, self.weights, self.tiles = [], [], [], []
+        self.body = Body(self, HUMAN_DATA)
         self.rig = bpy.data.objects.new("Skeleton", bpy.data.armatures.new("Skeleton"))
         bpy.context.collection.objects.link(self.rig)
 
@@ -62,38 +62,41 @@ class Character:
         self.bones[name] = (Vector(head), Vector(tail), parent)
 
     def skeleton(self):
-        h = self.h
-        waist = v(0, 0, h*.52)
-        chest = v(0, .025, h*.69)
-        neck = v(0, .04, h*.86)
-        self.bone("Pelvis", waist, chest)
-        self.bone("Chest", chest, neck, "Pelvis")
-        self.bone("Head", neck, v(0, .06, h), "Chest")
-        self.bone("ForwardMarker", v(0, .40, h*.52), v(0, .48, h*.52), "Pelvis")
-        for side, s in (("L", -1), ("R", 1)):
-            hip = v(s*self.hips*.29, 0, h*.52)
-            knee = v(s*self.hips*.32, .024, h*.285)
-            ankle = v(s*self.hips*.34, -.018, .095)
-            foot = ankle + v(0, .16, -.06)
+        body = self.body
+        hips = body.midpoint("upper-leg")
+        waist = body.shape(hips)
+        chest = body.joint("spine-2")
+        neck = body.joint("neck")
+        spine = body.joint("spine-4")
+        self.bone("Pelvis", waist, spine)
+        self.bone("Spine", spine, chest, "Pelvis")
+        self.bone("Chest", chest, neck, "Spine")
+        self.bone("Head", neck, body.joint("head-2"), "Chest")
+        self.bone("ForwardMarker", waist+v(0,.40,0), waist+v(0,.48,0), "Pelvis")
+        for side, sign in SIDES:
+            key = "r-" if sign < 0 else "l-"
+            hip, knee = (body.joint(key + joint) for joint in ("upper-leg", "knee"))
+            ankle = body.foot_bone(side)
+            ball = ankle + v(0,.145,-.056)
             self.bone("Thigh"+side, hip, knee, "Pelvis")
             self.bone("Shin"+side, knee, ankle, "Thigh"+side)
-            self.bone("Foot"+side, ankle, foot, "Shin"+side)
-            shoulder = v(s*self.shoulder*.49, .03, h*.817)
-            if self.hero:
-                elbow = v(s*self.shoulder*.65, -.025 if s == 1 else .06, h*.665)
-                hand = v(.105 if s == 1 else .125, .235 if s == 1 else .47, h*.735)
-                fingers = hand + v(0,.080,0)
-            else:
-                elbow = v(s*self.shoulder*.64, .075, h*.63)
-                hand = v(s*self.shoulder*.69, .19, h*.49)
-                fingers = hand + v(s*.015,.035,-.075)
-            self.bone("UpperArm"+side, shoulder, elbow, "Chest")
-            self.bone("Forearm"+side, elbow, hand, "UpperArm"+side)
-            self.bone("Hand"+side, hand, fingers, "Forearm"+side)
+            self.bone("Foot"+side, ankle, ankle+v(0,.16,-.06), "Shin"+side)
+            self.bone("Forefoot"+side, ball, ball+v(0,.07,0), "Foot"+side)
+            shoulder, elbow, wrist, knuckles = (body.joint(key + joint) for joint in
+                                                 ("shoulder", "elbow", "hand", "finger-3-1"))
+            collar = body.joint(key+"clavicle")
+            self.bone("Clavicle"+side, collar, shoulder, "Chest")
+            self.bone("UpperArm"+side, shoulder, elbow, "Clavicle"+side)
+            self.bone("Forearm"+side, elbow, wrist, "UpperArm"+side)
+            self.bone("Hand"+side, wrist, knuckles, "Forearm"+side)
+            for digit in range(1, 6):
+                start = body.joint(key+f"finger-{digit}-1")
+                tip = body.joint(key+f"finger-{digit}-4")
+                self.bone(f"Finger{digit}{side}", start, tip, "Hand"+side)
         if self.hero:
-            grip = self.bones["HandR"][0] + v(0,.045,.048)
-            self.bone("WeaponGrip", grip, grip+v(0,.11,0), "HandR")
-            self.bone("WeaponForward", grip+v(0,.32,0), grip+v(0,.40,0), "HandR")
+            wrist = self.bones["HandR"][0]
+            self.bone("WeaponGrip", wrist, wrist+v(0,.11,0), "HandR")
+            self.bone("WeaponForward", wrist+v(0,.32,0), wrist+v(0,.40,0), "HandR")
         bpy.context.view_layer.objects.active = self.rig
         self.rig.select_set(True)
         bpy.ops.object.mode_set(mode="EDIT")
@@ -143,52 +146,6 @@ class Character:
             sections.append((start.lerp(end,t),rx,ry,weights))
         self.loft(sections,[tile]*(len(sections)-1),sides,.012)
 
-    def limb(self, side, leg):
-        if leg:
-            names = ("Thigh", "Shin", "Foot")
-            widths = (.108,.071,.048)
-            first_material = self.trousers
-            second_material = self.skin if (self.name == "Crawler" or
-                self.name in ("Toxic","Runner") and side == "R" or
-                self.name == "Walker" and side == "L") else first_material
-        else:
-            names = ("UpperArm", "Forearm", "Hand")
-            widths = (.080,.056,.037)
-            first_material = self.cloth if self.hero or self.name in ("Armored","Walker","Runner") else self.skin
-            second_material = 3 if self.name=="Armored" else self.skin
-            if self.name == "Walker" and side == "L" or self.name == "Runner" and side == "R":
-                first_material = self.skin
-        upper, lower, tip = (name+side for name in names)
-        a,b,_ = self.bones[upper]
-        c = self.bones[lower][1]
-        multiplier = 1.22 if self.tank else .88 if self.name=="Eva" else 1
-        if self.tank and not leg:
-            multiplier *= 1.32
-        peak,joint,end = (r*multiplier for r in widths)
-        start = .004 if leg else .025
-        shape = (
-            (a.lerp(b,-.16), start, start, 0, 0),
-            (a.lerp(b,-.05), peak*.84, peak*.83, 0, 0),
-            (a.lerp(b,.17), peak, peak*.90, 0, 0),
-            (a.lerp(b,.43), peak*.89, peak*.79, 0, 0),
-            (a.lerp(b,.72), (peak+joint)*.49, joint*.97, 0, 0),
-            (a.lerp(b,.92), joint*.98, joint*.91, .26, 0),
-            (b, joint*.96, joint*.94, .50, 0),
-            (b.lerp(c,.12), joint*.99, joint*.92, .76, 0),
-            (b.lerp(c,.31), joint*1.02, joint*.87, 1, 0),
-            (b.lerp(c,.63), (joint+end)*.49, (joint+end)*.40, 1, 0),
-            (b.lerp(c,.87), end*1.08, end*.89, 1, 0),
-            (c, end, end*.85, 1, .28),
-            (b.lerp(c,1.06), end*.76, end*.64, 1, .54),
-        )
-        rings = []
-        for point,rx,ry,mix,tip_mix in shape:
-            weights = {upper:1-mix,lower:mix-tip_mix,tip:tip_mix}
-            rings.append((point,rx,ry,{key:weight for key,weight in weights.items() if weight > 0}))
-        stripe = 6 if self.name == "Toxic" and leg else second_material
-        mats = [first_material]*6+[stripe]+[second_material]*5
-        self.loft(rings,mats,10 if self.hero else 11,.016,v(1,0,0))
-
     def volume(self, p, radius, tile, bone, sides=10):
         x, y, z = radius
         self.surface(v(*p)-v(0,0,z), v(*p)+v(0,0,z),
@@ -225,90 +182,33 @@ class Character:
             self.tiles.append((tile, tuple((.5+(outline[i%sides][0]/w)*.48,
                                             .5+(outline[i%sides][1]/h)*.48) for i in face)))
 
-    def limbs(self):
-        for side,s in (("L",-1),("R",1)):
-            self.limb(side, leg=False)
-            if not self.hero:
-                self.limb(side, leg=True)
-            knee = self.bones["Shin"+side][0]
-            foot = self.bones["Foot"+side][0]
-            bare = self.name=="Crawler" or self.name in ("Runner","Toxic","Brute","Boss") and side=="R"
-            sole_tile = self.skin if bare else 3 if self.hero or self.name=="Armored" else 20
-            self.surface(foot+v(0,-.079,-.045),foot+v(0,.200,-.045),
-                         [(0,.031,.018),(.13,.054,.045),(.33,.067,.052),
-                          (.56,.069,.044),(.84,.061,.033),(1,.027,.016)],sole_tile,"Foot"+side,10)
-            if bare:
-                for i in range(4):
-                    point=foot+v((i-1.5)*.023,.144-.004*i,-.06)
-                    self.surface(point,point+v(0,.068-.010*i,0),
-                                 [(0,.014,.013),(.50,.013,.014),(1,.002,.002)],self.skin,"Foot"+side,6)
-            else:
-                self.panel(foot+v(0,.050,-.074), (.137,.242,.022), 8 if self.hero or self.name=="Armored" else 20, "Foot"+side)
-            hand = self.bones["Hand"+side][0]
-            fingers = self.bones["Hand"+side][1]
-            mitt = 3 if self.hero or self.name=="Armored" else self.skin
-            self.surface(hand,fingers,[(0,.033,.031),(.25,.041,.033),(.56,.044,.032),
-                         (.82,.035,.024),(1,.005,.007)],mitt,"Hand"+side,10)
-            if self.hero or self.name=="Armored":
-                self.panel(knee+v(0,.067,0), (.139,.044,.154), 3, "Shin"+side)
-                self.panel(knee+v(0,.092,.013), (.111,.015,.108), 4, "Shin"+side)
-                self.panel(knee+v(0,.101,.034), (.072,.008,.012), self.trim, "Shin"+side)
-                self.panel(foot+v(0,.053,-.008),(.097,.125,.055),3,"Foot"+side)
-                self.panel(foot+v(0,.066,.021),(.078,.046,.009),8,"Foot"+side)
-                thigh=self.bones["Thigh"+side][0]
-                self.panel(thigh+v(s*.069,-.010,-.16),(.103,.135,.156),0,"Thigh"+side,.10*s)
-                self.panel(hand+v(0,.016,.026),(.063,.028,.020),4,"Hand"+side)
-            else:
-                for finger in range(3):
-                    p = fingers + v((finger-1)*.021,.008,-.014)
-                    self.surface(p,p+v((finger-1)*.006,.012,-.044),
-                                 [(0,.012,.010),(.42,.011,.009),(.78,.008,.007),(1,.001,.001)],
-                                 self.skin,"Hand"+side,6)
-
     def sculpt(self):
-        h,w,hip=self.h,self.shoulder,self.hips
+        self.body.append()
+        self.body.append_shoes(CLOTHING)
+        for side, sign in SIDES:
+            if self.name == "Armored":
+                knee = self.bones["Shin"+side][0]
+                self.panel(knee+v(0,.064,-.025), (.098,.029,.114), 4, "Shin"+side)
+                self.panel(knee+v(0,.083,.012), (.065,.012,.014), self.trim, "Shin"+side)
+            eye = self.body.joint(("r-" if sign < 0 else "l-")+"eye")
+            eye.y -= .006
+            self.volume(eye, (.012,.013,.011), 16, "Head", 7)
+            self.volume(eye+v(0,.011,0), (.005,.004,.005), 17 if self.hero else self.trim, "Head", 7)
         if self.hero:
-            append_pants(self, CLOTHING)
-        else:
-            self.surface(v(0,0,h*.43),v(0,0,h*.66),
-                         [(0,hip*.30,.078),(.14,hip*.48,.122),(.43,hip*.58,.133),(.68,hip*.54,.127),
-                          (.84,hip*.45,.105),(1,hip*.44,.112)],self.trousers,"Pelvis",14,("Chest",False))
-        waist = .34 if self.hero else .26 if self.name in ("Runner","Crawler") else .30
-        back = .143 if self.hero else .126 if self.name=="Runner" else .167
-        self.surface(v(0,0,h*.57),v(0,.03,h*.86),
-                     [(0,w*waist,.096),(.13,w*(waist+.036),.108),(.32,w*.405,back*.96),
-                      (.53,w*.467,back),(.69,w*.50,back*.98),(.83,w*.49,back*.87),
-                      (.93,w*.389,back*.71),(1,w*.22,.068)],self.cloth,"Chest",18,("Pelvis",True))
-        self.volume((0,.039,h*.866),(.056,.058,.072),self.skin,"Head")
-        head_z=h*.944
-        append_face(self, FACE_DATA)
-        eyeY = .121
-        for side in (-1,1):
-            x=side*(.034 if self.name=="Eva" else .038)
-            self.volume((x,eyeY,head_z),(.020,.015,.014),16,"Head",8)
-            self.volume((x,eyeY+.013,head_z),(.008,.003,.008),3 if self.hero else self.trim,"Head",6)
-        if self.hero:
-            for i in range(5):
-                x=(i-2)*.032
-                self.surface(v(x,.094,h*1.001),v(x*.47-.025,.116,h*(.952+.008*i)),
-                    [(0,.022,.012),(.34,.022,.010),(.74,.013,.009),(1,.001,.001)],17,"Head",6)
-            for s in (-1,1):
-                self.panel((s*.035,.132,head_z+.025),(.032,.007,.006),17,"Head",.12*s)
-            if self.name=="Eva":
-                self.surface(v(0,-.065,h*.964),v(.04,-.14,h*.774),
-                             [(0,.038,.032),(.20,.045,.038),(.48,.039,.03),(.68,.03,.026),
-                              (.85,.022,.019),(1,.002,.002)],17,"Head")
-                self.panel((-.133,.126,h*.535),(.088,.051,.104),1,"Pelvis")
-                self.panel((-.133,.154,h*.535),(.052,.005,.014),16,"Pelvis")
-                self.panel((-.133,.155,h*.535),(.014,.005,.052),16,"Pelvis")
+            if self.name == "Eva":
+                end = self.h*.956
+                back = self.body.back_at(end)
+                self.surface(v(0,back-.006,end),v(.047,back-.088,self.h*.787),
+                             [(0,.027,.026),(.22,.036,.027),(.53,.031,.025),
+                              (.78,.019,.017),(1,.001,.001)],17,"Head")
             self.hero_kit()
         else:
             self.infection()
-        self.limbs()
 
     def hero_kit(self):
         h,w=self.h,self.shoulder
         self.panel((0,.126,h*.719),(w*.61,.082,.287),4,"Chest")
+        first = len(self.vertices)
         pack_center = v(0,-.151,h*.711)
         self.panel(pack_center,(w*.69,.154,.277),0,"Chest")
         self.panel(pack_center+v(0,-.078,-.022),(w*.54,.027,.186),2,"Chest")
@@ -332,11 +232,13 @@ class Character:
             self.panel((s*w*.318,-.232,h*.702),(.080,.014,.028),4,"Chest")
             self.panel((s*w*.22,-.251,h*.664),(.087,.006,.012),3,"Chest")
             self.panel((s*w*.26,.156,h*.704),(.069,.055,.155),0,"Chest",s*.05)
-            self.volume((s*w*.458,.023,h*.806),(.081,.103,.064),self.cloth,"Chest",10)
-            self.panel((s*w*.44,.022,h*.815),(.092,.181,.069),4,"Chest",s*.61)
-            self.panel((s*w*.43,-.070,h*.806),(.066,.012,.025),5,"Chest",s*.22)
-        self.panel((0,0,h*.533),(self.hips*1.20,.252,.079),3,"Pelvis")
-        self.panel((0,.136,h*.536),(.066,.027,.045),5,"Pelvis")
+        shift = self.body.back_at(pack_center.z) - .049 - pack_center.y
+        for i in range(first,len(self.vertices)):
+            x,y,z = self.vertices[i]
+            if y < 0:
+                self.vertices[i] = (x,y+shift,z)
+        self.panel((0,.134,h*.553),(.13,.025,.038),3,"Pelvis")
+        self.panel((0,.153,h*.553),(.049,.018,.035),5,"Pelvis")
 
     def fabric_flap(self, top, low, tile, bone):
         """A double-sided irregular fabric edge draped off the skinned cloth."""
@@ -360,38 +262,28 @@ class Character:
             self.panel((0,.184,h*.699),(w*.63,.038,.095),3,"Chest")
             self.panel((0,.202,h*.681),(w*.50,.018,.060),4,"Chest")
             for s in (-1,1):
-                self.panel((s*w*.48,.031,h*.807),(.185,.228,.134),4,"Chest",s*.28)
-                self.panel((s*w*.51,.135,h*.775),(.141,.034,.065),3,"Chest",s*.28)
+                self.panel((s*w*.48,.031,h*.807),(.148,.165,.098),4,"Chest",s*.28)
+                self.panel((s*w*.51,.135,h*.775),(.115,.027,.054),3,"Chest",s*.28)
                 self.panel((s*w*.50,.156,h*.818),(.083,.012,.026),5,"Chest",s*.24)
         elif self.tank:
-            for s in (-1,1):
-                for rib in range(3):
-                    self.volume((s*w*(.166+.031*rib),.151,h*(.641+.032*rib)),
-                        (.066,.029,.027),self.skin,"Chest",8)
-                self.volume((s*w*.425,.002,h*.793),(w*.243,.153,.150),self.skin,"Chest",14)
-                if self.name=="Boss":
+            if self.name == "Boss":
+                for side, sign in SIDES:
+                    shoulder = self.bones["UpperArm"+side][0]
                     for i in range(3):
-                        a=v(s*w*(.335+i*.073),-.151,h*(.744+i*.034))
-                        b=a+v(s*(.094+i*.026),-.072,.057+i*.067)
-                        self.surface(a,b,[(0,.052,.047),(.21,.045,.040),(.46,.028,.027),
-                                     (.74,.016,.014),(1,.001,.001)],19,"Chest",9)
-            if self.name=="Brute":
-                self.volume((-.35,.061,h*.807),(.186,.136,.156),13,"Chest",14)
-                for i in range(3):
-                    self.volume((-.31-i*.037,.166,h*(.776-.022*i)),(.067,.041,.073),14,"Chest",10)
-                self.fabric_flap((v(-.22,.126,h*.635),v(.01,.156,h*.63)),
-                                 (v(.10,.171,h*.545),v(-.28,.173,h*.56)),20,"Chest")
-            if self.name=="Boss":
-                for s in (-1,1):
-                    self.volume((s*.059,.136,h*.966),(.057,.029,.034),14,"Head")
-                    self.panel((s*.047,.165,h*.944),(.049,.021,.016),22,"Head")
-                self.volume((0,.154,h*.906),(.071,.037,.055),15,"Head",12)
-                for x in (-.052,-.033,-.014,.014,.033,.052):
-                    self.panel((x,.187,h*.925),(.013,.019,.021),19,"Head")
-                self.volume((0,.176,h*.713),(.132,.081,.14),14,"Chest",14)
+                        start = shoulder + v(-sign*(.08+.053*i),-.042,.018+i*.027)
+                        end = start + v(sign*(.079+i*.021),-.073,.065+i*.025)
+                        self.surface(start,end,[(0,.047,.041),(.27,.039,.033),
+                                                (.66,.021,.019),(1,.001,.001)],19,"Chest",8)
+                self.volume((0,.174,h*.731),(.092,.054,.111),14,"Chest",10)
                 for i in range(4):
-                    self.volume(((i-1.5)*.048,.241,h*(.72+.018*i)),(.051,.043,.054),
-                                22 if i in (1,2) else 13,"Chest",12)
+                    self.volume(((i-1.5)*.038,.215,h*(.727+.016*i)),(.033,.022,.039),
+                                22 if i in (1,2) else 13,"Chest",8)
+            else:
+                region = self.bones["Chest"][0] + v(-.167,.106,.205)
+                for i in range(3):
+                    self.volume(region+v(-i*.021,i*.006,-i*.041),(.045,.035,.047),14,"Chest",9)
+                self.fabric_flap((v(-.19,.130,h*.604),v(.01,.149,h*.605)),
+                                 (v(.10,.160,h*.552),v(-.21,.158,h*.55)),20,"Chest")
         elif self.name=="Toxic":
             for i in range(8):
                 ang=2.4*i
@@ -423,11 +315,6 @@ class Character:
                              [(0,.026,.017),(.17,.052,.052),(.58,.058,.049),(1,.02,.018)],7,"Chest",12)
                 self.fabric_flap((v(.14,.13,h*.806),v(.24,.049,h*.808)),
                                  (v(.252,.088,h*.707),v(.17,.146,h*.745)),7,"Chest")
-        if self.name not in ("Armored","Boss"):
-            self.panel((0,.155,h*.903),(.083,.019,.034),15,"Head")
-            for i in range(4):
-                self.volume((-.033+i*.020,.170,h*.907),(.009,.009,.012),19,"Head",6)
-
     def skin_mesh(self):
         data=bpy.data.meshes.new(self.name+" skin")
         data.from_pydata(self.vertices,[],self.faces)
@@ -489,20 +376,70 @@ class Character:
         bone.matrix=target
         bpy.context.view_layer.update()
 
-    def leg_pose(self, side, foot, pole, toe=None):
-        thigh,shin="Thigh"+side,"Shin"+side
-        hip=self.rig.pose.bones[thigh].head.copy()
-        a=(self.bones[thigh][1]-self.bones[thigh][0]).length
-        b=(self.bones[shin][1]-self.bones[shin][0]).length
-        axis=(foot-hip).normalized()
-        distance=min((foot-hip).length,a+b-.0008)
-        foot=hip+axis*distance
-        along=(a*a+distance*distance-b*b)/(2*distance)
-        bend=(pole-axis*pole.dot(axis)).normalized()
-        knee=hip+axis*along+bend*math.sqrt(max(.0,a*a-along*along))
-        self.aim_bone(thigh,hip,knee-hip)
-        self.aim_bone(shin,knee,foot-knee)
-        self.aim_bone("Foot"+side,foot,toe if toe is not None else v(0,.16,-.06))
+    def bend_chain(self, upper, lower, target, pole):
+        origin = self.rig.pose.bones[upper].head.copy()
+        a = (self.bones[upper][1]-self.bones[upper][0]).length
+        b = (self.bones[lower][1]-self.bones[lower][0]).length
+        offset = target-origin
+        direction = offset.normalized()
+        distance = min(max(offset.length,abs(a-b)+.002),a+b-.002)
+        end = origin+direction*distance
+        reach = (a*a+distance*distance-b*b)/(2*distance)
+        outward = (pole-direction*pole.dot(direction)).normalized()
+        joint = origin+direction*reach+outward*math.sqrt(max(0,a*a-reach*reach))
+        self.aim_bone(upper,origin,joint-origin)
+        self.aim_bone(lower,joint,end-joint)
+        return end
+
+    def leg_pose(self, side, foot, pole, toe=None, toe_pitch=0):
+        foot = self.bend_chain("Thigh"+side,"Shin"+side,foot,pole)
+        direction = toe if toe is not None else v(0,.16,-.06)
+        self.aim_bone("Foot"+side,foot,direction)
+        forefoot = self.rig.pose.bones["Forefoot"+side]
+        if toe is not None:
+            # Let the ball of the foot stay flat when the heel comes up.
+            angle = math.radians(toe_pitch)
+            self.aim_bone(forefoot.name,forefoot.head.copy(),v(0,math.cos(angle),math.sin(angle)))
+
+    def hero_arms(self, swing, care, toss, reload, fire, hit, death):
+        chest = self.rig.pose.bones["Chest"]
+        base = self.bones["Chest"][0]
+        rise = chest.head.z-base.z
+        for side, sign in SIDES:
+            right = side == "R"
+            active_hand = 0 if right else 1
+            wrist = v(.113 if right else -.025, .285 if right else .465,
+                      self.h*.735+rise+.017*sign*swing)
+            wrist += v(sign*.15*reload*active_hand,
+                       -fire*.032-hit*.09-reload*.13*active_hand-.20*care*active_hand+.13*toss*active_hand,
+                       death*-.29+hit*.043-reload*.17*active_hand-.19*care*active_hand+.40*toss*active_hand)
+            pole = v(sign*.65,-.42,-1+.56*max(0,toss)*active_hand)
+            end = self.bend_chain("UpperArm"+side,"Forearm"+side,wrist,pole)
+            # Keep the support hand under the fore-end, and the firing palm around the grip.
+            self.aim_bone("Hand"+side,end,v(-.09 if right else .16,.86,-.35+.33*toss*active_hand),
+                          -.17 if right else .40)
+        wrist = self.rig.pose.bones["HandR"].head
+        aim = v(.03*hit,1,.095*fire+.32*hit-.49*death).normalized()
+        grip = wrist+v(.001,.037,.022)
+        self.aim_bone("WeaponGrip",grip,aim)
+        self.aim_bone("WeaponForward",grip+aim*.32,aim)
+
+    def grip_fingers(self, side, curl):
+        hand = self.rig.pose.bones["Hand"+side]
+        wrist_rotation = hand.matrix.to_quaternion() @ hand.bone.matrix_local.to_quaternion().inverted()
+        index = self.bones["Finger2"+side][0]
+        little = self.bones["Finger5"+side][0]
+        across = (index-little).normalized()
+        forward = (self.bones[hand.name][1]-self.bones[hand.name][0]).normalized()
+        palm = forward.cross(across).normalized()
+        if palm.z > 0:
+            palm.negate()
+        palm = wrist_rotation @ palm
+        for digit in range(1,6):
+            bone = self.rig.pose.bones[f"Finger{digit}{side}"]
+            direction = (bone.tail-bone.head).normalized()
+            strength = curl*(.37 if digit == 1 else .79 if digit == 2 else 1.)
+            self.aim_bone(bone.name,bone.head.copy(),direction+palm*strength)
 
     def animate(self):
         # Contact, compression, passing and extension poses. Feet are solved against
@@ -532,22 +469,25 @@ class Character:
                 reload=eased_keys([(0,0),(.24,1),(.67,1),(1,0)],t) if state=="Reload" else 0
                 care=eased_keys([(0,0),(.24,1),(.70,1),(1,0)],t) if state=="Medkit" else 0
                 swing_throw=eased_keys([(0,0),(.17,-.38),(.31,-1),(.42,.85),(.61,.64),(1,0)],t) if state=="Throw" else 0
-                crouch=.47 if self.crawler else .117 if moving else .061
+                crouch=.47 if self.crawler else .098 if moving else .045
                 crouch += (1 if self.tank else .70)*.59*death
                 swing = math.sin(math.tau*f) if moving else 0.
                 # The pelvis yields under the new support leg and rises
                 # through push-off. Counter-rotation keeps the chest balanced.
-                contact=eased_keys(((0,-.018),(.21,-.057),(.68,.036),(1,-.018)),(f*2)%1) if moving else 0
-                pelvis=self.bones["Pelvis"][0]+v(.035*swing,.025-.17*death,-crouch+contact)
+                contact=eased_keys(((0,-.010),(.21,-.040),(.67,.027),(1,-.010)),(f*2)%1) if moving else 0
+                pelvis=self.bones["Pelvis"][0]+v(.025*swing,.015-.17*death,-crouch+contact)
                 placements = {}
                 for side,s in (("L",-1),("R",1)):
                     foot=self.bones["Foot"+side][0].copy()
+                    toe_pitch=0
                     if moving:
-                        foot,toe,phase=foot_target(self.name,side,f,foot)
+                        foot.x -= s*(.060 if self.hero else .027)
+                        foot,toe,phase,toe_pitch=foot_target(self.name,side,f,foot)
                         hip,knee,_=self.bones["Thigh"+side]
                         ankle=self.bones["Shin"+side][1]
                         span=(knee-hip).length+(ankle-knee).length-.026
-                        horizontal=(foot.x-hip.x-pelvis.x)**2+(foot.y-hip.y-pelvis.y)**2
+                        shift = pelvis-self.bones["Pelvis"][0]
+                        horizontal=(foot.x-hip.x-shift.x)**2+(foot.y-hip.y-shift.y)**2
                         if span*span>horizontal:
                             pelvis.z=min(pelvis.z,foot.z+math.sqrt(span*span-horizontal))
                     else:
@@ -555,41 +495,27 @@ class Character:
                         toe=None
                         foot.y+=s*.045-.35*death
                         if self.crawler: foot.y-=.32
-                    placements[side]=(foot,toe,phase)
+                    placements[side]=(foot,toe,phase,toe_pitch)
                 pelvis_roll = .068*swing if self.hero else .17*swing
-                self.aim_bone("Pelvis",pelvis,v(pelvis_roll+.037*attack,.08+.47*death,.99),.095*swing)
-                chest=self.rig.pose.bones["Chest"].head.copy()
+                self.aim_bone("Pelvis",pelvis,v(pelvis_roll+.037*attack,.047+.47*death,.99),.067*swing)
                 pitch={"Crawler":1.22,"Runner":.31,"Walker":.24,"Brute":.18,
                        "Toxic":.28,"Boss":.13,"Armored":.155}.get(self.name,.11)
                 droop = .14 if self.name in ("Walker","Toxic") else 0
+                spine = self.rig.pose.bones["Spine"]
+                spine_direction = (spine.tail-spine.head).normalized()
+                self.aim_bone("Spine",spine.head.copy(),spine_direction+v(droop*.33,.10*pitch+.19*death,0),.026*swing)
+                chest=self.rig.pose.bones["Chest"].head.copy()
                 self.aim_bone("Chest",chest,v(droop-.067*swing+.085*rear,
                               pitch+.46*attack-.30*rear-.10*fire+.90*death,1-.71*death),-.05*swing)
                 if droop and not death:
                     head=self.rig.pose.bones["Head"]
                     self.aim_bone("Head",head.head.copy(),v(-.20+.045*swing,.21+.082*swing,.99))
-                for side,s in (("L",-1),("R",1)):
-                    foot,toe,phase=placements[side]
-                    self.leg_pose(side,foot,v(s*.19,1,0),toe)
-                    if self.hero:
-                        arm=self.rig.pose.bones["UpperArm"+side]
-                        if side=="L" and (care or swing_throw):
-                            origin=arm.head.copy()
-                            direction=(arm.tail-origin).normalized()
-                            direction += v(-.58*care-.34*abs(swing_throw),.35*swing_throw-.36*care,-.56*swing_throw)
-                            self.aim_bone(arm.name,origin,direction)
-                            wrist=self.rig.pose.bones["ForearmL"]
-                            elbow=wrist.head.copy()
-                            wrist_dir=(wrist.tail-elbow).normalized()
-                            wrist_dir += v(-.49*care-.24*abs(swing_throw),.12*care+.62*swing_throw,.26*care-.85*swing_throw)
-                            self.aim_bone(wrist.name,elbow,wrist_dir)
-                        elif reload:
-                            origin=arm.head.copy()
-                            self.aim_bone(arm.name,origin,v(-s*.22,.32,-.40-.23*reload))
-                        elif fire or rear:
-                            origin=arm.head.copy()
-                            arm_dir=arm.tail-origin
-                            self.aim_bone(arm.name,origin,arm_dir+v(0,-fire*.04,.09*fire-.05*rear))
-                    else:
+                if self.hero:
+                    self.hero_arms(swing,care,swing_throw,reload,fire,rear,death)
+                for side,s in SIDES:
+                    foot,toe,phase,toe_pitch=placements[side]
+                    self.leg_pose(side,foot,v(s*.08,1,0),toe,toe_pitch)
+                    if not self.hero:
                         arm=self.rig.pose.bones["UpperArm"+side]
                         origin=arm.head.copy()
                         reach_swing=math.cos(math.tau*(phase+.14)) if moving else -.06*s
@@ -610,8 +536,12 @@ class Character:
                                 elbow=forearm.head.copy()
                                 self.aim_bone(forearm.name,elbow,v(s*.15,lead+.34+.2*reach_swing,
                                                                  -.81+.24*reach_swing+.47*attack))
+                    curl = .54 if self.hero else .15+.50*max(0.,attack)
+                    if self.hero and side == "L":
+                        curl += .16*care-.29*max(0.,swing_throw)
+                    self.grip_fingers(side,curl)
                 for bone in self.rig.pose.bones:
-                    if bone.name in ("ForwardMarker","WeaponGrip","WeaponForward"):
+                    if bone.name == "ForwardMarker":
                         continue
                     bone.keyframe_insert("location",frame=frame,group=bone.name)
                     bone.keyframe_insert("rotation_quaternion",frame=frame,group=bone.name)

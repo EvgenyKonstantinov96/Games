@@ -5,8 +5,8 @@ from mathutils import Vector
 
 # Forward reach, rear reach, stance share, swing clearance, right foot phase.
 PROFILES = {
-    "Max": (.51, .49, .43, .28, .50),
-    "Eva": (.48, .43, .42, .25, .50),
+    "Max": (.44, .49, .44, .265, .50),
+    "Eva": (.42, .43, .43, .245, .50),
     "Walker": (.29, .27, .65, .095, .53),
     "Runner": (.48, .43, .43, .23, .48),
     "Armored": (.29, .28, .64, .095, .52),
@@ -67,4 +67,6 @@ def foot_target(name, side, phase, ankle):
     foot = Vector((ankle.x+lateral, ankle.y+travel+pivot_y-rotated_y, .006-rotated_z+clearance))
     toe = Vector((0, .16*math.cos(angle)+.06*math.sin(angle),
                   .16*math.sin(angle)-.06*math.cos(angle)))
-    return foot, toe, phase
+    bend = eased_keys(((0, .95), (stance*.60, .85), (stance, .10),
+                       (stance+(1-stance)*.30, .90), (1, .95)), phase)
+    return foot, toe, phase, pitch*bend

@@ -2,15 +2,17 @@
 
 ## Что входит
 
-- FBX Макса, Евы, Walker, Runner, Armored, Brute, Toxic, Crawler и Boss содержат по одному скинированному мешу, UV и 16–18 костей. Лица и одежда героев используют переработанные ресурсы MakeHuman CC0. Экипировка и анимации созданы для проекта. У оружия есть привязка к правой руке и точка вылета.
+- FBX Макса, Евы, Walker, Runner, Armored, Brute, Toxic, Crawler и Boss содержат по одному скинированному мешу, UV и 31–33 кости. Топология тела, веса, морфы и обувь адаптированы из ресурсов MakeHuman CC0. Текстиль, экипировка и анимации созданы для проекта. У оружия есть привязка к правой руке и точка вылета.
 - В FBX записаны ключевые позы покоя, движения, стрельбы, перезарядки, попадания, атаки и смерти. Шаги рассчитываются по точкам контакта в Blender при создании клипов. События игры выбирают диапазоны готовых клипов.
 - Новый атлас, бесшовные цветовая карта и карта нормалей асфальта, панорама первой главы, тёплые отражатели вдоль трассы и холодная заполняющая подсветка, дым и огонь на разбитых машинах. Габариты полос и препятствий сохранены.
 - Один общий материал персонажей и один skinned renderer на модель. Импортёр задаёт Android ASTC для новых текстур и отключает несвязанные с игровыми моделями камеры и свет.
 - Действующая структура 15 уровней, попадания, здоровье, награды, оружие и ресурсы Арсенала сохранены. Добавлены визуальные предупреждения об атаках, момент нанесения урона остался прежним.
 
-Пакет лежит в `Assets/Resources/ProductionArt`. Unity автоматически импортирует FBX и текстуры при открытии исходного проекта. Пакет собственных моделей не требует скачивания Polyfork или создания ProductionArtSettings.asset. Пользовательская конфигурация сохраняет приоритет, если она уже назначена. [Превью моделей из Blender](../design/character-lineup-blender.jpg).
+Пакет лежит в `Assets/Resources/ProductionArt`. Unity автоматически импортирует FBX и текстуры при открытии исходного проекта. Пользовательская конфигурация сохраняет приоритет, если она уже назначена. [Сравнение моделей из Blender](../design/character-anatomy-blender.jpg).
 
 ## Проверено
+
+[Анатомия и деформации персонажей](CHARACTER_ANATOMY_RU.md).
 
 [Бег героев и походка заражённых](GAIT_AND_INFECTED_RU.md).
 
@@ -38,4 +40,4 @@ blender -b -t 4 --python-exit-code 1 --python Tools/Art/build_characters.py -- A
   --makehuman-data /path/to/makehuman/makehuman/data --skin-pack /path/to/makehuman_system_assets_cc0.zip --preview
 ```
 
-Генерация текстур требует NumPy и Pillow. Использована ревизия MakeHuman `a8bc2d54ff0ac92e78ff71431b1023eda42bf482` и официальный [системный ZIP CC0](https://files.makehumancommunity.org/asset_packs/makehuman_system_assets/makehuman_system_assets_cc0.zip), SHA-256 `b542127a8e25547c7c29c19f2d1d2adb9a664c80396ecd694095dbc8028a0107`. Готовые FBX и карты уже лежат в Unity-проекте.
+Генерация текстур требует NumPy и Pillow. Использована ревизия MakeHuman `a8bc2d54ff0ac92e78ff71431b1023eda42bf482`, включая `3dobjs/base.obj`, `targets` и `rigs/default_weights.mhw` внутри `makehuman/data`. Веса имеют SHA-256 `0f3641d651ae3d00ad6b4ccee43142edb109d3bd909d27d9e4139ef1beed8625`. [Системный ZIP CC0](https://files.makehumancommunity.org/asset_packs/makehuman_system_assets/makehuman_system_assets_cc0.zip) имеет SHA-256 `b542127a8e25547c7c29c19f2d1d2adb9a664c80396ecd694095dbc8028a0107`. Готовые FBX и карты лежат в Unity-проекте.
