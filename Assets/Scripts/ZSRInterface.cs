@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
@@ -18,6 +19,7 @@ namespace ZombieSurvivalRun
         static readonly Color Cyan = new Color(.34f, .77f, .93f, 1);
         static readonly Color TextMuted = new Color(.64f, .75f, .80f, 1);
         static readonly Color Green = new Color(.26f, .83f, .39f, 1);
+        static readonly CultureInfo Russian = CultureInfo.GetCultureInfo("ru-RU");
         const float W=390f;
 
         Canvas canvas;
@@ -36,6 +38,7 @@ namespace ZombieSurvivalRun
         bool refresh;
         int wallpaper = -1;
         CanvasGroup pageGroup;
+        WeaponType inspectedWeapon;
         Vector2 pageRest;
         float pageTime;
         const float PageDuration = .24f;
@@ -45,7 +48,11 @@ namespace ZombieSurvivalRun
         const float H = 844f;
         Text hudAmmo, hudCoins, hudHealth, hudLevel, hudMessage, hudGrenade, hudMed, hudDrone;
         RectTransform hpFill, progressFill, bossFill, bossBackdrop;
-        Text hudBoss;
+        Text hudBoss, hudRadio, hudPace;
+        RectTransform radioCard, paceFill;
+        string lastRadioLine;
+        ZSRPace lastPace;
+        int lastPaceSeconds;
 
         void Awake()
         {
@@ -308,6 +315,7 @@ namespace ZombieSurvivalRun
             if (g == null || root == null || root.rect.width < 1f || root.rect.height < 1f) return;
             bool inBattle = IsBattle(g.State);
             bool motionEnabled = !inBattle && lastState != g.State;
+            if (g.State == ZSRState.Arsenal && lastState != ZSRState.Arsenal) inspectedWeapon = g.Weapon;
             bool viewportChanged = Mathf.Abs(root.rect.width - lastWidth) > 1.5f ||
                                    Mathf.Abs(root.rect.height - lastHeight) > 1.5f;
             lastSafeArea = Screen.safeArea;
@@ -315,7 +323,7 @@ namespace ZombieSurvivalRun
             lastCoins = g.Coins; lastLevel = g.Level; lastHero = g.SelectedHero; lastWeapon = (int)g.Weapon;
             refresh = false;
             if (content != null) Retire(content);
-            int nextWallpaper = inBattle ? -1 : g.State == ZSRState.Menu ? g.Chapter : 3;
+            int nextWallpaper = inBattle ? -1 : g.State == ZSRState.Menu || g.State == ZSRState.Story ? g.Chapter : 3;
             if (wallpaper != nextWallpaper || (nextWallpaper >= 0 && viewportChanged))
             {
                 if (background != null) { Retire(background); background = null; }
@@ -362,6 +370,7 @@ namespace ZombieSurvivalRun
                 case ZSRState.Items: Items(g); break;
                 case ZSRState.Bonuses: Bonuses(g); break;
                 case ZSRState.Levels: Levels(g); break;
+                case ZSRState.Story: Story(g); break;
             }
             Navigation(g);
             if (motionEnabled && EventSystem.current != null && firstButton != null)
@@ -370,7 +379,7 @@ namespace ZombieSurvivalRun
 
         void BuildAdaptiveBackground(ZSRGame g)
         {
-            bool home = g.State == ZSRState.Menu;
+            bool home = g.State == ZSRState.Menu || g.State == ZSRState.Story;
             BlockStretch("Cinematic base", Dark, background);
             StretchImage(home ? ChapterSky(g.Chapter) : sectionWallpaper, background, 1f, true);
             BlockStretch("Art contrast", new Color(.01f, .019f, .034f, home ? .61f : .48f), background);
@@ -390,7 +399,7 @@ namespace ZombieSurvivalRun
             if (heroCovers[selected] == null)
                 heroCovers[selected] = Resources.Load<Texture2D>("UI/campaign_cover_" + (selected == 0 ? "max" : "eva"));
             Block("Progress pill", 18, 16, 211, 46, new Color(.03f, .05f, .079f, .94f));
-            Label("● " + g.Coins.ToString("N0"), 30, 16, 102, 46, 16, Gold, TextAnchor.MiddleLeft);
+            Label("● " + g.Coins.ToString("N0", Russian), 30, 16, 102, 46, 16, Gold, TextAnchor.MiddleLeft);
             Label("ДОСТУПНО " + g.UnlockedLevel + "/" + ZSRGame.MaxLevels, 122, 16, 99, 46, 11, TextMuted);
             Button(g.MusicLabel, 240, 16, 132, 46, Cyan, g.CycleMusic, 11,
                 skinTint: Color.Lerp(Dark, style.Accent, .25f));
@@ -402,13 +411,17 @@ namespace ZombieSurvivalRun
             Image(heroCovers[selected] ?? (selected == 0 ? artMax : artEva), 17, 140, 356, 397);
             Button(heroName + "  ›", 29, 479, 123, 44, Cyan, g.GoHeroes, 14,
                 skinTint: Color.Lerp(Dark, style.Accent, .20f));
+            Button("СЮЖЕТ  ›", 238, 479, 123, 44, Gold, g.GoStory, 14,
+                skinTint: Color.Lerp(Dark, Gold, .26f));
 
             Block("mission card", 16, 552, 358, 183, Color.Lerp(Dark, style.Accent, .13f));
             Accent(30, 557, 64, style.Accent);
-            Label(style.Title.ToUpperInvariant(), 30, 570, 310, 21, 12, style.Accent, TextAnchor.MiddleLeft);
+            Label(style.Title.ToUpperInvariant(), 30, 570, 215, 21, 12, style.Accent, TextAnchor.MiddleLeft);
+            Label(g.Level.ToString("00") + " / 15", 260, 570, 99, 21, 12, Gold, TextAnchor.MiddleRight);
             Label(g.LevelTitle, 30, 596, 330, 30, 19, Color.white, TextAnchor.MiddleLeft);
-            Label("УРОВЕНЬ " + g.Level + " / " + ZSRGame.MaxLevels, 30, 623, 210, 21, 12, TextMuted, TextAnchor.MiddleLeft);
-            var play = Button("ИГРАТЬ", 29, 653, 218, 63, Orange, () => g.StartLevel(g.Level), 23);
+            Label(g.CurrentBeat.Objective, 30, 620, 330, 29, 12, TextMuted, TextAnchor.MiddleLeft, false);
+            bool continuing = g.CompletedStoryLevel > 0 && g.Level == g.CompletedStoryLevel + 1;
+            var play = Button(continuing ? "ПРОДОЛЖИТЬ" : "ИГРАТЬ", 29, 653, 218, 63, Orange, () => g.StartLevel(g.Level), continuing ? 18 : 23);
             firstButton = play;
             Button("БОНУСЫ", 258, 653, 102, 63, Cyan, g.GoBonuses, 13,
                 skinTint: Color.Lerp(Dark, style.Accent, .25f));
@@ -448,49 +461,111 @@ namespace ZombieSurvivalRun
             }
         }
 
+        void Story(ZSRGame g)
+        {
+            TitleBar("СЮЖЕТ", g);
+            var style = ZSRCampaignStyle.For(g.Chapter);
+            var beat = g.CurrentBeat;
+            Color chapterPanel = Color.Lerp(Panel, style.Accent, .18f);
+            Block("story cover card", 15, 108, 360, 186, chapterPanel);
+            Image(ChapterSky(g.Chapter), 17, 110, 356, 182, alpha: .55f);
+            Block("story cover scrim", 17, 159, 356, 133, new Color(.024f,.040f,.064f,.86f));
+            Label(ZSRStory.Title, 30, 119, 333, 40, 23, Color.white, TextAnchor.MiddleLeft);
+            Label("МАКС И ЕВА  •  БРАТ И СЕСТРА", 30, 164, 332, 22, 11, style.Accent, TextAnchor.MiddleLeft);
+            Label(ZSRStory.Premise, 30, 193, 330, 80, 14, Color.white, TextAnchor.UpperLeft, false);
+
+            Block("dispatch card", 15, 309, 360, 120, chapterPanel);
+            Accent(28, 311, 70, style.Accent);
+            Label(g.LevelTitle, 73, 319, 244, 28, 16, Color.white);
+            Label("ЭПИЗОД " + g.Level.ToString("00") + " / 15", 73, 346, 244, 22, 11, Gold);
+            Label(beat.Objective, 30, 378, 330, 36, 15, Color.white, TextAnchor.MiddleCenter, false);
+            Button("‹", 23, 319, 47, 49, Cyan, () => g.SelectLevel(g.Level - 1), 26, g.Level > 1);
+            Button("›", 320, 319, 47, 49, Cyan, () => g.SelectLevel(g.Level + 1), 26, g.Level < g.UnlockedLevel);
+            StoryLine("МАКС", beat.Max, 444, Orange);
+            StoryLine("ЕВА", beat.Eva, 515, Cyan);
+
+            bool cleared = g.Level <= g.CompletedStoryLevel;
+            if (cleared)
+            {
+                Block("outcome card", 15, 589, 360, 76, Color.Lerp(Panel, Green, .13f));
+                Label("СОБЫТИЯ ЭПИЗОДА", 27, 592, 335, 19, 10, Green, TextAnchor.MiddleLeft);
+                Label(beat.After, 27, 612, 335, 50, 13, Color.white, TextAnchor.UpperLeft, false);
+            }
+            Button("ИГРАТЬ УРОВЕНЬ " + g.Level, 18, 673, 354, 57, Orange,
+                () => g.StartLevel(g.Level), 19, g.Level <= g.UnlockedLevel);
+        }
+
+        void StoryLine(string speaker, string line, float y, Color color)
+        {
+            var card = Color.Lerp(Panel, color, .12f);
+            Block("radio card", 15, y, 360, 63, card);
+            Block("radio stripe", 19, y + 9, 3, 44, color);
+            Label(speaker, 31, y + 5, 328, 20, 11, color, TextAnchor.MiddleLeft);
+            Label(line, 31, y + 26, 328, 33, 13, Color.white, TextAnchor.UpperLeft, false);
+        }
+
         void Arsenal(ZSRGame g)
         {
             TitleBar("АРСЕНАЛ", g);
-            Label("ОРУЖИЕ И ПРОКАЧКА", 18, 108, 216, 24, 13, TextMuted, TextAnchor.MiddleLeft);
-            Label("● " + g.Coins.ToString("N0"), 235, 108, 136, 24, 14, Gold);
-            WeaponType[] list = { WeaponType.Pistol, WeaponType.Rifle, WeaponType.Shotgun, WeaponType.Minigun };
-            for (int i = 0; i < 4; i++)
+            Label(g.SelectedHero == 0 ? "СНАРЯЖЕНИЕ МАКСА" : "СНАРЯЖЕНИЕ ЕВЫ", 18, 105, 235, 23, 12, Cyan, TextAnchor.MiddleLeft);
+            Label("● " + g.Coins.ToString("N0", Russian), 255, 105, 117, 23, 14, Gold);
+            for (int i = 0; i < WeaponNames.Length; i++)
             {
                 float x = 14 + i * 93;
-                WeaponType chosenWeapon = list[i]; // Capture value, never loop index, for UI callbacks.
-                bool active = g.Weapon == chosenWeapon;
-                bool open = g.WeaponLevelUnlocked(chosenWeapon);
-                bool owned = g.WeaponOwned(list[i]);
-                Block("weapon slot", x, 140, 83, 112, active ? new Color(.28f, .18f, .075f, 1) : PanelLight);
-                Accent(x, 140, 83, active ? Orange : (open ? Cyan : TextMuted));
-                Texture2D slotArt = weaponArts[i];
-                if (slotArt != null) Image(slotArt, x + 3, 147, 77, 50, false, null, open ? 1f : .50f);
-                Label(WeaponNames[i], x + 2, 195, 79, 22, 10, Color.white);
-                Label(open ? (owned ? "В НАЛИЧИИ" : "● " + g.WeaponPrice(list[i])) : ("УРОВ. " + g.WeaponUnlockLevel(list[i])),
-                    x + 2, 218, 79, 21, 10, open ? Gold : TextMuted);
-                string btn = active ? "✓" : open ? (owned ? "ВЫБРАТЬ" : "КУПИТЬ") : "ЗАКРЫТО";
-                Button(btn, x, 242, 83, 44, active ? Orange : Cyan, () => g.SelectWeapon(chosenWeapon), 10, open);
+                var chosen = (WeaponType)i;
+                bool equipped = g.Weapon == chosen;
+                bool open = g.WeaponLevelUnlocked(chosen);
+                Color tint = Color.Lerp(Cyan, Orange, i / 3f);
+                Block("weapon slot", x, 139, 83, 107, Color.Lerp(Panel, tint, inspectedWeapon == chosen ? .27f : .10f));
+                Accent(x, 139, 83, inspectedWeapon == chosen ? tint : TextMuted);
+                Image(weaponArts[i], x + 3, 148, 77, 50, false, alpha: open ? 1f : .54f);
+                Label(WeaponNames[i], x + 2, 193, 79, 22, 10, Color.white);
+                Label(equipped ? "ВЫБРАНО" : g.WeaponOwned(chosen) ? "В НАЛИЧИИ" : "ОТ УР. " + g.WeaponUnlockLevel(chosen),
+                    x + 2, 218, 79, 20, 10, equipped ? Gold : TextMuted);
+                Button("ОСМОТР", x, 244, 83, 44, tint, () => inspectedWeapon = chosen, 10,
+                    skinTint: Color.Lerp(Dark, tint, .28f));
             }
-            float artTop = 303;
-            Block("weapon showcase", 13, artTop, 364, 178, Panel);
-            Accent(13, artTop, 364, Orange);
-            Texture2D selectedArt = weaponArts[(int)g.Weapon];
-            if (selectedArt == null && g.Weapon == WeaponType.Rifle) selectedArt = artRifle;
-            if (selectedArt != null) Image(selectedArt, 24, artTop + 13, 342, 126, false);
-            Label("ВЫБРАНО: " + WeaponNames[(int)g.Weapon], 24, artTop + 140, 340, 30, 18, Gold);
-            float statTop = artTop + 191;
-            Block("gun stats", 13, statTop, 364, 115, Panel);
-            Label("УРОВЕНЬ ОРУЖИЯ  " + g.WeaponLevel + " / 5", 21, statTop + 8, 348, 31, 18, Gold);
-            int baseDamage = g.Weapon == WeaponType.Pistol ? 27 : g.Weapon == WeaponType.Rifle ? 22 :
-                g.Weapon == WeaponType.Shotgun ? 55 : 13;
-            string fireRate = g.Weapon == WeaponType.Pistol ? "3.0" : g.Weapon == WeaponType.Rifle ? "7.7" :
-                g.Weapon == WeaponType.Shotgun ? "1.8" : "15.4";
-            Label("УРОН " + (baseDamage + g.WeaponLevel * 5) + "   •   ВЫСТР/С " + fireRate +
-                "   •   МАГАЗИН " + (g.Weapon == WeaponType.Pistol ? 12 :
-                g.Weapon == WeaponType.Rifle ? 30 : g.Weapon == WeaponType.Shotgun ? 8 : 70),
-                21, statTop + 44, 348, 44, 13, TextMuted);
-            float y = H - 170;
-            Button(g.WeaponLevel >= 5 ? "МАКС. УРОВЕНЬ" : "УЛУЧШИТЬ   ● " + g.UpgradeCost, 16, y, 358, 58, Orange, () => g.UpgradeWeapon(), 19, g.WeaponLevel < 5);
+
+            var weapon = inspectedWeapon;
+            var data = ZSRWeaponProfile.For(weapon);
+            int level = g.WeaponLevelFor(weapon);
+            bool unlocked = g.WeaponLevelUnlocked(weapon);
+            bool owned = g.WeaponOwned(weapon);
+            bool max = level >= ZSRGame.MaxUpgradeLevel;
+            int cost = g.WeaponUpgradeCost(weapon);
+            int price = g.WeaponPrice(weapon);
+            Color accent = Color.Lerp(Cyan, Orange, (int)weapon / 3f);
+            Block("weapon showcase", 13, 303, 364, 160, Color.Lerp(Panel, accent, .19f));
+            Accent(13, 303, 364, accent);
+            Image(weaponArts[(int)weapon] ?? (weapon == WeaponType.Rifle ? artRifle : null), 25, 307, 340, 107, false);
+            Label(WeaponNames[(int)weapon], 23, 410, 343, 29, 20, Color.white);
+            Label(data.Role, 23, 439, 343, 22, 13, accent, TextAnchor.MiddleCenter, false);
+
+            Block("gun stats card", 13, 474, 364, 130, Panel);
+            Label("УРОВЕНЬ " + level + " / 5", 25, 478, 340, 25, 13, Gold, TextAnchor.MiddleLeft);
+            string damage = data.Damage(level).ToString();
+            if (!max && owned) damage += " → " + data.Damage(level + 1);
+            WeaponStat("УРОН", damage, 25, 516, 103, accent);
+            WeaponStat("ВЫСТР./С", (1f / data.ShotInterval(g.SelectedHero)).ToString("0.#", Russian), 137, 516, 103, accent);
+            WeaponStat("МАГАЗИН", data.Magazine.ToString(), 249, 516, 113, accent);
+            Label("Перезарядка  " + data.Reload.ToString("0.##", Russian) + " с", 25, 576, 340, 21, 12, TextMuted);
+
+            bool canEquip = unlocked && g.Weapon != weapon && (owned || g.Coins >= price);
+            string action = !unlocked ? "ОТКРОЕТСЯ НА УРОВНЕ " + data.UnlockLevel :
+                g.Weapon == weapon ? "ОРУЖИЕ ВЫБРАНО" : owned ? "ВЫБРАТЬ ОРУЖИЕ" :
+                g.Coins >= price ? "КУПИТЬ И ВЫБРАТЬ  ● " + price : "НЕ ХВАТАЕТ  ● " + (price - g.Coins);
+            Button(action, 16, 616, 358, 50, Cyan, () => g.SelectWeapon(weapon), 14, canEquip,
+                skinTint: Color.Lerp(Dark, accent, .29f));
+            string upgrade = max ? "МАКСИМАЛЬНЫЙ УРОВЕНЬ" : g.Coins >= cost ?
+                "УЛУЧШИТЬ  ● " + cost : "ДО УЛУЧШЕНИЯ  ● " + (cost - g.Coins);
+            if (owned) Button(upgrade, 16, 675, 358, 54, Orange, () => g.UpgradeWeapon(weapon), 15, !max && g.Coins >= cost);
+        }
+
+        void WeaponStat(string name, string value, float x, float y, float width, Color accent)
+        {
+            Block("weapon stat", x, y, width, 54, Color.Lerp(Panel, accent, .13f));
+            Label(name, x, y + 4, width, 18, 10, TextMuted);
+            Label(value, x, y + 20, width, 28, 17, Color.white);
         }
 
         static readonly BonusKind[] TimedBonuses =
@@ -501,50 +576,79 @@ namespace ZombieSurvivalRun
         void Bonuses(ZSRGame g)
         {
             TitleBar("БОНУСЫ В ЗАБЕГЕ", g);
+            Label("Выбирайте ворота по знаку на трассе.", 18, 102, 354, 27, 13, Cyan, TextAnchor.MiddleLeft, false);
             for (int i = 0; i < 6; i++)
             {
                 var kind = (BonusKind)i;
                 var art = ZSRVeilGateView.Appearance(kind);
-                float y = 106 + i * 103;
-                Block("bonus card", 16, y, 358, 89, Panel);
-                Block("bonus mark background", 27, y + 12, 78, 64, new Color(.10f, .15f, .21f));
-                Accent(27, y + 12, 78, art.tint);
-                Label(art.label, 29, y + 19, 74, 50, art.label.Length > 3 ? 12 : 25, art.tint);
-                Label(art.title, 117, y + 10, 243, 29, 17, Color.white, TextAnchor.MiddleLeft);
+                float y = 138 + i * 94;
+                Block("bonus card", 15, y, 360, 85, Color.Lerp(Panel, art.tint, .12f));
+                Block("bonus mark background", 25, y + 10, 80, 63, Color.Lerp(Panel, art.tint, .20f));
+                Accent(25, y + 10, 80, art.tint);
+                Label(art.label, 27, y + 16, 76, 50, art.label.Length > 3 ? 11 : 25, art.tint);
+                Label(kind == BonusKind.Heal ? "Лечение" : art.title, 118, y + 8, 195, 25, 16, Color.white, TextAnchor.MiddleLeft);
                 string detail = kind switch
                 {
+                    BonusKind.DoubleDamage => "Удваивает урон выстрелов",
+                    BonusKind.RapidFire => "+" + Mathf.RoundToInt((1f / ZSRGame.RapidFireInterval - 1f) * 100f) + "% к темпу стрельбы",
+                    BonusKind.Shield => "Поглощает весь входящий урон",
                     BonusKind.Heal => "Восстанавливает до " + ZSRGame.GateHealAmount + " HP",
-                    BonusKind.RapidFire => "+" + Mathf.RoundToInt((1f / ZSRGame.RapidFireInterval - 1f) * 100f) + "% к темпу • " + g.BonusDuration(kind) + " сек.",
-                    _ => g.BonusDuration(kind).ToString("0.#") + " сек. действия"
+                    BonusKind.Magnet => "Притягивает монеты до " + ZSRGame.MagnetRadius.ToString("0.#", Russian) + " м",
+                    _ => "Вызывает дрон  •  " + ZSRGame.DroneDamage(g.ItemLevel(ItemType.Drone)) + " урона / выстрел"
                 };
-                Label(detail, 117, y + 42, 242, 34, 13, TextMuted, TextAnchor.MiddleLeft, false);
+                Label(detail, 118, y + 35, 242, 38, 13, Color.white, TextAnchor.MiddleLeft, false);
+                Label(kind == BonusKind.Heal ? "" : g.BonusDuration(kind).ToString("0.#", Russian) + " с",
+                    313, y + 8, 52, 24, 12, art.tint);
             }
+            Label("Двойной урон и высокий темп заменяют друг друга.", 17, 707, 356, 30, 12, TextMuted, TextAnchor.MiddleCenter, false);
         }
 
         void Items(ZSRGame g)
         {
             TitleBar("ПРЕДМЕТЫ И МОДУЛИ", g);
-            Label("● " + g.Coins.ToString("N0"), 244, 102, 128, 24, 14, Gold);
-            ItemType[] items = { ItemType.Medkit, ItemType.Grenade, ItemType.Drone, ItemType.Armor };
+            Label("УЛУЧШЕНИЯ НА ВСЮ КАМПАНИЮ", 17, 103, 225, 24, 11, Cyan, TextAnchor.MiddleLeft);
+            Label("● " + g.Coins.ToString("N0", Russian), 244, 103, 128, 24, 14, Gold);
             string[] names = { "АПТЕЧКА", "ГРАНАТА", "ДРОН", "БРОНЕМОДУЛЬ" };
-            string[] glyph = { "+", "✹", "◈", "◆" };
-            for (int i = 0; i < 4; i++)
+            string[] marks = { "HP", "ВЗРЫВ", "ДРОН", "ЩИТ" };
+            Color[] accents = { Green, Orange, Cyan, new Color(.78f, .64f, 1f) };
+            for (int i = 0; i < names.Length; i++)
             {
-                float x = 16 + (i % 2) * 185;
-                float y = 120 + (i / 2) * 252;
-                ItemType chosenItem = items[i]; // Capture each item separately.
-                int lvl = g.ItemLevel(chosenItem);
-                int cost = g.ItemUpgradeCost(items[i]);
-                Block("item card", x, y, 173, 236, Panel);
-                Accent(x, y, 173, i == 3 ? Cyan : Orange);
-                Block("symbol", x + 38, y + 18, 98, 82, new Color(.10f, .15f, .20f, 1));
-                Label(glyph[i], x + 38, y + 24, 98, 70, 42, i == 3 ? Cyan : Gold);
-                Label(names[i], x + 5, y + 108, 163, 24, 16, Color.white);
-                Label("УРОВЕНЬ " + lvl + " / 5", x + 8, y + 136, 157, 20, 12, Gold);
-                Label(g.ItemDescription(items[i]), x + 8, y + 154, 157, 34, 12, TextMuted);
-                Button(lvl >= 5 ? "МАКС" : ("УЛУЧШИТЬ ● " + cost), x + 10, y + 188, 153, 44, i == 3 ? Cyan : Orange, () => g.UpgradeItem(chosenItem), 12, lvl < 5);
+                float x = 16 + i % 2 * 185;
+                float y = 135 + i / 2 * 275;
+                var item = (ItemType)i;
+                int level = g.ItemLevel(item);
+                int next = Mathf.Min(ZSRGame.MaxUpgradeLevel, level + 1);
+                int cost = g.ItemUpgradeCost(item);
+                Color tint = accents[i];
+                Block("item card", x, y, 173, 258, Color.Lerp(Panel, tint, .13f));
+                Accent(x, y, 173, tint);
+                Block("item mark", x + 13, y + 13, 147, 42, Color.Lerp(Panel, tint, .25f));
+                Label(marks[i], x + 13, y + 13, 147, 42, 18, tint);
+                Label(names[i], x + 6, y + 63, 161, 24, 15, Color.white);
+                Label("УРОВЕНЬ " + level + " / 5", x + 7, y + 88, 159, 22, 12, tint);
+                Label(ItemStats(item, level, next), x + 8, y + 115, 157, 61, 13, Color.white,
+                    TextAnchor.UpperCenter, false);
+                if (item != ItemType.Armor)
+                    Label("На старте: " + StatChange(ZSRGame.ItemStartCount(item, level), ZSRGame.ItemStartCount(item, next)),
+                        x + 8, y + 178, 157, 23, 12, TextMuted);
+                Button(level == next ? "МАКСИМУМ" : g.Coins >= cost ? "УЛУЧШИТЬ  ● " + cost : "ЕЩЁ  ● " + (cost - g.Coins),
+                    x + 8, y + 205, 157, 44, tint, () => g.UpgradeItem(item), 11, level < next && g.Coins >= cost);
             }
         }
+
+        static string StatChange(float current, float next) =>
+            current.ToString("0.#", Russian) + (current == next ? "" : " → " + next.ToString("0.#", Russian));
+
+        static string ItemStats(ItemType item, int level, int next) => item switch
+        {
+            ItemType.Medkit => "+" + StatChange(ZSRGame.MedkitHealth(level), ZSRGame.MedkitHealth(next)) + " HP",
+            ItemType.Grenade => "Урон " + StatChange(ZSRGame.GrenadeDamage(level), ZSRGame.GrenadeDamage(next)) +
+                "\nРадиус " + StatChange(ZSRGame.GrenadeRadius(level), ZSRGame.GrenadeRadius(next)) + " м",
+            ItemType.Drone => StatChange(ZSRGame.DroneDuration(level), ZSRGame.DroneDuration(next)) +
+                " с в бою\nУрон " + StatChange(ZSRGame.DroneDamage(level), ZSRGame.DroneDamage(next)),
+            _ => "Защита " + StatChange(ZSRGame.ArmorReduction(level) * 100f, ZSRGame.ArmorReduction(next) * 100f) +
+                "%\nЩит " + StatChange(ZSRGame.ShieldSeconds(level), ZSRGame.ShieldSeconds(next)) + " с"
+        };
 
         void Levels(ZSRGame g)
         {
@@ -570,10 +674,11 @@ namespace ZombieSurvivalRun
                 }
             }
             Label(g.LevelTitle, 24, 542, 342, 38, 19, Color.white);
-            Button("ИГРАТЬ УРОВЕНЬ " + g.Level, 24, 592, 342, 62, Orange,
+            Button("ИГРАТЬ УРОВЕНЬ " + g.Level, 24, 585, 342, 59, Orange,
                 () => g.StartLevel(g.Level), 20);
+            Button("СЮЖЕТ ЭПИЗОДА", 24, 651, 342, 48, Cyan, g.GoStory, 14);
 #if UNITY_EDITOR
-            Button("ТЕСТ: ОТКРЫТЬ ВСЕ УРОВНИ", 24, 680, 342, 46, Cyan, g.UnlockForTesting, 11);
+            Button("ТЕСТ: ОТКРЫТЬ ВСЕ УРОВНИ", 24, 707, 342, 44, Cyan, g.UnlockForTesting, 11);
 #endif
         }
 
@@ -598,11 +703,18 @@ namespace ZombieSurvivalRun
             // The boss background and health bar appear only during the three boss encounters.
             bossBackdrop = Block("boss hp backdrop", 35, 158, 320, 9, new Color(.24f,.08f,.10f,.85f));
             bossFill = Block("boss health red", 35, 158, 320, 9, new Color(.91f, .12f, .13f, 1));
-            hudMessage = Label("", 8, 172, 374, 34, 17, Gold);
+            hudMessage = Label("", 8, 172, 374, 27, 15, Gold);
+            radioCard = Block("radio thin panel", 16, 201, 358, 62, new Color(.027f,.059f,.087f,.91f));
+            hudRadio = Label("", 11, 4, 336, 53, 13, Color.white, TextAnchor.MiddleLeft, false, radioCard);
+            radioCard.gameObject.SetActive(false);
+            lastRadioLine = null;
+            lastPaceSeconds = -1;
             float bottom = H - 107;
             Block("HUD bottom", 0, bottom - 15, W, 122, new Color(.026f, .041f, .061f, .85f));
             Accent(9, bottom - 15, 372, Orange);
-            hudAmmo = Label("", 16, bottom - 8, 355, 31, 19, Color.white, TextAnchor.MiddleLeft);
+            hudAmmo = Label("", 16, bottom - 10, 358, 25, 17, Color.white, TextAnchor.MiddleLeft);
+            hudPace = Label("", 16, bottom + 14, 358, 17, 11, Cyan, TextAnchor.MiddleLeft);
+            paceFill = Block("pace ready", 287, bottom + 21, 84, 3, Cyan);
             Button("АПТЕЧКА", 11, bottom + 33, 115, 64, Cyan, g.UseMedkit, 13, g.IsRunning, redraw: false);
             Button("ГРАНАТА", 138, bottom + 33, 114, 64, Orange, g.ThrowGrenade, 13, g.IsRunning, redraw: false);
             Button("ДРОН", 264, bottom + 33, 114, 64, Cyan, g.UseDrone, 13, g.IsRunning, redraw: false);
@@ -620,6 +732,26 @@ namespace ZombieSurvivalRun
             hudHealth.text = "ЗДОРОВЬЕ " + g.Hero.Health;
             hudAmmo.text = WeaponNames[(int)g.Weapon] + "   " + g.Ammo + " / " + g.Magazine + (g.IsReloading ? "  •  ПЕРЕЗАРЯДКА" : "");
             hudMessage.text = g.CurrentNotice;
+            var radio = g.Radio;
+            if (radio.line != lastRadioLine)
+            {
+                lastRadioLine = radio.line;
+                radioCard.gameObject.SetActive(radio.line != null);
+                if (radio.line != null) hudRadio.text = (radio.speaker == 0 ? "МАКС   /   " : "ЕВА   /   ") + radio.line;
+            }
+            int rechargeSeconds = Mathf.CeilToInt(g.PaceRecharge);
+            if (g.Pace != lastPace || rechargeSeconds != lastPaceSeconds)
+            {
+                lastPace = g.Pace;
+                lastPaceSeconds = rechargeSeconds;
+                hudPace.text = g.Pace switch
+                {
+                    ZSRPace.Surge => "РЫВОК",
+                    ZSRPace.Walk => "ШАГ",
+                    _ => rechargeSeconds > 0 ? "РЫВОК / ШАГ ЧЕРЕЗ " + rechargeSeconds + " С" : "↑ РЫВОК     ↓ ШАГ"
+                };
+            }
+            paceFill.sizeDelta = new Vector2(84f * (1f - g.PaceRecharge / ZSRRunPace.RechargeSeconds), 3f);
             int active = 0;
             for (int i = 0; i < hudBonuses.Length; i++)
             {
@@ -670,8 +802,10 @@ namespace ZombieSurvivalRun
         void ResultScreen(ZSRGame g, bool victory)
         {
             ModalDark();
-            Label(victory ? "ПОБЕДА!" : "ПОРАЖЕНИЕ", 25, H * .25f + 17, 340, 65, 32, victory ? Gold : Orange);
-            Label("ЗОМБИ: " + g.Eliminated + "     •     МОНЕТЫ: " + g.Earned, 25, H * .25f + 92, 340, 46, 15, TextMuted);
+            Label(victory ? (g.Level == ZSRGame.MaxLevels ? "СИГНАЛ ПРИНЯТ" : "ПОБЕДА") : "ПОРАЖЕНИЕ", 25, H * .25f + 17, 340, 65, 32, victory ? Gold : Orange);
+            Label("ЗОМБИ: " + g.Eliminated + "     •     МОНЕТЫ: " + g.Earned, 25, H * .25f + 76, 340, 25, 14, TextMuted);
+            if (victory)
+                Label(g.CurrentBeat.After, 37, H * .25f + 102, 316, 50, 13, Color.white, TextAnchor.MiddleCenter, false);
             Button(victory && g.Level < ZSRGame.MaxLevels ? "СЛЕДУЮЩИЙ УРОВЕНЬ" : "ПОВТОРИТЬ", 39, H * .25f + 159, 312, 62, Orange,
                 () => { if (victory && g.Level < ZSRGame.MaxLevels) g.NextLevel(); else g.Retry(); }, 18);
             if (victory && g.Level < ZSRGame.MaxLevels)

@@ -196,7 +196,7 @@ namespace ZombieSurvivalRun
             float dt = ZSRGame.Instance.FrameStep;
             transform.position += Vector3.back * ZSRGame.Instance.RunSpeed * dt;
             transform.Rotate(0, 170f * dt, 0);
-            float radius = ZSRGame.Instance.MagnetActive ? 3.6f : 1.1f;
+            float radius = ZSRGame.Instance.MagnetActive ? ZSRGame.MagnetRadius : 1.1f;
             if (!claimed && transform.position.z < 2.2f && transform.position.z > -1.2f && Mathf.Abs(transform.position.x - ZSRGame.Instance.Hero.PositionX) < radius)
             {
                 claimed = true;

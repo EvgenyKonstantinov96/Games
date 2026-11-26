@@ -1,4 +1,4 @@
-"""Render a loop of the actual imported run takes for motion review in Blender."""
+"""Render a loop of the shipped FBX run or walk takes for motion review in Blender."""
 
 import math
 from pathlib import Path
@@ -10,6 +10,7 @@ from mathutils import Vector
 args = sys.argv[sys.argv.index("--")+1:]
 assets, output = map(lambda x: Path(x).resolve(), args[:2])
 output.mkdir(parents=True, exist_ok=True)
+walking = "--walk" in args
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 scene = bpy.context.scene
@@ -23,10 +24,13 @@ shader = nodes.get("Principled BSDF")
 shader.inputs["Roughness"].default_value = .68
 atlas.node_tree.links.new(texture.outputs["Color"], shader.inputs["Base Color"])
 
-for name, position, yaw in (
+cast = (
     ("Eva",(-1.94,0,0),math.pi*.52), ("Max",(-.73,0,0),math.pi*.65),
     ("Walker",(.73,0,0),math.pi*.92), ("Runner",(1.94,0,0),math.pi*1.04),
-):
+)
+if walking:
+    cast = (("Eva",(-.79,0,0),math.pi*.51), ("Max",(.79,0,0),math.pi*.66))
+for name, position, yaw in cast:
     old = set(bpy.data.objects)
     bpy.ops.import_scene.fbx(filepath=str(assets/(name+".fbx")))
     actors = set(bpy.data.objects)-old
@@ -69,7 +73,7 @@ bpy.ops.object.camera_add(location=(.02,-11,4.1))
 camera = bpy.context.object
 camera.rotation_euler = (Vector((0,0,.97))-camera.location).to_track_quat("-Z","Y").to_euler()
 camera.data.type = "ORTHO"
-camera.data.ortho_scale = 5.44
+camera.data.ortho_scale = 4.04 if walking else 5.44
 scene.camera = camera
 scene.render.engine = "CYCLES"
 scene.cycles.samples = 20
@@ -78,7 +82,9 @@ scene.render.resolution_x,scene.render.resolution_y = 704,396
 scene.render.resolution_percentage = 100
 scene.render.image_settings.file_format = "PNG"
 scene.render.fps = 30
-scene.frame_start,scene.frame_end = 33,56
+scene.frame_start,scene.frame_end = (219,252) if walking else (33,56)
+if "--step" in args:
+    scene.frame_step = int(args[args.index("--step")+1])
 if "--still" in args:
     scene.cycles.samples = 40
     scene.render.resolution_x, scene.render.resolution_y = 1152, 648

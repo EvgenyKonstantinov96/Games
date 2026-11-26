@@ -398,10 +398,11 @@ namespace ZombieSurvivalRun
                     -lateralLean * .40f, lateralLean);
         }
 
-        public void Tick(bool running, float speed)
+        public void Tick(bool running, float speed, bool walking = false)
         {
             if (dead) return;
-            if (bundled != null) { bundled.Tick(running, speed); return; }
+            if (bundled != null) { bundled.Tick(running, speed, walking); return; }
+            if (walking) speed *= .60f;
             if (animator != null && animator.runtimeAnimatorController != null)
                 animator.speed = Mathf.Clamp(speed, .6f, 1.8f);
             if (Time.time >= hitUntil)

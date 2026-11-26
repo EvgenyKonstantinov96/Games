@@ -7,7 +7,7 @@ using UnityEngine.Rendering.Universal;
 
 namespace ZombieSurvivalRun
 {
-    public enum ZSRState { Menu, Heroes, Arsenal, Bonuses, Items, Levels, Playing, Paused, Victory, Defeat }
+    public enum ZSRState { Menu, Heroes, Arsenal, Bonuses, Items, Levels, Playing, Paused, Victory, Defeat, Story }
     public enum ItemType { Medkit, Grenade, Drone, Armor }
 
     /// <summary>
@@ -15,6 +15,7 @@ namespace ZombieSurvivalRun
     /// Self-contained vertical Unity prototype with 15 levels, improved visuals,
     /// weapon progression and upgradable tactical items.
     /// </summary>
+    [DefaultExecutionOrder(-90)]
     public sealed class ZSRGame : MonoBehaviour
     {
         public const int MaxLevels = 15;
@@ -36,12 +37,32 @@ namespace ZombieSurvivalRun
         public ZSRHero Hero { get; private set; }
         public int Level { get; private set; } = 1;
         public int UnlockedLevel { get; private set; } = 1;
+        internal int CompletedStoryLevel { get; private set; }
+        internal ZSRStory.Beat CurrentBeat => ZSRStory.At(Level);
+        internal (int speaker, string line) Radio
+        {
+            get
+            {
+                if (Elapsed > 2.7f && Elapsed < 8.7f)
+                {
+                    int sibling = 1 - SelectedHero;
+                    return (sibling, CurrentBeat.Line(sibling));
+                }
+                float secondCall = LevelLength * .42f;
+                return Elapsed >= secondCall && Elapsed < secondCall + 6f
+                    ? (SelectedHero, CurrentBeat.Line(SelectedHero)) : (-1, null);
+            }
+        }
         public int SelectedHero { get; private set; }
         public WeaponType Weapon { get; private set; } = WeaponType.Rifle;
         float BaseRunSpeed => 11.7f + (Level - 1) * .22f;
-        public float RunSpeed => BaseRunSpeed + Mathf.Max(0, Level - 5) * .23f;
+        float StageRunSpeed => BaseRunSpeed + Mathf.Max(0, Level - 5) * .23f;
+        public float RunSpeed => StageRunSpeed * pace.Scale;
+        internal float PaceScale => pace.Scale;
+        internal ZSRPace Pace => pace.Mode;
+        internal float PaceRecharge => pace.Recharge;
         // Scale approach depths and the hero's stride with the extra pace.
-        internal float RunPaceMultiplier => RunSpeed / BaseRunSpeed;
+        internal float RunPaceMultiplier => StageRunSpeed / BaseRunSpeed;
         // The road, enemies, pickups and obstacles must advance by the same capped step.
         public float FrameStep => Mathf.Min(Time.deltaTime, .05f);
         public float LevelLength => IsBossLevel ? 84f + Chapter * 4f : 66f + StageInChapter * 4f + Chapter * 2f;
@@ -59,9 +80,9 @@ namespace ZombieSurvivalRun
         {
             BonusKind.DoubleDamage => 10f + Chapter,
             BonusKind.RapidFire => 11f,
-            BonusKind.Shield => 8f + (ItemLevel(ItemType.Armor) - 1) * 1.5f,
+            BonusKind.Shield => ShieldSeconds(ItemLevel(ItemType.Armor)),
             BonusKind.Magnet => 12f,
-            BonusKind.Turret => 10f + ItemLevel(ItemType.Drone) * 2f,
+            BonusKind.Turret => DroneDuration(ItemLevel(ItemType.Drone)),
             _ => 0f
         };
         internal float BonusRemaining(BonusKind kind) => kind switch
@@ -72,6 +93,7 @@ namespace ZombieSurvivalRun
             BonusKind.DoubleDamage or BonusKind.RapidFire when kind == activeBonus => bonusTimer,
             _ => 0f
         };
+        internal const float MagnetRadius = 3.6f;
         public bool MagnetActive => magnetTimer > 0;
         public bool IsReloading => reloading;
         public string CurrentNotice => noticeTimer > 0 ? notice : "";
@@ -85,8 +107,11 @@ namespace ZombieSurvivalRun
         public int Chapter => Mathf.Clamp((Level - 1) / 5, 0, 2);
         public int StageInChapter => (Level - 1) % 5;
         public bool IsBossLevel => Level % 5 == 0;
-        public int WeaponLevel => PlayerPrefs.GetInt("zsr40_weapon_level_" + (int)Weapon, 1);
-        public int UpgradeCost => WeaponLevel * 750;
+        public int WeaponLevel => WeaponLevelFor(Weapon);
+        public int UpgradeCost => WeaponUpgradeCost(Weapon);
+        internal int WeaponLevelFor(WeaponType weapon) =>
+            Mathf.Clamp(PlayerPrefs.GetInt("zsr40_weapon_level_" + (int)weapon, 1), 1, MaxUpgradeLevel);
+        internal int WeaponUpgradeCost(WeaponType weapon) => WeaponLevelFor(weapon) * 750;
 
         public static readonly string[] LevelNames =
         {
@@ -94,6 +119,21 @@ namespace ZombieSurvivalRun
             "РАЗРУШЕННЫЙ МОСТ", "ПРОРЫВ К КВАРТАЛАМ", "НЕОНОВЫЙ РАЙОН", "ШТУРМ БАШНИ", "КАРАТЕЛЬ КАНАЛОВ",
             "ЭВАКУАЦИЯ", "ВОЕННЫЙ КОРИДОР", "ПОСЛЕДНИЙ КОНВОЙ", "ПЕПЕЛ И СИРЕНЫ", "ПОВЕЛИТЕЛЬ ОРДЫ"
         };
+
+        readonly ZSRRunPace pace = new();
+        readonly ZSRStrideGesture gesture = new();
+        enum RunPointer { None, Touch, Mouse }
+        RunPointer pointerSource;
+        bool waitForPointerRelease;
+
+        static RunPointer ActivePointer => Touchscreen.current?.primaryTouch.press.isPressed == true ? RunPointer.Touch :
+            Mouse.current?.leftButton.isPressed == true ? RunPointer.Mouse : RunPointer.None;
+
+        void CancelGesture()
+        {
+            gesture.Reset();
+            waitForPointerRelease = ActivePointer != RunPointer.None;
+        }
 
         readonly List<ZSRZombie> enemies = new List<ZSRZombie>();
         readonly Dictionary<ZombieType, Queue<ZSRZombie>> pools = new Dictionary<ZombieType, Queue<ZSRZombie>>();
@@ -144,6 +184,8 @@ namespace ZombieSurvivalRun
 #endif
             Coins = PlayerPrefs.GetInt("zsr40_coins", 2200);
             UnlockedLevel = Mathf.Clamp(PlayerPrefs.GetInt("zsr40_unlocked", 1), 1, MaxLevels);
+            CompletedStoryLevel = Mathf.Clamp(PlayerPrefs.GetInt("zsr40_story_cleared", UnlockedLevel - 1), 0, MaxLevels);
+            Level = Mathf.Min(UnlockedLevel, CompletedStoryLevel + 1);
             SelectedHero = Mathf.Clamp(PlayerPrefs.GetInt("zsr40_hero", 0), 0, 1);
             Weapon = (WeaponType)Mathf.Clamp(PlayerPrefs.GetInt("zsr40_weapon", 1), 0, 3);
             if (!WeaponOwned(Weapon)) Weapon = WeaponType.Rifle;
@@ -162,11 +204,9 @@ namespace ZombieSurvivalRun
             winAudio = Synth("win", .28f, 360, 770, .32f);
         }
 
-        public int WeaponUnlockLevel(WeaponType t)
-            => t == WeaponType.Pistol ? 1 : t == WeaponType.Rifle ? 1 : t == WeaponType.Shotgun ? 4 : 9;
+        public int WeaponUnlockLevel(WeaponType t) => ZSRWeaponProfile.For(t).UnlockLevel;
 
-        public int WeaponPrice(WeaponType t)
-            => t == WeaponType.Pistol ? 0 : t == WeaponType.Rifle ? 0 : t == WeaponType.Shotgun ? 2200 : 5400;
+        public int WeaponPrice(WeaponType t) => ZSRWeaponProfile.For(t).Price;
 
         public bool WeaponLevelUnlocked(WeaponType t) => UnlockedLevel >= WeaponUnlockLevel(t);
 
@@ -182,17 +222,22 @@ namespace ZombieSurvivalRun
             return baseCost * level;
         }
 
-        public int ItemStartCount(ItemType item)
+        public int ItemStartCount(ItemType item) => ItemStartCount(item, ItemLevel(item));
+
+        internal static int ItemStartCount(ItemType item, int level) => item switch
         {
-            int level = ItemLevel(item);
-            switch (item)
-            {
-                case ItemType.Medkit: return 1 + level / 2;
-                case ItemType.Grenade: return 1 + level / 2;
-                case ItemType.Drone: return level >= 4 ? 2 : 1;
-                default: return 0;
-            }
-        }
+            ItemType.Medkit or ItemType.Grenade => 1 + level / 2,
+            ItemType.Drone => level >= 4 ? 2 : 1,
+            _ => 0
+        };
+
+        internal static int MedkitHealth(int level) => 40 + level * 18;
+        internal static int GrenadeDamage(int level) => 105 + level * 38;
+        internal static float GrenadeRadius(int level) => 4.6f + level * .42f;
+        internal static float DroneDuration(int level) => 10f + level * 2f;
+        internal static int DroneDamage(int level) => 22 + level * 12;
+        internal static float ShieldSeconds(int level) => 8f + (level - 1) * 1.5f;
+        internal static float ArmorReduction(int level) => (level - 1) * .06f;
 
         public string ThemeName => ZSRCampaignStyle.For(Chapter).Title.ToUpperInvariant();
 
@@ -406,6 +451,8 @@ namespace ZombieSurvivalRun
             Hero.gameObject.SetActive(true);
             Hero.ResetHero(SelectedHero, Weapon);
 
+            pace.Reset();
+            CancelGesture();
             State = ZSRState.Playing;
             Elapsed = 0;
             Earned = 0;
@@ -413,7 +460,7 @@ namespace ZombieSurvivalRun
             Grenades = ItemStartCount(ItemType.Grenade);
             Medkits = ItemStartCount(ItemType.Medkit);
             Drones = ItemStartCount(ItemType.Drone);
-            Magazine = Weapon == WeaponType.Pistol ? 12 : Weapon == WeaponType.Rifle ? 30 : Weapon == WeaponType.Shotgun ? 8 : 70;
+            Magazine = ZSRWeaponProfile.For(Weapon).Magazine;
             Ammo = Magazine;
             shootTimer = .3f;
             reloadTimer = 0;
@@ -468,6 +515,7 @@ namespace ZombieSurvivalRun
             float dt = FrameStep;
             HandleInput(dt);
             if (!IsRunning) return;
+            pace.Advance(dt);
             Elapsed += dt;
             UpdateGrenades(dt);
             combatEffects.Tick(dt, RunSpeed, Hero.ItemOrigin);
@@ -539,7 +587,7 @@ namespace ZombieSurvivalRun
         void FrameRunCamera(float heroX, float shakeOffset = 0f)
         {
             float aspect = Mathf.Max(.1f, camera3D.aspect);
-            float halfAngle = RunCameraFov * Mathf.Deg2Rad * .5f;
+            float halfAngle = (RunCameraFov + (pace.Scale - 1f) * 4f) * Mathf.Deg2Rad * .5f;
             float extraWidth = Mathf.Max(1f, RunCameraReferenceAspect / aspect);
             float fov = 2f * Mathf.Atan(Mathf.Tan(halfAngle) * extraWidth) * Mathf.Rad2Deg;
             if (Mathf.Abs(camera3D.fieldOfView - fov) > .01f) camera3D.fieldOfView = fov;
@@ -558,22 +606,32 @@ namespace ZombieSurvivalRun
             {
                 if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed) Hero.TargetX -= dt * 8f;
                 if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed) Hero.TargetX += dt * 8f;
+                bool surge = keyboard.wKey.wasPressedThisFrame || keyboard.upArrowKey.wasPressedThisFrame;
+                bool walk = keyboard.sKey.wasPressedThisFrame || keyboard.downArrowKey.wasPressedThisFrame;
+                if (surge != walk) pace.TryChange(surge ? ZSRPace.Surge : ZSRPace.Walk);
                 if (keyboard.spaceKey.wasPressedThisFrame) ThrowGrenade();
                 if (keyboard.hKey.wasPressedThisFrame) UseMedkit();
             }
 
-            var touchscreen = Touchscreen.current;
-            if (touchscreen != null && touchscreen.primaryTouch.press.isPressed)
+            RunPointer source = ActivePointer;
+            if (source == RunPointer.None) waitForPointerRelease = false;
+            if (source != pointerSource)
             {
-                Vector2 p = touchscreen.primaryTouch.position.ReadValue();
-                if (p.y > Screen.height * .22f && p.y < Screen.height * .80f)
-                    Hero.TargetX += touchscreen.primaryTouch.delta.ReadValue().x / Mathf.Max(1f, Screen.width) * 11f;
+                gesture.Reset();
+                pointerSource = source;
             }
-            else if (Mouse.current != null && Mouse.current.leftButton.isPressed)
+            if (!waitForPointerRelease)
             {
-                Vector2 p = Mouse.current.position.ReadValue();
-                if (p.y > Screen.height * .22f && p.y < Screen.height * .80f)
-                    Hero.TargetX += Mouse.current.delta.ReadValue().x / Mathf.Max(1f, Screen.width) * 11f;
+                Vector2 point = source switch
+                {
+                    RunPointer.Touch => Touchscreen.current.primaryTouch.position.ReadValue(),
+                    RunPointer.Mouse => Mouse.current.position.ReadValue(),
+                    _ => Vector2.zero
+                };
+                bool inPlayfield = point.y > Screen.height * .22f && point.y < Screen.height * .80f;
+                var input = gesture.Read(source != RunPointer.None, inPlayfield, point / Mathf.Max(1f, Screen.width));
+                Hero.TargetX += input.lateral * 11f;
+                pace.TryChange(input.request);
             }
             Hero.TargetX = Mathf.Clamp(Hero.TargetX, -RunLaneLimit, RunLaneLimit);
         }
@@ -599,8 +657,8 @@ namespace ZombieSurvivalRun
         {
             ZSRZombie target = FindTarget();
             if (target == null) { shootTimer = .08f; return; }
-            float rate = Weapon == WeaponType.Pistol ? .33f : Weapon == WeaponType.Rifle ? .13f : Weapon == WeaponType.Shotgun ? .57f : .065f;
-            if (SelectedHero == 1) rate *= .90f;
+            var profile = ZSRWeaponProfile.For(Weapon);
+            float rate = profile.ShotInterval(SelectedHero);
             if (activeBonus == BonusKind.RapidFire && bonusTimer > 0) rate *= RapidFireInterval;
             // Carry the fraction of the frame after the scheduled shot without
             // building a backlog during reloads, item use, or a pause.
@@ -611,8 +669,7 @@ namespace ZombieSurvivalRun
             shake = Mathf.Max(shake, Weapon == WeaponType.Shotgun ? .29f : .15f);
             audioSource.PlayOneShot(weaponAudio[(int)Weapon], Weapon == WeaponType.Minigun ? .38f : .68f);
             Ammo--;
-            int damage = (Weapon == WeaponType.Pistol ? 27 : Weapon == WeaponType.Rifle ? 22 : Weapon == WeaponType.Shotgun ? 55 : 13) + WeaponLevel * 5;
-            damage *= damageMultiplier;
+            int damage = profile.Damage(WeaponLevel) * damageMultiplier;
             if (Weapon == WeaponType.Shotgun)
             {
                 target.TakeHit(damage, muzzle);
@@ -621,8 +678,8 @@ namespace ZombieSurvivalRun
                         z.TakeHit(damage / 3, muzzle);
             }
             else target.TakeHit(damage, muzzle);
-            var tracerColor = new Color(1f, .74f, .27f);
-            combatEffects.Streak(muzzle, aim, tracerColor, Weapon == WeaponType.Shotgun ? .08f : .06f);
+            var tracerColor = profile.Tracer;
+            combatEffects.Streak(muzzle, aim, tracerColor, profile.TracerWidth);
             if (Weapon == WeaponType.Shotgun)
             {
                 combatEffects.Streak(muzzle, aim + new Vector3(.58f, .16f, .22f), tracerColor, .043f);
@@ -631,7 +688,7 @@ namespace ZombieSurvivalRun
             if (Ammo <= 0)
             {
                 reloading = true;
-                reloadTimer = Weapon == WeaponType.Pistol ? 1.05f : Weapon == WeaponType.Shotgun ? 1.65f : Weapon == WeaponType.Minigun ? 2.6f : 1.35f;
+                reloadTimer = profile.Reload;
                 Hero.Reload(reloadTimer);
                 Notify("ПЕРЕЗАРЯДКА", .9f);
             }
@@ -729,7 +786,7 @@ namespace ZombieSurvivalRun
                 if (item.GetComponent<ZSRBonusGate>() != null || item.GetComponent<ZSRObstacle>() != null)
                     trafficDepths.Add(item.transform.position.z);
             }
-            return SpaceTraffic(desiredDepth, RunSpeed * 1.30f, trafficDepths);
+            return SpaceTraffic(desiredDepth, StageRunSpeed * ZSRRunPace.SurgeScale * 1.30f, trafficDepths);
         }
 
         internal static float SpaceTraffic(float depth, float clearance, List<float> occupied)
@@ -809,8 +866,8 @@ namespace ZombieSurvivalRun
         {
             shake = Mathf.Max(shake, .65f);
             audioSource.PlayOneShot(boomAudio, .85f);
-            float radius = 4.6f + itemLevel * .42f;
-            int grenadeDamage = 105 + itemLevel * 38;
+            float radius = GrenadeRadius(itemLevel);
+            int grenadeDamage = GrenadeDamage(itemLevel);
             combatEffects.Explode(position, radius);
             // Damage still uses the existing radial falloff. The effect starts on the ground.
             Vector3 damageCenter = position + Vector3.up * .88f;
@@ -832,7 +889,7 @@ namespace ZombieSurvivalRun
             if (!IsRunning || Medkits <= 0 || Hero.Health >= Hero.MaxHealth || Hero.IsUsingItem) return;
             Medkits--;
             Hero.UseItem(true);
-            HealHero(40 + ItemLevel(ItemType.Medkit) * 18, true);
+            HealHero(MedkitHealth(ItemLevel(ItemType.Medkit)), true);
             audioSource.PlayOneShot(winAudio, .35f);
         }
 
@@ -873,7 +930,7 @@ namespace ZombieSurvivalRun
             drone.Fire();
             combatEffects.Streak(origin, aim, new Color(.24f, 1f, .88f), .073f);
             audioSource.PlayOneShot(droneAudio, .41f);
-            target.TakeHit(22 + itemLevel * 12, origin);
+            target.TakeHit(DroneDamage(itemLevel), origin);
         }
 
         public void UseDrone()
@@ -893,7 +950,7 @@ namespace ZombieSurvivalRun
                 Notify("ЩИТ ПОГЛОТИЛ УРОН", .9f);
                 return;
             }
-            float reduction = 1f - (ItemLevel(ItemType.Armor) - 1) * .06f;
+            float reduction = 1f - ArmorReduction(ItemLevel(ItemType.Armor));
             int finalDamage = Mathf.Max(1, Mathf.RoundToInt(amount * reduction));
             Hero.Health = Mathf.Max(0, Hero.Health - finalDamage);
             Hero.Hit();
@@ -942,6 +999,8 @@ namespace ZombieSurvivalRun
                 Earned += 320 + Level * 95 + (IsBossLevel ? 450 : 0);
                 Coins += Earned;
                 UnlockedLevel = Mathf.Max(UnlockedLevel, Mathf.Min(MaxLevels, Level + 1));
+                CompletedStoryLevel = Mathf.Max(CompletedStoryLevel, Level);
+                PlayerPrefs.SetInt("zsr40_story_cleared", CompletedStoryLevel);
                 PlayerPrefs.SetInt("zsr40_unlocked", UnlockedLevel);
                 PlayerPrefs.SetInt("zsr40_coins", Coins);
                 PlayerPrefs.Save();
@@ -962,6 +1021,7 @@ namespace ZombieSurvivalRun
             if (State != ZSRState.Playing && State != ZSRState.Paused) return;
             bool pause = State == ZSRState.Playing;
             State = pause ? ZSRState.Paused : ZSRState.Playing;
+            CancelGesture();
             combatEffects.SetPaused(pause);
             if (chapterAir != null)
             {
@@ -970,6 +1030,7 @@ namespace ZombieSurvivalRun
             }
         }
         public void GoMenu() { ClearRun(); State = ZSRState.Menu; Hero.gameObject.SetActive(false); worldRoot.SetActive(false); }
+        public void GoStory() { State = ZSRState.Story; }
         public void GoHeroes() { State = ZSRState.Heroes; }
         public void GoArsenal() { State = ZSRState.Arsenal; }
         public void GoBonuses() { State = ZSRState.Bonuses; }
@@ -1010,11 +1071,15 @@ namespace ZombieSurvivalRun
             else Notify("НУЖНО БОЛЬШЕ МОНЕТ", 1.3f);
         }
 
-        public void UpgradeWeapon()
+        public void UpgradeWeapon() => UpgradeWeapon(Weapon);
+
+        internal void UpgradeWeapon(WeaponType weapon)
         {
-            if (WeaponLevel >= MaxUpgradeLevel || Coins < UpgradeCost) return;
-            Coins -= UpgradeCost;
-            PlayerPrefs.SetInt("zsr40_weapon_level_" + (int)Weapon, WeaponLevel + 1);
+            int level = WeaponLevelFor(weapon);
+            int cost = WeaponUpgradeCost(weapon);
+            if (!WeaponOwned(weapon) || level >= MaxUpgradeLevel || Coins < cost) return;
+            Coins -= cost;
+            PlayerPrefs.SetInt("zsr40_weapon_level_" + (int)weapon, level + 1);
             PlayerPrefs.SetInt("zsr40_coins", Coins);
             PlayerPrefs.Save();
         }
@@ -1035,17 +1100,23 @@ namespace ZombieSurvivalRun
             int lvl = ItemLevel(item);
             switch (item)
             {
-                case ItemType.Medkit: return "Лечит на " + (40 + lvl * 18) + " HP";
-                case ItemType.Grenade: return "Урон гранаты: " + (105 + lvl * 38);
-                case ItemType.Drone: return "Длительность: " + (10 + lvl * 2) + " сек";
-                default: return "Снижает входящий урон на " + Mathf.RoundToInt((lvl - 1) * 6f) + "%";
+                case ItemType.Medkit: return "Лечит на " + (MedkitHealth(lvl)) + " HP";
+                case ItemType.Grenade: return "Урон гранаты: " + (GrenadeDamage(lvl));
+                case ItemType.Drone: return "Длительность: " + (DroneDuration(lvl)) + " сек";
+                default: return "Снижает входящий урон на " + Mathf.RoundToInt(ArmorReduction(lvl) * 100f) + "%";
             }
         }
 
         public void NextLevel() { StartLevel(Mathf.Min(MaxLevels, Level + 1)); }
         public void Retry() { StartLevel(Level); }
 #if UNITY_EDITOR
-        public void UnlockForTesting() { UnlockedLevel = MaxLevels; PlayerPrefs.SetInt("zsr40_unlocked", MaxLevels); PlayerPrefs.Save(); }
+        public void UnlockForTesting()
+        {
+            UnlockedLevel = MaxLevels;
+            PlayerPrefs.SetInt("zsr40_story_cleared", CompletedStoryLevel);
+            PlayerPrefs.SetInt("zsr40_unlocked", MaxLevels);
+            PlayerPrefs.Save();
+        }
 #endif
 
         static AudioClip Synth(string n, float duration, float startHz, float finishHz, float gain)

@@ -49,7 +49,7 @@ def check_anatomy(skin, rig, scene, path, hero):
     feet = {side: [] for side in ("L", "R")}
     frames = [1, *range(33, 57), 73, 94, 122, 133, 154]
     if hero:
-        frames += [182, 189, 207, 211]
+        frames += [182, 189, 207, 211, *range(219, 253), 255, 267, 279]
     depsgraph = bpy.context.evaluated_depsgraph_get()
     for frame in frames:
         scene.frame_set(frame)
@@ -111,7 +111,7 @@ for path in sorted(ROOT.glob("*.fbx")):
         print(f"BOSS attack reach L/R {reach[0]:.3f}/{reach[1]:.3f} m, "
               f"ankle drift L/R {drift[0]:.3f}/{drift[1]:.3f} m", flush=True)
     if hero:
-        assert end-start >= 215, action.frame_range
+        assert end-start >= 288, action.frame_range
         poses=[]
         for frame in (1,183,207):
             scene.frame_set(frame)
@@ -149,6 +149,22 @@ for path in sorted(ROOT.glob("*.fbx")):
             print(f"GAIT {path.stem:7} {side} ankle-roll {max(pitches)-min(pitches):.1f} degrees, "
                   f"support {min(support[:10]):.3f}..{max(support[:10]):.3f} m, "
                   f"rearward travel {travel[0].y-travel[9].y:.3f} m, loop error {loop_error:.4f} m",flush=True)
+            walk, walk_support = [], []
+            for step in range(35):
+                scene.frame_set(219 + step)
+                foot = rig.pose.bones[foot_name]
+                walk.append(foot.head.copy())
+                walk_support.append(min((foot.matrix@heel_rest).z, (foot.matrix@ball_rest).z))
+                scene.frame_set(255 + step)
+                assert (rig.pose.bones[foot_name].head-walk[-1]).length < .022, (path, side, step)
+            walk_reach = max(p.y for p in walk)-min(p.y for p in walk)
+            run_reach = max(p.y for p in travel)-min(p.y for p in travel)
+            stance = sum(-.035 < height < .055 for height in walk_support[:34])
+            assert .37 < walk_reach < .72 * run_reach, (path, side, walk_reach, run_reach)
+            assert stance >= 21 and max(walk_support) > .065, (path, side, walk_support)
+            assert (walk[-1]-walk[0]).length < .015, (path, side, walk[0], walk[-1])
+            print(f"WALK {path.stem:7} {side} reach {walk_reach:.3f} m vs {run_reach:.3f} m running, "
+                  f"{stance}/34 frames near the ground, match with firing variant", flush=True)
     if path.stem in {"Walker", "Toxic", "Runner"}:
         strides = []
         for side in ("L", "R"):
@@ -168,4 +184,4 @@ for path in sorted(ROOT.glob("*.fbx")):
               f"ankle lift L/R {left[1]:.3f}/{right[1]:.3f} m", flush=True)
     print(f"PASS {path.stem:7} {len(names)} bones, {len(skin.data.vertices)} verts, {tri_count} triangles, "
           f"{start:g}–{end:g} frames, smooth custom normals"
-          + (", medkit and throw poses" if hero else ""),flush=True)
+          + (", medkit, throw, walk and walk-fire poses" if hero else ""),flush=True)

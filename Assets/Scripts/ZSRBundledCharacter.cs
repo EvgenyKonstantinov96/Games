@@ -7,11 +7,11 @@ namespace ZombieSurvivalRun
     /// <summary>Plays the authored timeline shipped inside each character FBX.</summary>
     public sealed class ZSRBundledCharacter : MonoBehaviour
     {
-        enum Motion { Idle, Move, Fire, Reload, Hit, Attack, Death, Medkit, Throw }
+        enum Motion { Idle, Move, Fire, Reload, Hit, Attack, Death, Medkit, Throw, Walk, WalkFire }
         const float Fps = 30f;
         const string ResourceRoot = "ProductionArt/";
-        static readonly int[] Starts = { 0, 32, 58, 84, 116, 126, 146, 170, 198 };
-        static readonly int[] Durations = { 30, 24, 24, 30, 8, 18, 21, 24, 18 };
+        static readonly int[] Starts = { 0, 32, 58, 84, 116, 126, 146, 170, 198, 218, 254 };
+        static readonly int[] Durations = { 30, 24, 24, 30, 8, 18, 21, 24, 18, 34, 34 };
         static Material atlasMaterial;
         static readonly System.Collections.Generic.Dictionary<string, AnimationClip> Takes = new();
 
@@ -19,9 +19,13 @@ namespace ZombieSurvivalRun
         AnimationMixerPlayable mixer;
         AnimationClipPlayable currentPose, previousPose;
         Motion motion;
-        float age, gaitTime, blend, blendDuration = .09f, rate = 1f, actionSpeed = 1f, steeringRoll;
-        bool moving, hero, firing, hasItemClips;
-        Transform muzzleFlash, weaponSocket, spine, footLeft, footRight;
+        float age, gaitPhase, blend, blendDuration = .09f, rate = 1f, actionSpeed = 1f, steeringRoll;
+        bool moving, hero, firing, walking, hasItemClips, hasWalkClips;
+        Motion Locomotion => walking ? Motion.Walk : Motion.Move;
+        Motion Shooting => walking ? Motion.WalkFire : Motion.Fire;
+        static bool IsShooting(Motion value) => value == Motion.Fire || value == Motion.WalkFire;
+        static bool IsGait(Motion value) => value == Motion.Move || value == Motion.Walk || IsShooting(value);
+        Transform muzzleFlash, weaponSocket, spine, head, footLeft, footRight;
         float flashTime, recoil, aimTime, kick;
         Vector3 aimPoint;
         Quaternion socketRest;
@@ -96,10 +100,12 @@ namespace ZombieSurvivalRun
             if (hero)
             {
                 actor.spine = FindBone(instance.transform, "Spine");
+                actor.head = FindBone(instance.transform, "Head");
                 actor.footLeft = leftAnkle;
                 actor.footRight = rightAnkle;
             }
             actor.hasItemClips = hero && take.length >= 7.16f;
+            actor.hasWalkClips = hero && take.length >= 9.59f;
             if (hero) actor.ItemHand = FindBone(instance.transform, "HandL");
             if (hero) actor.AttachWeapon(grip, barrel, weapon);
             if (Application.isPlaying) actor.CreateGraph(animator, take);
@@ -214,7 +220,8 @@ namespace ZombieSurvivalRun
         {
             motion = Motion.Idle;
             age = 0f;
-            gaitTime = Mathf.Repeat(stridePhase, 1f) * Durations[(int)Motion.Move] / Fps;
+            gaitPhase = Mathf.Repeat(stridePhase, 1f);
+            walking = false;
             blend = 0f;
             steeringRoll = 0f;
             moving = false;
@@ -223,12 +230,16 @@ namespace ZombieSurvivalRun
             HideFlash();
         }
 
-        public void Tick(bool run, float speed)
+        public void Tick(bool run, float speed, bool walk = false)
         {
             moving = run;
+            walking = run && walk && hasWalkClips;
+            if (walk && !hasWalkClips) speed *= .59f;
             rate = Mathf.Clamp(speed, .55f, 1.75f);
-            if (motion == Motion.Idle || motion == Motion.Move)
-                Change(run ? Motion.Move : Motion.Idle);
+            if (IsShooting(motion) && run && aimTime > 0f)
+                Change(Shooting);
+            else if (motion == Motion.Idle || IsGait(motion))
+                Change(run ? Locomotion : Motion.Idle);
         }
 
         public bool TrySetSteeringRoll(float roll)
@@ -247,8 +258,8 @@ namespace ZombieSurvivalRun
             aimTime = .19f;
             ApplyAim();
             if (muzzleFlash != null) muzzleFlash.gameObject.SetActive(true);
-            if (motion == Motion.Move || motion == Motion.Idle)
-                Change(Motion.Fire);
+            if (IsGait(motion) || motion == Motion.Idle)
+                Change(Shooting);
         }
 
         public void UseItem(bool medkit)
@@ -283,7 +294,7 @@ namespace ZombieSurvivalRun
             if (graph.IsValid()) previousPose.SetTime(currentPose.GetTime());
             motion = next;
             age = 0f;
-            blend = blendDuration = next == Motion.Fire ? .06f : .10f;
+            blend = blendDuration = IsShooting(next) ? .06f : .10f;
         }
 
         void LateUpdate()
@@ -299,33 +310,38 @@ namespace ZombieSurvivalRun
                 aimTime = Mathf.Max(0f, aimTime - dt);
             }
             if (!hero && motion != Motion.Death && game != null && !game.IsRunning) return;
-            float previousStep = gaitTime;
-            float strideDuration = Durations[(int)Motion.Move] / Fps;
+            float previousStep = gaitPhase;
+            float strideDuration = Durations[(int)Locomotion] / Fps;
             if (moving)
-                gaitTime = Mathf.Repeat(gaitTime + dt * rate, strideDuration);
+                gaitPhase = Mathf.Repeat(gaitPhase + dt * rate / strideDuration, 1f);
             int index = (int)motion;
             float speed = motion == Motion.Reload ? actionSpeed : 1f;
             age += dt * speed;
             float duration = Durations[index] / Fps;
             if (age >= duration && motion != Motion.Death)
             {
-                if (motion == Motion.Idle || motion == Motion.Move) age %= duration;
-                else if (motion != Motion.Fire || aimTime <= 0f)
+                if (motion == Motion.Idle || motion == Locomotion) age %= duration;
+                else if (!IsShooting(motion) || aimTime <= 0f)
                 {
                     // These baked actions finish at the first stride pose.
                     if (motion == Motion.Reload || motion == Motion.Medkit || motion == Motion.Throw)
-                        gaitTime = 0f;
-                    Change(moving ? Motion.Move : Motion.Idle);
+                        gaitPhase = 0f;
+                    Change(moving ? Locomotion : Motion.Idle);
                 }
             }
             blend = Mathf.Max(0f, blend - dt);
             Sample();
             if (spine != null && motion != Motion.Death && Mathf.Abs(steeringRoll) > .01f)
-                spine.rotation = Quaternion.AngleAxis(steeringRoll, transform.forward) * spine.rotation;
-            if (hero && moving && game != null && game.IsRunning && (motion == Motion.Move || motion == Motion.Fire))
             {
-                if (gaitTime < previousStep && previousStep >= strideDuration * .5f) game.Footstep(footLeft.position);
-                else if (previousStep < strideDuration * .5f && gaitTime >= strideDuration * .5f) game.Footstep(footRight.position);
+                float lean = steeringRoll * (walking ? .72f : 1f);
+                spine.rotation = Quaternion.AngleAxis(lean, transform.forward) * spine.rotation;
+                if (head != null)
+                    head.rotation = Quaternion.AngleAxis(-lean * .36f, transform.forward) * head.rotation;
+            }
+            if (hero && moving && game != null && game.IsRunning && IsGait(motion))
+            {
+                if (gaitPhase < previousStep && previousStep >= .5f) game.Footstep(footLeft.position);
+                else if (previousStep < .5f && gaitPhase >= .5f) game.Footstep(footRight.position);
             }
             ApplyAim();
         }
@@ -348,7 +364,7 @@ namespace ZombieSurvivalRun
         void Sample()
         {
             int index = (int)motion;
-            float time = motion == Motion.Move || motion == Motion.Fire ? gaitTime : age;
+            float time = IsGait(motion) ? gaitPhase * Durations[index] / Fps : age;
             currentPose.SetTime((Starts[index] + Mathf.Min(time * Fps, Durations[index])) / Fps);
             float linear = Mathf.Clamp01(blend / blendDuration);
             float outgoing = linear * linear * (3f - 2f * linear);

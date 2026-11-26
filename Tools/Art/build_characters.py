@@ -299,6 +299,12 @@ class Character:
                 self.fabric_flap((v(-.19,.130,h*.604),v(.01,.149,h*.605)),
                                  (v(.10,.160,h*.552),v(-.21,.158,h*.55)),20,"Chest")
         elif self.name=="Toxic":
+            neck = self.bones["Head"][0]
+            for i in range(3):
+                start = neck + v(-.048+.019*i,-.071,.011)
+                end = start + v(-.034,-.020,-.071-.018*i)
+                self.surface(start,end,[(0,.010,.008),(.54,.012,.007),(1,.002,.001)],
+                             21,"Chest",6)
             for i in range(8):
                 ang=2.4*i
                 p=(math.cos(ang)*w*.38,-.106+math.sin(ang)*.083,h*(.664+.023*i))
@@ -321,6 +327,12 @@ class Character:
                 self.fabric_flap((v(-.23,.042,h*.798),v(-.134,.128,h*.807)),
                                  (v(-.18,.133,h*.687),v(-.273,.061,h*.742)),6,"Chest")
                 self.panel((.087,.123,h*.908),(.026,.057,.046),15,"Head",.4)
+                # Rolled, mismatched sleeve and dangling work-shirt seam.
+                origin = self.bones["UpperArmR"][0]
+                self.surface(origin+v(.013,-.010,-.059),origin+v(.019,-.008,-.102),
+                             [(0,.076,.074),(.38,.079,.074),(1,.072,.066)],9,"UpperArmR",10)
+                self.fabric_flap((v(.048,.145,h*.721),v(.068,.140,h*.719)),
+                                 (v(.094,.142,h*.593),v(.074,.162,h*.604)),9,"Chest")
             if self.crawler:
                 for i in range(6):
                     self.volume((0,-.125,h*(.57+.043*i)),(.053,.033,.044),19,"Chest",8)
@@ -329,6 +341,9 @@ class Character:
                              [(0,.026,.017),(.17,.052,.052),(.58,.058,.049),(1,.02,.018)],7,"Chest",12)
                 self.fabric_flap((v(.14,.13,h*.806),v(.24,.049,h*.808)),
                                  (v(.252,.088,h*.707),v(.17,.146,h*.745)),7,"Chest")
+                for x in (-.048,.043):
+                    self.surface(v(x,.112,h*.813),v(x*1.72,.140,h*.695),
+                                 [(0,.007,.007),(.52,.006,.007),(1,.004,.004)],18,"Chest",5)
     def skin_mesh(self):
         data=bpy.data.meshes.new(self.name+" skin")
         data.from_pydata(self.vertices,[],self.faces)
@@ -462,7 +477,7 @@ class Character:
         motions = [("Idle",IDLE,30),("Move",MOVE,24),("Fire",FIRE,24),("Reload",RELOAD,30),
                    ("Hit",HIT,8),("Attack",ATTACK,18),("Death",DEATH,21)]
         if self.hero:
-            motions += [("Medkit",MEDKIT,24),("Throw",THROW,18)]
+            motions += [("Medkit",MEDKIT,24),("Throw",THROW,18),("Walk",219,34),("WalkFire",255,34)]
         for state,start,count in motions:
             for step in range(count+1):
                 frame=start+step
@@ -472,11 +487,12 @@ class Character:
                     bone.matrix_basis=Matrix.Identity(4)
                     bone.rotation_mode="QUATERNION"
                 bpy.context.view_layer.update()
-                moving=state in ("Move","Fire","Reload","Medkit","Throw")
+                walking=state in ("Walk","WalkFire")
+                moving=walking or state in ("Move","Fire","Reload","Medkit","Throw")
                 f=t%1
                 impact=eased_keys([(0,0),(.16,1),(.36,.46),(1,0)],t)
                 death=eased_keys([(0,0),(.19,.12),(.52,.61),(.8,.97),(1,1)],t) if state=="Death" else 0
-                fire=eased_keys([(0,1),(.12,.57),(.32,.12),(.45,0),(1,0)],t) if state=="Fire" else 0
+                fire=eased_keys([(0,1),(.12,.57),(.32,.12),(.45,0),(1,0)],t) if state in ("Fire","WalkFire") else 0
                 rear=impact if state=="Hit" else 0
                 # The boss windup is 0.49 seconds for an 18-frame attack take.
                 key={"Toxic":.42,"Boss":.81,"Brute":.63}.get(self.name,.54)
@@ -485,21 +501,22 @@ class Character:
                 reload=eased_keys([(0,0),(.24,1),(.67,1),(1,0)],t) if state=="Reload" else 0
                 care=eased_keys([(0,0),(.24,1),(.70,1),(1,0)],t) if state=="Medkit" else 0
                 swing_throw=eased_keys([(0,0),(.17,-.38),(.31,-1),(.42,.85),(.61,.64),(1,0)],t) if state=="Throw" else 0
-                crouch=.47 if self.crawler else .098 if moving else .045
+                crouch=.47 if self.crawler else .054 if walking else .098 if moving else .045
                 crouch += (1 if self.tank else .70)*.59*death
                 if boss_strike: crouch += .085*max(0.,attack) - .041*min(0.,attack)
                 swing = math.sin(math.tau*f) if moving else 0.
                 # The pelvis yields under the new support leg and rises
                 # through push-off. Counter-rotation keeps the chest balanced.
                 contact=eased_keys(((0,-.010),(.21,-.040),(.67,.027),(1,-.010)),(f*2)%1) if moving else 0
+                if walking: contact *= .46
                 pelvis=self.bones["Pelvis"][0]+v(.025*swing,.015-.17*death,-crouch+contact)
                 placements = {}
                 for side,s in (("L",-1),("R",1)):
                     foot=self.bones["Foot"+side][0].copy()
                     toe_pitch=0
                     if moving:
-                        foot.x -= s*(.060 if self.hero else .027)
-                        foot,toe,phase,toe_pitch=foot_target(self.name,side,f,foot)
+                        foot.x -= s*(.050 if walking else .060 if self.hero else .027)
+                        foot,toe,phase,toe_pitch=foot_target(self.name,side,f,foot,walking)
                         hip,knee,_=self.bones["Thigh"+side]
                         ankle=self.bones["Shin"+side][1]
                         span=(knee-hip).length+(ankle-knee).length-.026
@@ -523,13 +540,14 @@ class Character:
                 spine_direction = (spine.tail-spine.head).normalized()
                 self.aim_bone("Spine",spine.head.copy(),spine_direction+v(droop*.33,.10*pitch+.19*death,0),.026*swing)
                 chest=self.rig.pose.bones["Chest"].head.copy()
+                if walking: pitch *= .54
                 self.aim_bone("Chest",chest,v(droop-.067*swing+.085*rear,
                               pitch+.46*attack-.30*rear-.10*fire+.90*death,1-.71*death),-.05*swing)
                 if droop and not death:
                     head=self.rig.pose.bones["Head"]
                     self.aim_bone("Head",head.head.copy(),v(-.20+.045*swing,.21+.082*swing,.99))
                 if self.hero:
-                    self.hero_arms(swing,care,swing_throw,reload,fire,rear,death)
+                    self.hero_arms(swing * (.55 if walking else 1.),care,swing_throw,reload,fire,rear,death)
                 for side,s in SIDES:
                     foot,toe,phase,toe_pitch=placements[side]
                     self.leg_pose(side,foot,v(s*.08,1,0),toe,toe_pitch)
@@ -588,12 +606,15 @@ def main():
     scene.render.fps=FPS
     scene.frame_start,scene.frame_end=1,168
     roster=[]
+    requested = set(sys.argv[sys.argv.index("--only") + 1].split(",")) if "--only" in sys.argv else None
     for spec in CAST:
+        if requested is not None and spec[0] not in requested:
+            continue
         actor=Character(spec)
         actor.skeleton()
         actor.sculpt()
         actor.skin_mesh()
-        scene.frame_end=217 if actor.hero else 168
+        scene.frame_end=289 if actor.hero else 168
         actor.animate()
         actor.export()
         roster.append(actor)

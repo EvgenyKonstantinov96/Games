@@ -16,9 +16,9 @@ ATLAS_COLUMNS = 4
 PALETTE = (
     (117, 119, 116), (143, 145, 138), (56, 68, 78), (104, 115, 121),
     (70, 80, 97), (37, 53, 62), (42, 43, 46), (132, 137, 139),
-    (112, 67, 47), (153, 98, 44), (143, 49, 48), (60, 71, 81),
+    (112, 67, 47), (153, 98, 44), (143, 49, 48), (60, 71, 81), (106, 116, 119),
 )
-CONCRETE, BARRIER, BED, SPIKE, BODY, GLASS, RUBBER, RIM, REBAR, CHEVRON, TAILLIGHT, PYLON = range(12)
+CONCRETE, BARRIER, BED, SPIKE, BODY, GLASS, RUBBER, RIM, REBAR, CHEVRON, TAILLIGHT, PYLON, GALVANIZED = range(13)
 
 
 def build_atlas():
@@ -51,6 +51,14 @@ def build_atlas():
             layer[glint < .10] += 29
             layer[glint < .012] += 20
             grit *= .55
+        elif index == GALVANIZED:
+            # Brushed zinc, darker water streaks and corrosion toward the road.
+            drips = np.sin(73*x+.17*np.sin(18*y)) + .68*np.cos(127*x)
+            zinc = (np.sin(41*x+33*y)*np.cos(38*y-13*x) > .62) & (grains > .23)
+            layer[zinc] += 14
+            grit += drips * (3 + 9*(1-y))
+            corrosion = (y < .22) & (drips > .74) & (low > -.4)
+            layer[corrosion] = (121, 83, 62)
         elif index == TAILLIGHT:
             layer += (12*np.sin(y*70))[..., None]
         elif index in (SPIKE, RIM):
@@ -216,11 +224,11 @@ def prop_assets():
     pylon.save("track_gate_pylon")
 
     rail = Prop()
-    for top, height, half_width, tile in ((.79, .19, .100, PYLON), (.39, .11, .068, BED)):
-        rail.octagon([(top-height, half_width*.79, 23, .035, 0, 0),
-                      (top-height+.031, half_width, 23, .037, 0, 0),
-                      (top-.024, half_width, 23, .037, 0, 0),
-                      (top, half_width*.75, 23, .033, 0, 0)], tile)
+    rail.octagon([(.60,.075,23,.033,0,0),(.631,.105,23,.037,0,0),
+                  (.687,.081,23,.035,0,0),(.735,.106,23,.037,0,0),
+                  (.763,.104,23,.037,0,0),(.790,.075,23,.033,0,0)], GALVANIZED)
+    rail.octagon([(.28,.054,23,.035,0,0),(.311,.068,23,.037,0,0),
+                  (.366,.068,23,.037,0,0),(.39,.051,23,.033,0,0)], BED)
     for i in range(11):
         z = 46*((i+.5)/11-.5)
         rail.octagon([(.05,.143,.121,.032,0,z),(.13,.143,.121,.032,0,z),

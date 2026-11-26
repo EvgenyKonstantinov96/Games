@@ -18,6 +18,8 @@ MESHES = ROOT/"Assets/Resources/Meshes"
 TEXTURES = ROOT/"Assets/Resources/Textures"
 GAME_SOURCE = (ROOT/"Assets/Scripts/ZSRGame.cs").read_text()
 WORLD_SOURCE = (ROOT/"Assets/Scripts/ZSRWorld.cs").read_text()
+walking = "--walk" in sys.argv
+hero_frame = 239 if walking else 42
 chapter = int(sys.argv[sys.argv.index("--chapter")+1]) if "--chapter" in sys.argv else 0
 landmark, horizon, guide_color, sun_key, sky_color = (
     ("ruins", "Horizon.jpg", (1.,.57,.19), (1.,.66,.41), (.22,.29,.43)),
@@ -294,7 +296,25 @@ def make_gate(x, y, slot, color):
 make_gate(-2.5,22,0,(1,.35,.06))
 make_gate(2.5,22,3,(.08,.9,.43))
 
-scene.frame_set(42)
+if walking and "--boss" not in sys.argv:
+    for name, position in (("Walker", (-1.5, 10.3, 0)), ("Runner", (2.1, 13.1, 0)), ("Toxic", (.05, 14.5, 0))):
+        rig = bpy.data.objects.get(name + " actor")
+        if rig is None:
+            rig, _ = character(name, position, math.pi)
+            rig = rig.parent
+        rig.location = position
+    # Keep the infected in their existing gait while the hero switches to the
+    # independently authored hero-only walking range.
+    for name in ("Walker", "Runner", "Armored", "Toxic"):
+        for rig in bpy.data.objects.get(name + " actor").children:
+            if rig.type != "ARMATURE":
+                continue
+            scene.frame_set(41)
+            pose = [bone.matrix_basis.copy() for bone in rig.pose.bones]
+            rig.animation_data_clear()
+            for bone, matrix in zip(rig.pose.bones, pose):
+                bone.matrix_basis = matrix
+scene.frame_set(hero_frame)
 bpy.context.view_layer.update()
 grip=eva.matrix_world@eva.pose.bones["WeaponGrip"].head
 forward=eva.matrix_world@eva.pose.bones["WeaponForward"].head-grip
@@ -331,8 +351,11 @@ def frame_camera(hero_x, width, height):
     cam.location=(hero_x*camera_setting("Follow"),camera_setting("Depth"),camera_setting("Height"))
     focus=Vector((hero_x*camera_setting("Lead"),camera_setting("LookDepth"),camera_setting("LookHeight")))
     cam.rotation_euler=(focus-cam.location).to_track_quat("-Z","Y").to_euler()
+    fov = camera_setting("Fov")
+    if walking:
+        fov += (.47 - 1) * 4
     widening=max(1,camera_setting("ReferenceAspect")/(width/height))
-    cam.data.angle_y=2*math.atan(math.tan(math.radians(camera_setting("Fov"))/2)*widening)
+    cam.data.angle_y=2*math.atan(math.tan(math.radians(fov)/2)*widening)
     scene.render.resolution_x,scene.render.resolution_y=width,height
     bpy.context.view_layer.update()
 
@@ -345,7 +368,8 @@ def check_framing():
                 rig.parent.location.x=hero_x
                 frame_camera(hero_x,width,height)
                 left,low,right,high=1,1,0,0
-                for frame in range(1,97,4):
+                frames = range(219,290,4) if walking else range(1,97,4)
+                for frame in frames:
                     scene.frame_set(frame)
                     evaluated=skin.evaluated_get(bpy.context.evaluated_depsgraph_get())
                     for vertex in evaluated.data.vertices:
@@ -367,7 +391,7 @@ check_framing()
 if "--check-only" in sys.argv:
     sys.exit(0)
 eva.parent.location.x=0
-scene.frame_set(42)
+scene.frame_set(hero_frame)
 frame_camera(0,390,844)
 
 def sun(rotation, energy, color):

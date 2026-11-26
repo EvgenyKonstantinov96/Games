@@ -153,7 +153,9 @@ namespace ZombieSurvivalRun
             float dt=g.FrameStep;
             bool running=g.IsRunning;
             if (running && itemTime > 0f) itemTime = Mathf.Max(0f, itemTime - dt);
-            float gaitRate = (Selection == 0 ? 1f : 1.07f) * g.RunPaceMultiplier;
+            bool walking = running && g.Pace == ZSRPace.Walk;
+            float gaitRate = (Selection == 0 ? 1f : 1.07f) * g.RunPaceMultiplier *
+                (walking ? 1f : Mathf.Max(.74f, g.PaceScale));
             if (production != null)
             {
                 if (running)
@@ -162,7 +164,7 @@ namespace ZombieSurvivalRun
                     p.x = Mathf.SmoothDamp(p.x, TargetX, ref velocityX, .14f, 21f, dt);
                     transform.position = p;
                 }
-                production.Tick(running, gaitRate);
+                production.Tick(running, gaitRate, walking);
                 float steering = running ? velocityX + (TargetX - transform.position.x) * 1.7f : 0f;
                 production.SetLateralLean(steering, dt);
                 hitT = Mathf.MoveTowards(hitT, 0, dt * 3.2f);
@@ -178,7 +180,7 @@ namespace ZombieSurvivalRun
                 }
                 rigged.transform.localEulerAngles = new Vector3(0, 0,
                     Mathf.Clamp(-(velocityX + (TargetX - transform.position.x) * 1.5f) * 1.48f, -11f, 11f) + hitT * 4f);
-                if (running) rigged.SetRunningSpeed(gaitRate);
+                if (running) rigged.SetRunningSpeed(walking ? gaitRate * .60f : gaitRate);
                 hitT = Mathf.MoveTowards(hitT, 0, dt * 3.2f);
                 return;
             }

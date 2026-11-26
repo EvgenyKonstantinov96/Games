@@ -25,12 +25,15 @@ def eased_keys(keys, phase):
     return keys[-1][1]
 
 
-def foot_target(name, side, phase, ankle):
+def foot_target(name, side, phase, ankle, walking=False):
     """Roll over the heel and forefoot before an eased airborne recovery."""
     front, back, stance, lift, right_phase = PROFILES[name]
+    if walking:
+        front, back, stance, lift = .24, .24, .65, .105
     sign = -1 if side == "L" else 1
     phase = (phase+(right_phase if sign == 1 else 0)) % 1
     human = name in ("Max", "Eva")
+    running = human and not walking
     if name in ("Walker", "Toxic") and side == "R":
         front *= .71
         back *= .86
@@ -40,7 +43,7 @@ def foot_target(name, side, phase, ankle):
     if phase <= stance:
         contact = phase/stance
         travel = front+slope*phase
-        pitch = eased_keys(((0, 11), (.24, 0), (.68, -5), (1, -31 if human else -22)), contact)
+        pitch = eased_keys(((0, 11), (.24, 0), (.68, -5), (1, -31 if running else -22)), contact)
         clearance = 0
     else:
         recover = (phase-stance)/(1-stance)
@@ -48,7 +51,7 @@ def foot_target(name, side, phase, ankle):
         tangent = slope*(1-stance)
         travel = (-back*(2*t3-3*t2+1) + front*(-2*t3+3*t2)
                   + tangent*(2*t3-3*t2+recover))
-        pitch = eased_keys(((0, -31 if human else -22), (.23, -42 if human else -25),
+        pitch = eased_keys(((0, -31 if running else -22), (.23, -42 if running else -25),
                             (.57, -3), (.82, 15), (1, 11)), recover)
         clearance = lift*eased_keys(((0, 0), (.17, .41), (.40, 1), (.70, .68), (1, 0)), recover)
 

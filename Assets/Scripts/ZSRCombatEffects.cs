@@ -223,7 +223,8 @@ namespace ZombieSurvivalRun
                 medkitLeft = .76f;
                 medkit.transform.SetPositionAndRotation(hand, Quaternion.Euler(53f, 0, -18f));
             }
-            Burst(body, new Color(.28f, 1f, .60f, .80f), 20, .095f, 2.25f, .75f);
+            Burst(body + new Vector3(-.39f, -.18f, .16f), new Color(.39f, .91f, .68f, .50f), 7, .055f, 1.25f, .61f);
+            Burst(body + new Vector3(.38f, -.27f, .12f), new Color(.64f, 1f, .78f, .42f), 6, .047f, 1.16f, .51f);
         }
 
         public TrailRenderer GrenadeTrail(Transform grenade)

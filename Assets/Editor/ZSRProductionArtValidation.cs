@@ -42,7 +42,7 @@ namespace ZombieSurvivalRun.EditorTools
                 foreach (var subAsset in AssetDatabase.LoadAllAssetsAtPath(path))
                 {
                     if (subAsset is AnimationClip clip && !clip.legacy &&
-                        !clip.name.StartsWith("__preview__", StringComparison.Ordinal) && clip.length >= (hero ? 7.16f : 5.5f))
+                        !clip.name.StartsWith("__preview__", StringComparison.Ordinal) && clip.length >= (hero ? 9.59f : 5.5f))
                         importedTake = true;
                 }
                 if (!importedTake) errors.Add(name + ": baked motion timeline missing");
