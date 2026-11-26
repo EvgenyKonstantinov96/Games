@@ -18,6 +18,12 @@ MESHES = ROOT/"Assets/Resources/Meshes"
 TEXTURES = ROOT/"Assets/Resources/Textures"
 GAME_SOURCE = (ROOT/"Assets/Scripts/ZSRGame.cs").read_text()
 WORLD_SOURCE = (ROOT/"Assets/Scripts/ZSRWorld.cs").read_text()
+chapter = int(sys.argv[sys.argv.index("--chapter")+1]) if "--chapter" in sys.argv else 0
+landmark, horizon, guide_color, sun_key, sky_color = (
+    ("ruins", "Horizon.jpg", (1.,.57,.19), (1.,.66,.41), (.22,.29,.43)),
+    ("industrial", "Horizon_Industrial.jpg", (1.,.31,.12), (1.,.52,.29), (.44,.21,.19)),
+    ("evacuation", "Horizon_Evacuation.jpg", (.28,.85,.90), (.63,.90,1.), (.19,.41,.47)),
+)[chapter]
 
 
 def number_setting(source, name):
@@ -125,11 +131,22 @@ links.new(separate.outputs["Y"],combine.inputs["Y"])
 for node in nodes:
     if node.type=="TEX_IMAGE":
         links.new(combine.outputs[0],node.inputs["Vector"])
+if (ART/"Highway_surface.png").exists():
+    wetness = nodes.new("ShaderNodeTexImage")
+    wetness.image = bpy.data.images.load(str(ART/"Highway_surface.png"),check_existing=True)
+    wetness.image.colorspace_settings.name = "Non-Color"
+    links.new(combine.outputs[0], wetness.inputs["Vector"])
+    roughness = nodes.new("ShaderNodeMath")
+    roughness.operation = "MULTIPLY_ADD"
+    roughness.inputs[1].default_value = -.66
+    roughness.inputs[2].default_value = 1.
+    links.new(wetness.outputs["Alpha"], roughness.inputs[0])
+    links.new(roughness.outputs[0],nodes.get("Principled BSDF").inputs["Roughness"])
 
 stripe=paint("Worn road paint",(.48,.43,.37))
-amber=paint("Rail amber",(1,.25,.035),emissive=True)
+amber=paint("Chapter marker lights",guide_color,emissive=True)
 props=paint("Track prop atlas",(1,1,1),ART/"TrackPropAtlas.png",.64)
-shoulder_glow = paint("Soft bridge reflector spill",(.87,.37,.125),emissive=True)
+shoulder_glow = paint("Soft bridge reflector spill",guide_color,emissive=True)
 nodes, links = shoulder_glow.node_tree.nodes, shoulder_glow.node_tree.links
 soft = nodes.new("ShaderNodeTexImage")
 soft.image = bpy.data.images.load(str(ART/"ParticleSoft.png"), check_existing=True)
@@ -172,7 +189,7 @@ for direction in (-1,1):
     for k in range(27):
         cube("Lane dash",(direction*1.8,-4+k*3.65,-.016),(.085,1.65,.016),stripe)
 
-sky=paint("Distant panorama",(1,1,1),ART/"Horizon.jpg",emissive=True)
+sky=paint("Distant panorama",(1,1,1),ART/horizon,emissive=True)
 mesh=bpy.data.meshes.new("Atmosphere UV")
 mesh.from_pydata([(-125,175,-54),(125,175,-54),(125,175,112),(-125,175,112)],[],[(0,1,2,3)])
 layer=mesh.uv_layers.new(name="Panorama")
@@ -181,6 +198,12 @@ for i, uv in enumerate(((0,0),(1,0),(1,1),(0,1))):
 obj=bpy.data.objects.new("Horizon texture",mesh)
 bpy.context.collection.objects.link(obj)
 mesh.materials.append(sky)
+
+for depth in (24., 99.):
+    mesh_asset("track_chapter_"+landmark,(0,depth,0),props)
+    for side in (-1,1):
+        x, height, offset = ((5.93,5.32,-.49),(7.25,6.83,-1.63),(6.20,7.07,-1.14))[chapter]
+        cube("Chapter lens",(side*x,depth+offset,height),(.59,.055,.13),amber)
 
 def character(name, pos, yaw, scale=1):
     old=set(bpy.data.objects)
@@ -219,6 +242,11 @@ else:
 mesh_asset("track_wreck",(2.9,13,0),props,.13,1.14)
 mesh_asset("track_spikes",(-2.9,8.5,0),props,-.06,1.13)
 mesh_asset("track_barrier",(2.9,31,0),props,.04,1.18)
+mark = paint("Amber hazard edges",(1,.28,.075),emissive=True)
+for side in (-1,1):
+    for row in range(3):
+        warning = cube("Projected danger stroke",(-2.9+side*1.17,2.8+row*.83,.024),(.059,.57,.013),mark)
+        warning.rotation_euler.z = side*.58
 
 def alpha_plane(name, center, size, material, uv):
     x,y,z=center
@@ -347,12 +375,12 @@ def sun(rotation, energy, color):
     lamp=bpy.context.object
     lamp.data.energy=energy;lamp.data.color=color;lamp.data.angle=.07
 
-sun((36,-30,145),1.56,(1,.65,.40))
+sun((36,-30,145),1.56,sun_key)
 sun((55,20,12),.84,(.58,.70,1))
 scene.world=bpy.data.worlds.new("Blue hour")
 scene.world.use_nodes=True
 background=scene.world.node_tree.nodes.get("Background")
-background.inputs[0].default_value=(.20,.28,.42,1)
+background.inputs[0].default_value=(*sky_color,1)
 background.inputs[1].default_value=.60
 scene.render.engine="CYCLES"
 scene.cycles.samples=24

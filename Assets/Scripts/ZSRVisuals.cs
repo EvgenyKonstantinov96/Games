@@ -82,6 +82,14 @@ namespace ZombieSurvivalRun
             }
             AsphaltDeluxe = MatWithTexture(Color.white, "ProductionArt/Highway", .28f, new Vector2(2f, 8f),
                 new Color(.12f, .145f, .17f), "Textures/asphalt_v102");
+            var roadSurface = Resources.Load<Texture2D>("ProductionArt/Highway_surface");
+            if (roadSurface != null && AsphaltDeluxe.HasProperty("_MetallicGlossMap"))
+            {
+                AsphaltDeluxe.SetTexture("_MetallicGlossMap", roadSurface);
+                AsphaltDeluxe.SetFloat("_Smoothness", .66f);
+                AsphaltDeluxe.EnableKeyword("_METALLICSPECGLOSSMAP");
+                AsphaltDeluxe.EnableKeyword("_METALLICGLOSSMAP");
+            }
             ConcreteDeluxe = MatWithTexture(Color.white,"Textures/worn_concrete_v7",.13f,new Vector2(2.2f,5f));
             ClothTextured = MatWithTexture(Color.white,"Textures/fabric_survivor",.20f);
             RedClothTextured = MatWithTexture(Color.white,"Textures/jacket_eva_pbr",.24f);
@@ -103,7 +111,7 @@ namespace ZombieSurvivalRun
                 if(unlit==null)unlit=Shader.Find("Unlit/Texture");
                 SkylineMaterials[i]=new Material(unlit==null?shader:unlit);
                 SkylineMaterials[i].name="Cinematic city panorama chapter "+(i+1);
-                var sky = i == 0 ? Resources.Load<Texture2D>("ProductionArt/Horizon") : null;
+                var sky = Resources.Load<Texture2D>(ZSRCampaignStyle.For(i).SkyResource);
                 if (sky == null) sky = Resources.Load<Texture2D>("Skyline/city_chapter_" + (i+1) + "_v100");
                 if(sky!=null)
                 {
@@ -354,17 +362,10 @@ namespace ZombieSurvivalRun
         {
             if (wreckParticles == null)
             {
-                var fxShader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
-                if (fxShader == null) return;
+                var fxShader = Resources.Load<Shader>("ProductionArt/ZSRCombatFX");
+                if (fxShader == null || !fxShader.isSupported) return;
                 wreckParticles = new Material(fxShader) { name = "ZSR soft wreck particles / shared" };
                 wreckParticles.SetTexture("_BaseMap", Resources.Load<Texture2D>("ProductionArt/ParticleSoft"));
-                wreckParticles.SetFloat("_Surface", 1f);
-                wreckParticles.SetFloat("_ZWrite", 0f);
-                wreckParticles.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
-                wreckParticles.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
-                wreckParticles.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-                wreckParticles.SetOverrideTag("RenderType", "Transparent");
-                wreckParticles.renderQueue = (int)RenderQueue.Transparent;
             }
 
             WreckEmitter(parent, origin, false);

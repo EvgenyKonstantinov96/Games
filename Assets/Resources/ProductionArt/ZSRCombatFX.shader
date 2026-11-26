@@ -1,6 +1,10 @@
 Shader "ZSR/Combat FX"
 {
-    Properties { _BaseMap ("Sprite", 2D) = "white" {} }
+    Properties
+    {
+        _BaseMap ("Sprite", 2D) = "white" {}
+        _Tint ("Tint", Color) = (1, 1, 1, 1)
+    }
     SubShader
     {
         Tags { "RenderPipeline"="UniversalPipeline" "RenderType"="Transparent" "Queue"="Transparent" }
@@ -17,6 +21,9 @@ Shader "ZSR/Combat FX"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             TEXTURE2D(_BaseMap);
             SAMPLER(sampler_BaseMap);
+            CBUFFER_START(UnityPerMaterial)
+                half4 _Tint;
+            CBUFFER_END
 
             struct Vertex { float4 position : POSITION; float4 color : COLOR; float2 uv : TEXCOORD0; };
             struct Varying { float4 position : SV_POSITION; half4 color : COLOR; float2 uv : TEXCOORD0; };
@@ -32,7 +39,7 @@ Shader "ZSR/Combat FX"
 
             half4 Frag(Varying input) : SV_Target
             {
-                return SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv) * input.color;
+                return SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv) * input.color * _Tint;
             }
             ENDHLSL
         }

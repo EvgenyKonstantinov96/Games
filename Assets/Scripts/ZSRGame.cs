@@ -98,6 +98,7 @@ namespace ZombieSurvivalRun
         readonly List<ZSRZombie> enemies = new List<ZSRZombie>();
         readonly Dictionary<ZombieType, Queue<ZSRZombie>> pools = new Dictionary<ZombieType, Queue<ZSRZombie>>();
         readonly List<GameObject> temporary = new List<GameObject>();
+        readonly List<float> trafficDepths = new List<float>(8);
         readonly List<ZSRRoadChunk> road = new List<ZSRRoadChunk>();
         readonly List<ZSRGrenadeFlight> grenadesInFlight = new();
         GameObject worldRoot, skyline, distantDeck;
@@ -106,6 +107,9 @@ namespace ZombieSurvivalRun
         ZSRRunMusic music;
         readonly AudioClip[] weaponAudio = new AudioClip[4];
         Camera camera3D;
+        Light chapterKey, chapterFill;
+        ParticleSystem chapterAir;
+        Material chapterAirMaterial;
         AudioSource audioSource;
         AudioClip droneAudio, coinAudio, hitAudio, boomAudio, winAudio;
         public string MusicLabel => music != null ? music.Label : "МУЗЫКА";
@@ -190,7 +194,7 @@ namespace ZombieSurvivalRun
             }
         }
 
-        public string ThemeName => Chapter == 0 ? "РУИНЫ МЕГАПОЛИСА" : Chapter == 1 ? "ОГНЕННЫЙ ГОРОД" : "ЭВАКУАЦИОННАЯ ЗОНА";
+        public string ThemeName => ZSRCampaignStyle.For(Chapter).Title.ToUpperInvariant();
 
         void BuildScene()
         {
@@ -226,6 +230,7 @@ namespace ZombieSurvivalRun
             var sun = new GameObject("Warm sunset key light").AddComponent<Light>();
             sun.transform.SetParent(worldRoot.transform, false);
             sun.type = LightType.Directional;
+            chapterKey = sun;
             RenderSettings.sun = sun;
             sun.intensity = 1.36f;
             sun.color = new Color(1f, .64f, .39f);
@@ -238,6 +243,7 @@ namespace ZombieSurvivalRun
             var cool = new GameObject("Blue fill light").AddComponent<Light>();
             cool.transform.SetParent(worldRoot.transform, false);
             cool.type = LightType.Directional;
+            chapterFill = cool;
             cool.intensity = .76f;
             cool.color = new Color(.50f, .66f, 1f);
             cool.transform.rotation = Quaternion.Euler(31, 27, 0);
@@ -306,44 +312,77 @@ namespace ZombieSurvivalRun
 
         void AddAmbientParticles()
         {
-            var o=new GameObject("Floating cinematic ash sparks");
-            o.transform.SetParent(worldRoot.transform,false);
-            o.transform.localPosition=new Vector3(0f,5f,30f);
-            var ps=o.AddComponent<ParticleSystem>();
-            var main=ps.main;
-            main.loop=true;
-            main.startLifetime=4.6f;
-            main.startSpeed=.48f;
-            main.startSize=.08f;
-            main.startColor=new ParticleSystem.MinMaxGradient(new Color(1f,.52f,.17f,.75f),new Color(.26f,.54f,.75f,.34f));
-            main.maxParticles=Application.isMobilePlatform?90:160;
-            main.simulationSpace=ParticleSystemSimulationSpace.World;
-            var emission=ps.emission;
-            emission.rateOverTime=Application.isMobilePlatform?10f:18f;
-            var shape=ps.shape;
-            shape.shapeType=ParticleSystemShapeType.Box;
-            shape.scale=new Vector3(13f,8f,64f);
-            var particleRenderer=o.GetComponent<ParticleSystemRenderer>();
-            var fxShader=Shader.Find("Universal Render Pipeline/Particles/Unlit");
-            if(fxShader!=null)
-            {
-                var mat=new Material(fxShader);
-                if(mat.HasProperty("_BaseColor"))mat.SetColor("_BaseColor",new Color(1f,.8f,.58f,.65f));
-                particleRenderer.sharedMaterial=mat;
-            }
-            particleRenderer.renderMode=ParticleSystemRenderMode.Billboard;
+            var shader = Resources.Load<Shader>("ProductionArt/ZSRCombatFX");
+            var texture = Resources.Load<Texture2D>("ProductionArt/ParticleSoft");
+            if (shader == null || !shader.isSupported || texture == null) return;
+            var node = ZSRVisuals.Pivot("Chapter air particles", worldRoot.transform, new Vector3(0f, 3.65f, 27f));
+            chapterAir = node.gameObject.AddComponent<ParticleSystem>();
+            chapterAir.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var main = chapterAir.main;
+            main.playOnAwake = false;
+            main.loop = true;
+            main.maxParticles = Application.isMobilePlatform ? 72 : 122;
+            main.simulationSpace = ParticleSystemSimulationSpace.Local;
+            var shape = chapterAir.shape;
+            shape.shapeType = ParticleSystemShapeType.Box;
+            shape.scale = new Vector3(17f, 6.6f, 52f);
+            var fade = new Gradient();
+            fade.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(.94f, .23f), new GradientAlphaKey(0f, 1f) });
+            var overLife = chapterAir.colorOverLifetime;
+            overLife.enabled = true;
+            overLife.color = fade;
+            chapterAirMaterial = new Material(shader) { name = "Soft chapter weather" };
+            chapterAirMaterial.SetTexture("_BaseMap", texture);
+            var renderer = node.GetComponent<ParticleSystemRenderer>();
+            renderer.sharedMaterial = chapterAirMaterial;
+            renderer.receiveShadows = false;
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
+        }
+
+        void ApplyChapterAtmosphere(ZSRCampaignStyle style)
+        {
+            chapterKey.color = style.Key;
+            chapterKey.intensity = style.KeyIntensity;
+            chapterFill.color = style.Fill;
+            RenderSettings.fogColor = style.Fog;
+            RenderSettings.fogDensity = style.FogDensity;
+            RenderSettings.ambientSkyColor = Color.Lerp(new Color(.28f, .37f, .57f), style.Fog, .35f);
+            RenderSettings.ambientEquatorColor = Color.Lerp(new Color(.25f, .29f, .40f), style.Fog, .36f);
+            camera3D.backgroundColor = Color.Lerp(style.Fog, Color.black, .20f);
+            if (chapterAir == null) return;
+
+            chapterAir.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var main = chapterAir.main;
+            main.startLifetime = Chapter == 1 ? new ParticleSystem.MinMaxCurve(2.5f, 4.2f) : new ParticleSystem.MinMaxCurve(3.8f, 5.3f);
+            main.startSpeed = Chapter == 1 ? new ParticleSystem.MinMaxCurve(.28f, .79f) : new ParticleSystem.MinMaxCurve(.14f, .42f);
+            main.gravityModifier = Chapter == 1 ? -.033f : .012f;
+            main.startSize = Chapter == 2 ? new ParticleSystem.MinMaxCurve(.07f, .17f) : new ParticleSystem.MinMaxCurve(.034f, .083f);
+            Color mist = Color.Lerp(style.Fog, Color.white, .40f);
+            mist.a = Chapter == 2 ? .22f : .33f;
+            Color ember = style.Accent;
+            ember.a = Chapter == 1 ? .82f : .49f;
+            main.startColor = new ParticleSystem.MinMaxGradient(mist, ember);
+            var emission = chapterAir.emission;
+            emission.rateOverTime = (Chapter == 1 ? 17f : 11f) * (Application.isMobilePlatform ? .74f : 1f);
+            chapterAir.Play();
+        }
+
+        void OnDestroy()
+        {
+            if (chapterAirMaterial != null) Destroy(chapterAirMaterial);
         }
 
         ZSRParallaxCity parallaxCity;
 
         void RebuildRoad()
         {
-            Color fog = Chapter == 0 ? new Color(.34f, .39f, .47f) : Chapter == 1 ? new Color(.46f, .28f, .24f) : new Color(.21f, .27f, .38f);
+            var style = ZSRCampaignStyle.For(Chapter);
             if (parallaxCity != null) Destroy(parallaxCity.gameObject);
             if (skyline != null) Destroy(skyline);
             if (distantDeck == null) distantDeck = ZSRTrackArt.BuildDistantDeck(worldRoot.transform);
             skyline = ZSRVisuals.CityPanorama(worldRoot.transform, Chapter);
-            parallaxCity = ZSRParallaxCity.Create(worldRoot.transform, Chapter, skyline, fog);
+            parallaxCity = ZSRParallaxCity.Create(worldRoot.transform, Chapter, skyline, style.Fog);
             foreach (var r in road) if (r != null) Destroy(r.gameObject);
             road.Clear();
             for (int i = 0; i < 4; i++)
@@ -354,9 +393,7 @@ namespace ZombieSurvivalRun
                 r.Build(i, Level);
                 road.Add(r);
             }
-            RenderSettings.fogColor = fog;
-            RenderSettings.ambientLight = Chapter == 0 ? new Color(.49f, .52f, .58f) : Chapter == 1 ? new Color(.51f, .44f, .40f) : new Color(.40f, .43f, .52f);
-            camera3D.backgroundColor = Color.Lerp(fog, Color.black, .20f);
+            ApplyChapterAtmosphere(style);
         }
 
         public void StartLevel(int requested = 0)
@@ -667,7 +704,7 @@ namespace ZombieSurvivalRun
             BonusKind second = shieldTimer <= 0f && Level >= 2 ? BonusKind.Shield : BonusKind.RapidFire;
             if (Level >= 5 && UnityEngine.Random.value > .57f) second = BonusKind.Turret;
             if (second == first) second = first == BonusKind.Heal ? BonusKind.Shield : BonusKind.RapidFire;
-            float depth = 39f * RunPaceMultiplier;
+            float depth = AvailableTrafficDepth(39f * RunPaceMultiplier);
             a.Build(first, -2.5f, depth);
             b.Build(second, 2.5f, depth);
             temporary.Add(a.gameObject); temporary.Add(b.gameObject);
@@ -678,8 +715,29 @@ namespace ZombieSurvivalRun
         {
             var o = new GameObject("Wrecked vehicle");
             o.transform.SetParent(worldRoot.transform, false);
-            o.AddComponent<ZSRObstacle>().Build(UnityEngine.Random.value > .5f ? -2.9f : 2.9f, 43f * RunPaceMultiplier, Chapter);
+            float depth = AvailableTrafficDepth(43f * RunPaceMultiplier);
+            o.AddComponent<ZSRObstacle>().Build(UnityEngine.Random.value > .5f ? -2.9f : 2.9f, depth, Chapter);
             temporary.Add(o);
+        }
+
+        float AvailableTrafficDepth(float desiredDepth)
+        {
+            trafficDepths.Clear();
+            foreach (var item in temporary)
+            {
+                if (item == null || item.transform.position.z <= 0f) continue;
+                if (item.GetComponent<ZSRBonusGate>() != null || item.GetComponent<ZSRObstacle>() != null)
+                    trafficDepths.Add(item.transform.position.z);
+            }
+            return SpaceTraffic(desiredDepth, RunSpeed * 1.30f, trafficDepths);
+        }
+
+        internal static float SpaceTraffic(float depth, float clearance, List<float> occupied)
+        {
+            occupied.Sort();
+            foreach (float other in occupied)
+                if (Mathf.Abs(depth - other) < clearance) depth = other + clearance;
+            return depth;
         }
 
         public void ApplyBonus(BonusKind kind)
@@ -905,6 +963,11 @@ namespace ZombieSurvivalRun
             bool pause = State == ZSRState.Playing;
             State = pause ? ZSRState.Paused : ZSRState.Playing;
             combatEffects.SetPaused(pause);
+            if (chapterAir != null)
+            {
+                if (pause) chapterAir.Pause();
+                else chapterAir.Play();
+            }
         }
         public void GoMenu() { ClearRun(); State = ZSRState.Menu; Hero.gameObject.SetActive(false); worldRoot.SetActive(false); }
         public void GoHeroes() { State = ZSRState.Heroes; }

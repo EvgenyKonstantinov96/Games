@@ -23,7 +23,9 @@ namespace ZombieSurvivalRun
         Canvas canvas;
         RectTransform root, content, background;
         Font font;
-        Texture2D artMax, artEva, artRifle, menuWallpaper, sectionWallpaper;
+        Texture2D artMax, artEva, artRifle, sectionWallpaper;
+        readonly Texture2D[] heroCovers = new Texture2D[2];
+        readonly Texture2D[] chapterSkies = new Texture2D[3];
         readonly Texture2D[] weaponArts = new Texture2D[4];
         static readonly string[] WeaponNames = { "ПИСТОЛЕТ", "АВТОМАТ", "ДРОБОВИК", "ПУЛЕМЁТ" };
         Sprite primarySprite, secondarySprite, mutedSprite, panelSprite;
@@ -53,7 +55,6 @@ namespace ZombieSurvivalRun
             string[] weaponFiles = { "pistol", "rifle", "shotgun", "minigun" };
             for (int i=0; i<weaponFiles.Length; i++)
                 weaponArts[i] = Resources.Load<Texture2D>("Artwork/Weapons/" + weaponFiles[i]);
-            menuWallpaper = Resources.Load<Texture2D>("UI/menu_wallpaper");
             sectionWallpaper = Resources.Load<Texture2D>("UI/section_wallpaper");
             primarySprite = MakeSlicedSprite("UI/btn_primary");
             secondarySprite = MakeSlicedSprite("UI/btn_secondary");
@@ -220,18 +221,19 @@ namespace ZombieSurvivalRun
         }
 
         UnityEngine.UI.Button Button(string txt, float x, float y, float w, float h, Color accent,
-            Action callback, int textSize = 16, bool enabled = true, bool redraw = true)
+            Action callback, int textSize = 16, bool enabled = true, bool redraw = true, Color? skinTint = null)
         {
             var t = Rect("BUTTON: " + txt, content, x, y, w, h);
             var img = t.gameObject.AddComponent<UnityEngine.UI.Image>();
             bool primary = accent.r > .80f && accent.g < .70f;
             Sprite sprite = primary ? primarySprite : secondarySprite;
+            if (skinTint.HasValue && enabled) sprite = panelSprite;
             if (!enabled) sprite = mutedSprite;
             if (sprite != null)
             {
                 img.sprite = sprite;
                 img.type = UnityEngine.UI.Image.Type.Sliced;
-                img.color = Color.white;
+                img.color = enabled && skinTint.HasValue ? skinTint.Value : Color.white;
             }
             else img.color = primary ? new Color(.77f, .28f, .066f) : PanelLight;
             var button = t.gameObject.AddComponent<UnityEngine.UI.Button>();
@@ -263,18 +265,19 @@ namespace ZombieSurvivalRun
         {
             const float y = 755f, width = 68f, step = 73f;
             Block("navigation backdrop", 10, y, 370, 75, new Color(.026f, .041f, .063f, .98f));
-            NavButton("Главная", 0, ZSRState.Menu, g.GoMenu);
-            NavButton("Герои", 1, ZSRState.Heroes, g.GoHeroes);
-            NavButton("Арсенал", 2, ZSRState.Arsenal, g.GoArsenal);
-            NavButton("Предметы", 3, ZSRState.Items, g.GoItems);
-            NavButton("Уровни", 4, ZSRState.Levels, g.GoLevels);
+            NavButton("Главная", 0, ZSRState.Menu, Gold, g.GoMenu);
+            NavButton("Герои", 1, ZSRState.Heroes, new Color(1f, .46f, .56f), g.GoHeroes);
+            NavButton("Арсенал", 2, ZSRState.Arsenal, Cyan, g.GoArsenal);
+            NavButton("Предметы", 3, ZSRState.Items, Green, g.GoItems);
+            NavButton("Уровни", 4, ZSRState.Levels, new Color(.77f, .58f, 1f), g.GoLevels);
 
-            void NavButton(string label, int index, ZSRState state, Action action)
+            void NavButton(string label, int index, ZSRState state, Color color, Action action)
             {
                 float x = 15 + index * step;
                 bool selected = g.State == state;
-                Button(label, x, y + 11, width, 51, Cyan, selected ? null : action, 11, redraw: !selected);
-                if (selected) Accent(x + 15, y + 58, width - 30, Orange);
+                Color ink = Color.Lerp(new Color(.036f, .054f, .085f), color, selected ? .37f : .22f);
+                Button(label, x, y + 11, width, 51, Cyan, selected ? null : action, 11, redraw: !selected, skinTint: ink);
+                Accent(x + 16, y + (selected ? 57 : 14), width - 32, color);
             }
         }
 
@@ -312,7 +315,7 @@ namespace ZombieSurvivalRun
             lastCoins = g.Coins; lastLevel = g.Level; lastHero = g.SelectedHero; lastWeapon = (int)g.Weapon;
             refresh = false;
             if (content != null) Retire(content);
-            int nextWallpaper = inBattle ? -1 : g.State == ZSRState.Menu ? 0 : 1;
+            int nextWallpaper = inBattle ? -1 : g.State == ZSRState.Menu ? g.Chapter : 3;
             if (wallpaper != nextWallpaper || (nextWallpaper >= 0 && viewportChanged))
             {
                 if (background != null) { Retire(background); background = null; }
@@ -367,31 +370,48 @@ namespace ZombieSurvivalRun
 
         void BuildAdaptiveBackground(ZSRGame g)
         {
-            BlockStretch("fullscreen cinematic base", Dark, background);
-            // Portrait artwork fills the complete Game viewport, not a central square.
-            StretchImage(g.State == ZSRState.Menu ? menuWallpaper : sectionWallpaper,
-                background, 1f, true);
-            BlockStretch("Art contrast", new Color(.01f, .019f, .034f, g.State == ZSRState.Menu ? .07f : .48f), background);
+            bool home = g.State == ZSRState.Menu;
+            BlockStretch("Cinematic base", Dark, background);
+            StretchImage(home ? ChapterSky(g.Chapter) : sectionWallpaper, background, 1f, true);
+            BlockStretch("Art contrast", new Color(.01f, .019f, .034f, home ? .61f : .48f), background);
+        }
+
+        Texture2D ChapterSky(int chapter)
+        {
+            if (chapterSkies[chapter] == null) chapterSkies[chapter] = Resources.Load<Texture2D>(ZSRCampaignStyle.For(chapter).SkyResource);
+            return chapterSkies[chapter];
         }
 
         void Menu(ZSRGame g)
         {
+            var style = ZSRCampaignStyle.For(g.Chapter);
+            string heroName = g.SelectedHero == 0 ? "МАКС" : "ЕВА";
+            int selected = g.SelectedHero;
+            if (heroCovers[selected] == null)
+                heroCovers[selected] = Resources.Load<Texture2D>("UI/campaign_cover_" + (selected == 0 ? "max" : "eva"));
             Block("Progress pill", 18, 16, 211, 46, new Color(.03f, .05f, .079f, .94f));
             Label("● " + g.Coins.ToString("N0"), 30, 16, 102, 46, 16, Gold, TextAnchor.MiddleLeft);
-            Label(g.UnlockedLevel + " / " + ZSRGame.MaxLevels, 133, 16, 85, 46, 14, TextMuted);
-            Button(g.MusicLabel, 240, 16, 132, 46, Cyan, g.CycleMusic, 11);
-            Label("ZOMBIE SURVIVAL", 19, 74, 352, 46, 32, Color.white);
-            var wordmark = Label("RUN", 19, 115, 352, 60, 51, new Color(1f, .47f, .20f));
+            Label("ДОСТУПНО " + g.UnlockedLevel + "/" + ZSRGame.MaxLevels, 122, 16, 99, 46, 11, TextMuted);
+            Button(g.MusicLabel, 240, 16, 132, 46, Cyan, g.CycleMusic, 11,
+                skinTint: Color.Lerp(Dark, style.Accent, .25f));
+            Label("ZOMBIE SURVIVAL", 22, 75, 278, 46, 29, Color.white, TextAnchor.MiddleLeft);
+            var wordmark = Label("RUN", 294, 75, 78, 46, 31, style.Accent);
             wordmark.fontStyle = FontStyle.BoldAndItalic;
 
-            Block("mission card", 16, 559, 358, 176, new Color(.038f, .060f, .086f, .99f));
-            Accent(30, 560, 52, Orange);
-            Label("УРОВЕНЬ " + g.Level + " / " + ZSRGame.MaxLevels, 30, 568, 203, 24, 12, Gold, TextAnchor.MiddleLeft);
-            Label(g.LevelTitle, 30, 591, 330, 28, 18, Color.white, TextAnchor.MiddleLeft);
-            Label(g.SelectedHero == 0 ? "МАКС" : "ЕВА", 30, 618, 150, 25, 12, TextMuted, TextAnchor.MiddleLeft);
-            var play = Button("ИГРАТЬ", 29, 653, 218, 61, Orange, () => g.StartLevel(g.Level), 23);
+            Block("hero frame card", 15, 138, 360, 401, Color.Lerp(Dark, style.Accent, .37f));
+            Image(heroCovers[selected] ?? (selected == 0 ? artMax : artEva), 17, 140, 356, 397);
+            Button(heroName + "  ›", 29, 479, 123, 44, Cyan, g.GoHeroes, 14,
+                skinTint: Color.Lerp(Dark, style.Accent, .20f));
+
+            Block("mission card", 16, 552, 358, 183, Color.Lerp(Dark, style.Accent, .13f));
+            Accent(30, 557, 64, style.Accent);
+            Label(style.Title.ToUpperInvariant(), 30, 570, 310, 21, 12, style.Accent, TextAnchor.MiddleLeft);
+            Label(g.LevelTitle, 30, 596, 330, 30, 19, Color.white, TextAnchor.MiddleLeft);
+            Label("УРОВЕНЬ " + g.Level + " / " + ZSRGame.MaxLevels, 30, 623, 210, 21, 12, TextMuted, TextAnchor.MiddleLeft);
+            var play = Button("ИГРАТЬ", 29, 653, 218, 63, Orange, () => g.StartLevel(g.Level), 23);
             firstButton = play;
-            Button("БОНУСЫ", 258, 653, 102, 61, Cyan, g.GoBonuses, 13);
+            Button("БОНУСЫ", 258, 653, 102, 63, Cyan, g.GoBonuses, 13,
+                skinTint: Color.Lerp(Dark, style.Accent, .25f));
         }
 
         void Heroes(ZSRGame g)
@@ -529,21 +549,24 @@ namespace ZombieSurvivalRun
         void Levels(ZSRGame g)
         {
             TitleBar("УРОВНИ", g);
-            string[] chapters = { "Руины мегаполиса", "Огненный город", "Эвакуационная зона" };
-            for (int chapter = 0; chapter < chapters.Length; chapter++)
+            for (int chapter = 0; chapter < 3; chapter++)
             {
                 float y = 108 + chapter * 142;
-                Block("chapter card", 14, y, 362, 130, Panel);
-                Label(chapters[chapter], 26, y + 8, 254, 27, 18, Color.white, TextAnchor.MiddleLeft);
-                Label("БОСС", 302, y + 8, 59, 27, 11, Orange);
+                var style = ZSRCampaignStyle.For(chapter);
+                Block("chapter card", 14, y, 362, 130, Color.Lerp(Dark, style.Accent, .22f));
+                Image(ChapterSky(chapter), 18, y + 3, 354, 123, alpha: .42f);
+                Block("Chapter text scrim", 18, y + 3, 354, 123, new Color(.025f,.044f,.07f,.34f));
+                Label(style.Title, 26, y + 8, 254, 27, 18, Color.white, TextAnchor.MiddleLeft);
+                Label("БОСС", 302, y + 8, 59, 27, 11, style.Accent);
                 for (int stage = 1; stage <= 5; stage++)
                 {
                     int id = chapter * 5 + stage;
                     bool locked = id > g.UnlockedLevel;
                     float x = 24 + (stage - 1) * 69;
-                    Button(id.ToString("00"), x, y + 46, 64, 65, id == g.Level ? Orange : Cyan,
-                        () => g.SelectLevel(id), 24, !locked);
-                    if (stage == 5) Accent(x + 20, y + 106, 24, locked ? TextMuted : Gold);
+                    Color ink = Color.Lerp(Dark, style.Accent, id == g.Level ? .54f : .25f);
+                    Button(id.ToString("00"), x, y + 46, 64, 65, Cyan,
+                        () => g.SelectLevel(id), 24, !locked, skinTint: ink);
+                    if (id == g.Level || stage == 5) Accent(x + 20, y + 106, 24, locked ? TextMuted : style.Accent);
                 }
             }
             Label(g.LevelTitle, 24, 542, 342, 38, 19, Color.white);

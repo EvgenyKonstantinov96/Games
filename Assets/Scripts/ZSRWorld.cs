@@ -19,7 +19,7 @@ namespace ZombieSurvivalRun
             transform.position = new Vector3(0, 0, Length * (index - .5f));
             ZSRVisuals.Box("cracked asphalt deck", transform, new Vector3(0, -.25f, 0),
                 new Vector3(DeckWidth, .45f, Length), ZSRVisuals.AsphaltDeluxe);
-            ZSRTrackArt.PlaceShoulderGlows(transform, Length, RailX);
+            ZSRTrackArt.PlaceShoulderGlows(transform, Length, RailX, ZSRCampaignStyle.For(chapter).Accent);
             for (int side = -1; side <= 1; side += 2)
             {
                 ZSRVisuals.Box("road edge stripe", transform, new Vector3(side * EdgeStripeX, -.019f, 0),
@@ -35,7 +35,7 @@ namespace ZombieSurvivalRun
                     float z = Length * ((k + .5f) / 11f - .5f);
                     if (k % 2 == 0)
                         ZSRVisuals.Box("recessed amber guide", transform, new Vector3(side * (RailX - .105f), .695f, z - .69f),
-                            new Vector3(.019f, .041f, .32f), ZSRTrackArt.GuideLight);
+                            new Vector3(.019f, .041f, .32f), ZSRTrackArt.GuideLight(chapter));
                 }
                 for (int b = 0; b < 2; b++) BuildBuilding(side, index, b);
                 BuildLamp(side, side < 0 ? -10f : 12f);
@@ -51,26 +51,9 @@ namespace ZombieSurvivalRun
             }
 
             // Distant skyline is authored once as a separately scrolling parallax layer.
-            BuildDecor();
             BuildSurfaceDetails();
             BuildStreetSetDressing();
-            BuildUrbanStory(index);
-        }
-
-        void BuildDecor()
-        {
-            if (chapter == 2)
-            {
-                ZSRVisuals.Box("evacuation banner", transform, new Vector3(0, 5.5f, 12f), new Vector3(5.6f, .28f, .12f), ZSRVisuals.BlueGlow);
-                var text = ZSRVisuals.WorldText("SAFE ZONE", transform, new Vector3(0, 5.8f, 11.8f), .58f, Color.white);
-                text.transform.localRotation = Quaternion.Euler(0, 180, 0);
-            }
-            if (level % 5 == 0)
-            {
-                ZSRVisuals.Box("boss warning sign", transform, new Vector3(0, 3.8f, 16f), new Vector3(5.2f, .24f, .14f), ZSRVisuals.RedGlow);
-                var text = ZSRVisuals.WorldText("BOSS", transform, new Vector3(0, 4.05f, 15.85f), .70f, Color.white);
-                text.transform.localRotation = Quaternion.Euler(0, 180, 0);
-            }
+            ZSRTrackArt.PlaceChapterLandmark(transform, chapter, index, level % 5 == 0);
         }
 
         void BuildBuilding(int side, int segment, int row)
@@ -174,71 +157,6 @@ namespace ZombieSurvivalRun
             }
         }
 
-        /// <summary>Three small recurring roadside stories, varying per chunk and chapter.
-        /// All visual props are outside the player lanes, with no gameplay colliders.</summary>
-        void BuildUrbanStory(int segment)
-        {
-            int layout = (segment + chapter * 2) % 3;
-            for (int side = -1; side <= 1; side += 2)
-            {
-                float z = layout == 0 ? 4f : layout == 1 ? -13f : 15f;
-                float x = side * 8.5f;
-                Transform set = ZSRVisuals.Pivot("SCENERY / chapter roadside narrative", transform,
-                    new Vector3(x,0f,z));
-                if (layout == 0)
-                {
-                    // Evacuation checkpoint: steel light mast, battered road sign and crates.
-                    ZSRVisuals.Box("checkpoint steel mast",set,new Vector3(0,3.15f,0),
-                        new Vector3(.13f,6.3f,.15f),ZSRVisuals.MetalWorn);
-                    ZSRVisuals.Box("checkpoint overhead fixture",set,new Vector3(-side*.55f,6.12f,0),
-                        new Vector3(1.28f,.16f,.15f),ZSRVisuals.Gunmetal);
-                    ZSRVisuals.Box("checkpoint warning beacon",set,new Vector3(-side*1.12f,6.02f,0),
-                        new Vector3(.22f,.11f,.30f),chapter==2?ZSRVisuals.BlueGlow:ZSRVisuals.OrangeGlow);
-                    var sign=ZSRVisuals.Box("EVAC damaged notice",set,new Vector3(0,3.9f,-.08f),
-                        new Vector3(1.65f,.82f,.10f),ZSRVisuals.Gunmetal);
-                    ZSRVisuals.Box("notice amber stripe",sign.transform,new Vector3(0,.31f,-.53f),
-                        new Vector3(.98f,.12f,.12f),ZSRVisuals.Yellow);
-                    for(int k=0;k<2;k++)
-                        ZSRVisuals.Box("weathered cargo crate",set,new Vector3(side*(.7f+k*.65f),.42f,-1f+k*.45f),
-                            new Vector3(.74f,.84f,.74f),ZSRVisuals.MetalWorn,new Vector3(0,k*23,0));
-                }
-                else if (layout == 1)
-                {
-                    // Ruined monorail footing and loose steel members; never spans a playable lane.
-                    ZSRVisuals.Box("stripped concrete elevated support",set,new Vector3(side*.65f,3.55f,0),
-                        new Vector3(1.30f,7.1f,1.25f),ZSRVisuals.ConcreteDark,new Vector3(0,0,side*8));
-                    ZSRVisuals.Box("exposed bearing cap",set,new Vector3(side*.65f,7.13f,0),
-                        new Vector3(2.45f,.36f,1.62f),ZSRVisuals.MetalWorn);
-                    ZSRVisuals.Box("broken gantry beam",set,new Vector3(-side*1.05f,7.08f,0),
-                        new Vector3(2.9f,.26f,.27f),ZSRVisuals.Steel,new Vector3(0,0,side*13));
-                    ZSRVisuals.Box("loose suspended cable",set,new Vector3(-side*.36f,4.99f,-.32f),
-                        new Vector3(.045f,3.35f,.04f),ZSRVisuals.Gunmetal,new Vector3(0,0,-side*8));
-                    for(int k=0;k<4;k++)
-                        ZSRVisuals.Box("masonry from ruined support",set,
-                            new Vector3(-side*.3f+k*.25f,.12f,-1.25f+(k%2)*.51f),
-                            new Vector3(.35f,.21f,.36f),ZSRVisuals.ConcreteDeluxe,
-                            new Vector3(k*12,k*31,k*9));
-                }
-                else
-                {
-                    // Stranded utility van uses the actual Polyfork car mesh where available.
-                    Transform carSet=ZSRVisuals.Pivot("abandoned vehicle roadside",set,
-                        new Vector3(side*.1f,0,-1.05f));
-                    if (!ZSRPolyforkWorld.TryObstacle(carSet,0))
-                    {
-                        ZSRVisuals.MeshPart("track_wreck", "Weathered roadside sedan", carSet,
-                            Vector3.zero, Vector3.one, ZSRTrackArt.Surface, new Vector3(0, side * 15f, 0));
-                    }
-                    if (side > 0)
-                        ZSRVisuals.WreckFire(carSet, new Vector3(.25f, .9f, 1.12f));
-                    ZSRVisuals.Box("abandoned reflective cone base",set,new Vector3(-side*1.08f,.12f,1.12f),
-                        new Vector3(.47f,.22f,.45f),ZSRVisuals.Gunmetal);
-                    ZSRVisuals.Cylinder("hazard flare",set,new Vector3(-side*1.08f,.43f,1.12f),
-                        new Vector3(.11f,.34f,.11f),ZSRVisuals.OrangeGlow);
-                }
-            }
-        }
-
         void BuildLamp(int side, float z)
         {
             ZSRVisuals.Cylinder("street light pole", transform, new Vector3(side * 6.37f, 3.08f, z),
@@ -250,7 +168,7 @@ namespace ZombieSurvivalRun
             ZSRVisuals.Box("street lamp housing", transform, new Vector3(side * 5.28f, 6.04f, z),
                 new Vector3(.36f, .17f, .25f), ZSRVisuals.Gunmetal);
             ZSRVisuals.Box("street lamp lens", transform, new Vector3(side * 5.28f, 5.946f, z),
-                new Vector3(.29f, .018f, .18f), chapter == 2 ? ZSRVisuals.BlueGlow : ZSRVisuals.OrangeGlow);
+                new Vector3(.29f, .018f, .18f), ZSRTrackArt.GuideLight(chapter));
         }
 
         public void Tick(float travel)
@@ -326,7 +244,9 @@ namespace ZombieSurvivalRun
     public sealed class ZSRObstacle : MonoBehaviour
     {
         bool damaged;
-        int obstacleKind;
+        float contactHalfWidth;
+        MeshRenderer approachMarker;
+        MaterialPropertyBlock markerTint;
         /// <summary>Four clear obstacle silhouettes: wreck, barricade, spikes and rubble.</summary>
         public void Build(float x,float z,int chapter,int forcedKind=-1)
         {
@@ -335,7 +255,7 @@ namespace ZombieSurvivalRun
             var root=ZSRVisuals.Pivot("obstacle detailed 3D prop",transform,Vector3.zero);
             root.localEulerAngles=new Vector3(0,yaw,0);
             int kind=forcedKind>=0?Mathf.Clamp(forcedKind,0,3):Random.Range(0,4);
-            obstacleKind = kind;
+            contactHalfWidth = kind == 0 ? 1.42f : kind == 1 ? 1.58f : kind == 2 ? 1.54f : 1.61f;
             root.localScale = Vector3.one * (kind == 0 ? 1.14f : kind == 1 ? 1.18f : kind == 2 ? 1.13f : 1.19f);
             bool imported = ZSRPolyforkWorld.TryObstacle(root, kind);
             if (!imported)
@@ -374,23 +294,39 @@ namespace ZombieSurvivalRun
                     ZSRVisuals.Box("Trap approach reflector", root, new Vector3(side * 1.03f, .106f, -1.143f),
                         new Vector3(.28f, .041f, .018f), ZSRVisuals.OrangeGlow);
             }
+            approachMarker = ZSRTrackArt.PlaceHazardMark(transform, contactHalfWidth);
+            if (approachMarker != null)
+            {
+                markerTint = new MaterialPropertyBlock();
+                approachMarker.enabled = false;
+            }
         }
         void Update()
         {
-            if (ZSRGame.Instance == null || !ZSRGame.Instance.IsRunning) return;
-            transform.position += Vector3.back * ZSRGame.Instance.RunSpeed * ZSRGame.Instance.FrameStep;
-            // Radius approximates the authored visual footprint plus the hero's torso;
-            // keep collision analytic and deterministic instead of using unstable mesh colliders.
-            float contactHalfWidth = obstacleKind == 0 ? 1.42f : obstacleKind == 1 ? 1.58f :
-                obstacleKind == 2 ? 1.54f : 1.61f;
-            if (!damaged && transform.position.z < 1.65f && transform.position.z > -1.65f &&
-                Mathf.Abs(transform.position.x - ZSRGame.Instance.Hero.PositionX) < contactHalfWidth)
+            var game = ZSRGame.Instance;
+            if (game == null || !game.IsRunning) return;
+            transform.position += Vector3.back * game.RunSpeed * game.FrameStep;
+            float depth = transform.position.z;
+            bool inPath = Mathf.Abs(transform.position.x - game.Hero.PositionX) < contactHalfWidth;
+            if (approachMarker != null)
+            {
+                approachMarker.enabled = !damaged && depth > 1.65f && depth < 30f;
+                if (approachMarker.enabled)
+                {
+                    float strength = Mathf.Clamp01((30f - depth) * .12f);
+                    float pulse = .82f + .18f * Mathf.Sin(game.Elapsed * 9f);
+                    markerTint.SetColor("_Tint", new Color(1f, inPath ? .26f : .55f, .13f,
+                        strength * pulse * (inPath ? .86f : .53f)));
+                    approachMarker.SetPropertyBlock(markerTint);
+                }
+            }
+            if (!damaged && depth < 1.65f && depth > -1.65f && inPath)
             {
                 damaged = true;
-                ZSRGame.Instance.HurtPlayer(20);
-                ZSRGame.Instance.SpawnImpact(transform.position + Vector3.up, true);
+                game.HurtPlayer(20);
+                game.SpawnImpact(transform.position + Vector3.up, true);
             }
-            if (transform.position.z < -7f) Destroy(gameObject);
+            if (depth < -7f) Destroy(gameObject);
         }
     }
 

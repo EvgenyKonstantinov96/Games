@@ -7,6 +7,8 @@
 | `CharacterAtlas_normal.png`, `CharacterAtlas_emission.png` | Original maps authored in `Tools/Art/build_textures.py`. | Shared surface detail and masked boss emission. |
 | `Highway.png`, `Highway_normal.png`, `ParticleSoft.png` | Original maps authored in `Tools/Art/build_textures.py`. | Shipped in the game source. |
 | `Horizon.jpg` | OpenAI ImageGen output based on an original text prompt for this game. | Environment texture. |
+| `Horizon_Industrial.jpg`, `Horizon_Evacuation.jpg`, `UI/campaign_cover_*.png` | Color grades and crops of the project's existing skyline and portrait artwork, prepared in `Tools/Art/build_campaign_art.py`. | Chapter atmosphere and campaign menu. |
+| `Highway_surface.png`, `track_chapter_*.obj` | Original work authored in `Tools/Art/build_campaign_art.py` and `Tools/Art/build_chapter_props.py`. | Packed asphalt smoothness and three roadside landmarks. |
 | `zsr_city_*.obj`, `city_facades.png`, `city_facades_emission.png` | Original facade geometry and textures authored in `Tools/Art/build_city_meshes.py` and `build_city_facades.py`. | Street buildings and background city layers. |
 | `track_*.obj`, `TrackPropAtlas.png` | Original guardrail, weathering and other meshes adapted from the existing Lux props in `Tools/Art/build_track_props.py`. | Shared finish for obstacles, guardrails and gate pylons. |
 | `TrackGateLabels.png` | Original sign artwork rasterized with DejaVu Sans Condensed Bold under the [DejaVu font license](https://dejavu-fonts.github.io/License.html). | Six bonus labels. The repository includes the atlas image. |

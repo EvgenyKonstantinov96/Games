@@ -6,20 +6,99 @@ namespace ZombieSurvivalRun
     /// <summary>One shared material for the UV-mapped road hazards and gate pylons.</summary>
     public static class ZSRTrackArt
     {
-        static Material paintedMetal, guideLight;
+        static Material paintedMetal;
         static Material shoulderGlow;
         static Mesh shoulderGlowMesh;
+        static Material hazardMaterial;
+        static Mesh hazardMesh;
+        static readonly Material[] landscapeLenses = new Material[3];
 
-        public static Material GuideLight
+        public static void PlaceChapterLandmark(Transform track, int chapter, int segment, bool bossLevel)
         {
-            get
+            if (segment != 1 && segment != 3) return;
+            var style = ZSRCampaignStyle.For(chapter);
+            var station = ZSRVisuals.Pivot("Chapter landmark / " + style.Landmark, track,
+                new Vector3(0f, 0f, segment == 1 ? 7f : -10f));
+            ZSRVisuals.MeshPart("track_chapter_" + style.Landmark, "Authored roadside structure", station,
+                Vector3.zero, Vector3.one, Surface);
+            Material light = GuideLight(chapter);
+            Vector3 sign = chapter == 0 ? new Vector3(0f, 7.15f, -.88f) : chapter == 1 ?
+                new Vector3(0f, 6.11f, -1.27f) : new Vector3(0f, 6.40f, -.85f);
+            if (chapter == 1)
             {
-                if (guideLight == null) guideLight = ZSRVisuals.Mat(new Color(1f, .46f, .12f), .45f, .72f);
-                return guideLight;
+                ZSRVisuals.Box("Refinery suspended placard", station, sign + Vector3.forward * .09f,
+                    new Vector3(4.55f, .54f, .16f), ZSRVisuals.Gunmetal);
+                if (segment == 1) ZSRVisuals.WreckFire(station, new Vector3(-7.25f, 9.02f, .95f));
+            }
+            string wording = bossLevel && segment == 3 ? "DANGER / BOSS" : style.RoadSign;
+            ZSRVisuals.WorldText(wording, station, sign, .48f, style.Accent).fontStyle = FontStyle.Bold;
+            for (int side = -1; side <= 1; side += 2)
+            {
+                Vector3 lens = chapter == 0 ? new Vector3(side * 5.93f, 5.32f, -.49f) : chapter == 1 ?
+                    new Vector3(side * 7.25f, 6.83f, -1.63f) : new Vector3(side * 6.20f, 7.07f, -1.14f);
+                ZSRVisuals.Box("Chapter signal lens", station, lens, new Vector3(.59f, .13f, .055f), light);
             }
         }
 
-        public static void PlaceShoulderGlows(Transform road, float length, float outerX)
+        public static MeshRenderer PlaceHazardMark(Transform parent, float halfWidth)
+        {
+            if (hazardMaterial == null)
+            {
+                var shader = Resources.Load<Shader>("ProductionArt/ZSRCombatFX");
+                if (shader == null || !shader.isSupported) return null;
+                hazardMaterial = new Material(shader) { name = "Road hazard projections" };
+            }
+            if (hazardMesh == null)
+            {
+                var vertices = new List<Vector3>();
+                var triangles = new List<int>();
+                for (int side = -1; side <= 1; side += 2)
+                {
+                    for (int row = 0; row < 3; row++)
+                    {
+                        float z = -5.7f + row * .83f;
+                        AddStripe(side * .88f, z - .22f, side * .63f, z + .27f);
+                    }
+                    AddStripe(side * .967f, -4.3f, side * .967f, -2.13f);
+                }
+                hazardMesh = new Mesh { name = "Open danger chevrons" };
+                hazardMesh.SetVertices(vertices);
+                hazardMesh.SetTriangles(triangles, 0);
+                var colors = new Color[vertices.Count];
+                for (int i = 0; i < colors.Length; i++) colors[i] = Color.white;
+                hazardMesh.colors = colors;
+
+                void AddStripe(float x0, float z0, float x1, float z1)
+                {
+                    int index = vertices.Count;
+                    const float width = .033f;
+                    vertices.Add(new Vector3(x0 - width, .021f, z0));
+                    vertices.Add(new Vector3(x0 + width, .021f, z0));
+                    vertices.Add(new Vector3(x1 + width, .021f, z1));
+                    vertices.Add(new Vector3(x1 - width, .021f, z1));
+                    triangles.AddRange(new[] { index, index + 2, index + 1, index, index + 3, index + 2 });
+                }
+            }
+
+            var mark = new GameObject("Road hazard guide", typeof(MeshFilter), typeof(MeshRenderer));
+            mark.transform.SetParent(parent, false);
+            mark.transform.localScale = new Vector3(halfWidth, 1f, 1f);
+            mark.GetComponent<MeshFilter>().sharedMesh = hazardMesh;
+            var renderer = mark.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = hazardMaterial;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            return renderer;
+        }
+
+        public static Material GuideLight(int chapter)
+        {
+            if (landscapeLenses[chapter] == null)
+                landscapeLenses[chapter] = ZSRVisuals.Mat(ZSRCampaignStyle.For(chapter).Accent, .34f, 1.05f);
+            return landscapeLenses[chapter];
+        }
+
+        public static void PlaceShoulderGlows(Transform road, float length, float outerX, Color chapterTint)
         {
             if (shoulderGlow == null)
             {
@@ -50,7 +129,7 @@ namespace ZombieSurvivalRun
                         uv.Add(Vector2.right);
                         uv.Add(Vector2.one);
                         uv.Add(Vector2.up);
-                        for (int i = 0; i < 4; i++) tint.Add(new Color(.87f, .37f, .125f, .21f));
+                        for (int i = 0; i < 4; i++) tint.Add(new Color(1f, 1f, 1f, .21f));
                         triangles.Add(start);
                         triangles.Add(start + 2);
                         triangles.Add(start + 1);
@@ -70,6 +149,9 @@ namespace ZombieSurvivalRun
             layer.GetComponent<MeshFilter>().sharedMesh = shoulderGlowMesh;
             var renderer = layer.GetComponent<MeshRenderer>();
             renderer.sharedMaterial = shoulderGlow;
+            var tintBlock = new MaterialPropertyBlock();
+            tintBlock.SetColor("_Tint", chapterTint);
+            renderer.SetPropertyBlock(tintBlock);
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             renderer.receiveShadows = false;
         }
