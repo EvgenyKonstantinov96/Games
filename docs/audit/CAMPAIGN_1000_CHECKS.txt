@@ -1,0 +1,9 @@
+SAVE PASS: new, legacy, original finale, mid-campaign and completed saves.
+ECONOMY lv 40: 3 replay(s) with sample wallet 1500 and payout 1911.
+ECONOMY lv 280: 5 replay(s) with sample wallet 4000 and payout 3255.
+ECONOMY lv 880: 5 replay(s) with sample wallet 16000 and payout 6615.
+CAMPAIGN PASS: 1000 distinct openings, 247089 wave units, 40 sectors and 6 formations.
+STORY PASS: 45 beats, first 5, final 990. 46 boss encounters including level 1000.
+BALANCE PASS: worst boss budget 7.43 s at level 90. Math model at 57% firing uptime.
+PRESSURE: 16=0.75×, 65=0.83×, 250=1.00×, 500=1.15×, 750=1.37×, 999=1.44× enemy HP/s vs. sustained minigun DPS.
+TRAFFIC PASS: 7240 obstacle windows, 1795 moves, 1.300 s minimum clearance at sprint speed.
