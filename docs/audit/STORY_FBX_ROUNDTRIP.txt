@@ -1,0 +1,42 @@
+FBX version: 7400
+ANATOMY Armored 2199 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.36x, forefoot flexion 20.0/13.4 degrees
+PASS Armored 31 bones, 3331 verts, 6385 triangles, 1–168 frames, smooth custom normals
+FBX version: 7400
+ANATOMY Boss    2404 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.36x, forefoot flexion 20.2/15.0 degrees
+BOSS attack reach L/R 0.752/0.752 m, ankle drift L/R 0.000/0.000 m
+PASS Boss    31 bones, 3408 verts, 6438 triangles, 1–168 frames, smooth custom normals
+FBX version: 7400
+ANATOMY Brute   2404 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.39x, forefoot flexion 20.3/13.9 degrees
+PASS Brute   31 bones, 2942 verts, 5696 triangles, 1–168 frames, smooth custom normals
+FBX version: 7400
+ANATOMY Crawler 2610 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.48x, forefoot flexion 14.4/12.1 degrees
+PASS Crawler 31 bones, 3090 verts, 5988 triangles, 1–168 frames, smooth custom normals
+FBX version: 7400
+ANATOMY Eva     2497 vertices in continuous body, 71 poses, worst 99th-percentile edge stretch 1.52x, forefoot flexion 27.7/23.4 degrees
+GAIT Eva     L ankle-roll 55.9 degrees, support 0.006..0.007 m, rearward travel 0.684 m, loop error 0.0023 m
+WALK Eva     L reach 0.429 m vs 0.854 m running, 27/34 frames near the ground, match with firing variant
+GAIT Eva     R ankle-roll 55.7 degrees, support 0.006..0.006 m, rearward travel 0.682 m, loop error 0.0022 m
+WALK Eva     R reach 0.429 m vs 0.853 m running, 27/34 frames near the ground, match with firing variant
+PASS Eva     33 bones, 3797 verts, 7260 triangles, 1–289 frames, smooth custom normals, medkit, throw, walk and walk-fire poses
+FBX version: 7400
+ANATOMY Max     2499 vertices in continuous body, 71 poses, worst 99th-percentile edge stretch 1.44x, forefoot flexion 28.2/24.8 degrees
+GAIT Max     L ankle-roll 55.9 degrees, support 0.006..0.007 m, rearward travel 0.741 m, loop error 0.0024 m
+WALK Max     L reach 0.429 m vs 0.942 m running, 27/34 frames near the ground, match with firing variant
+GAIT Max     R ankle-roll 55.9 degrees, support 0.006..0.006 m, rearward travel 0.739 m, loop error 0.0023 m
+WALK Max     R reach 0.429 m vs 0.941 m running, 27/34 frames near the ground, match with firing variant
+PASS Max     33 bones, 3763 verts, 7196 triangles, 1–289 frames, smooth custom normals, medkit, throw, walk and walk-fire poses
+FBX version: 7400
+ANATOMY Runner  2403 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.43x, forefoot flexion 19.7/17.8 degrees
+GAIT Runner  ankle travel L/R 0.959/0.961 m, ankle lift L/R 0.262/0.269 m
+PASS Runner  31 bones, 2882 verts, 5545 triangles, 1–168 frames, smooth custom normals
+FBX version: 7400
+ANATOMY Toxic   2403 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.40x, forefoot flexion 20.3/15.3 degrees
+GAIT Toxic   ankle travel L/R 0.527/0.409 m, ankle lift L/R 0.140/0.086 m
+PASS Toxic   31 bones, 3510 verts, 6630 triangles, 1–168 frames, smooth custom normals
+FBX version: 7400
+ANATOMY Walker  2196 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.38x, forefoot flexion 19.4/13.1 degrees
+GAIT Walker  ankle travel L/R 0.509/0.385 m, ankle lift L/R 0.131/0.083 m
+PASS Walker  31 bones, 2866 verts, 5468 triangles, 1–168 frames, smooth custom normals
+Blender 4.3.2
+
+Blender quit
