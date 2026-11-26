@@ -36,11 +36,28 @@ namespace ZombieSurvivalRun.EditorTools
                 QueueSetup();return;
             }
             if(File.Exists(ScenePath)&&AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(PipelinePath)!=null)return;
+            if (!File.Exists(ScenePath) && HasUntitledScene()) return;
             CreateScene();
         }
+
+        static bool HasUntitledScene()
+        {
+            for (int i = 0; i < SceneManager.sceneCount; i++)
+            {
+                var scene = SceneManager.GetSceneAt(i);
+                if (scene.isLoaded && string.IsNullOrEmpty(scene.path)) return true;
+            }
+            return false;
+        }
+
         [MenuItem("Zombie Survival Run 0.8/1 • Prepare Project & Scene")]
         public static void CreateScene()
         {
+            if (!File.Exists(ScenePath) && HasUntitledScene())
+            {
+                Debug.LogWarning("[ZSR 0.8] Save the open Untitled scene with File > Save As, then run Prepare Project & Scene again to restore ZSR_Main.");
+                return;
+            }
             try
             {
                 Directory.CreateDirectory("Assets/Scenes");
@@ -102,7 +119,10 @@ namespace ZombieSurvivalRun.EditorTools
         public static void OpenGame()
         {
             if(!File.Exists(ScenePath))CreateScene();
-            if(File.Exists(ScenePath))EditorSceneManager.OpenScene(ScenePath);
+            if (!File.Exists(ScenePath)) return;
+            if (SceneManager.sceneCount == 1 && SceneManager.GetActiveScene().path == ScenePath) return;
+            if (EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+                EditorSceneManager.OpenScene(ScenePath);
         }
         // Editor-only asset gallery: view the actual Unity 3D figurines without entering a level.
         [MenuItem("Zombie Survival Run 0.8/4 • Preview 3D Models")]

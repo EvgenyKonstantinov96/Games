@@ -1,5 +1,7 @@
 # Zombie Survival Run — T001–T100
 
+**T008, первый запуск.** На ревизии `cd815ac` Unity сообщил `Cannot create a new scene additively with an untitled scene unsaved`. Стартовая сцена теперь включена в проект с GUID из `EditorBuildSettings.asset`. Симуляция с заглушками подтвердила открытие готовой сцены, отмену открытия и восстановление отсутствующей сцены после сохранения `Untitled`. Roslyn проверил изменённый код с библиотеками Unity 6000.3.28f1 и заглушками пакетов. Импорт сцены и PlayMode остаются `BLOCKED`. Unity batchmode завершился с кодом 198 до выполнения команды и сообщил `No valid Unity Editor license found`.
+
 Для более новой ревизии с исправлениями масштаба FBX и материалов см. [проверку визуальной регрессии](VISUAL_REGRESSION_RU.md).
 
 Анатомия, непрерывность меша и деформация в 278 позах проверены в Blender для T011–T014, T019, T022–T026, T031–T039. Проверки самих критериев в Unity остаются `BLOCKED`. [Текущий отчёт о моделях](CHARACTER_ANATOMY_RU.md)
