@@ -1,31 +1,39 @@
-"""Build the rounded nine-slice surfaces shared by the HUD and menus."""
+"""Build the nine-slice button skins used by the Unity canvas."""
 from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-OUT = Path(__file__).resolve().parents[2] / 'Assets/Resources/UI'
+OUT = Path(__file__).resolve().parents[2] / "Assets/Resources/UI"
 
 
-def pill(name, top, bottom, border, radius):
-    width, height = 256, 96
-    supersample = 2
-    size = (width * supersample, height * supersample)
-    fill = Image.new('RGBA', size)
-    draw = ImageDraw.Draw(fill)
+def skin(name, top, middle, bottom, rim, highlight, radius):
+    width, height, scale = 256, 96, 3
+    size = (width * scale, height * scale)
+
+    layer = Image.new("RGBA", size)
+    rect = (3, 3, size[0] - 4, size[1] - 8)
+    ImageDraw.Draw(layer).rounded_rectangle((3, 7, size[0] - 4, size[1] - 3),
+                                            radius=radius * scale, fill=(1, 4, 10, 154))
+    surface = Image.new("RGBA", size)
+    draw = ImageDraw.Draw(surface)
     for y in range(size[1]):
         t = y / (size[1] - 1)
-        color = tuple(round(a + (b - a) * t) for a, b in zip(top, bottom))
+        a, b, blend = (top, middle, t / .66) if t < .66 else (middle, bottom, (t - .66) / .34)
+        color = tuple(round(x + (z - x) * blend) for x, z in zip(a, b))
         draw.line((0, y, size[0], y), fill=(*color, 255))
-    mask = Image.new('L', size)
-    rect = (2, 2, size[0] - 3, size[1] - 3)
-    ImageDraw.Draw(mask).rounded_rectangle(rect, radius=radius * supersample, fill=255)
-    fill.putalpha(mask)
-    ImageDraw.Draw(fill).rounded_rectangle(rect, radius=radius * supersample, outline=border, width=2)
-    fill.resize((width, height), Image.Resampling.LANCZOS).save(OUT / (name + '.png'), optimize=True)
+    mask = Image.new("L", size)
+    ImageDraw.Draw(mask).rounded_rectangle(rect, radius=radius * scale, fill=255)
+    surface.putalpha(mask)
+    draw.rounded_rectangle(rect, radius=radius * scale, outline=rim, width=3)
+    inset = 8
+    draw.arc((rect[0] + inset, rect[1] + inset, rect[2] - inset, rect[1] + radius * 3),
+             start=185, end=355, fill=highlight, width=2)
+    layer.alpha_composite(surface)
+    layer.resize((width, height), Image.Resampling.LANCZOS).save(OUT / (name + ".png"), optimize=True)
 
 
-if __name__ == '__main__':
-    pill('btn_primary', (170, 66, 27), (120, 38, 18), '#e49a6b', 14)
-    pill('btn_secondary', (38, 57, 78), (22, 36, 54), '#56748d', 14)
-    pill('btn_muted', (32, 41, 54), (24, 32, 44), '#415365', 14)
-    pill('panel', (255, 255, 255), (223, 232, 242), '#e1edf4', 17)
+if __name__ == "__main__":
+    skin("btn_primary", (184, 79, 32), (151, 56, 24), (119, 41, 20), "#d78c55", "#e5a479", 18)
+    skin("btn_secondary", (42, 65, 90), (29, 48, 69), (19, 32, 48), "#607a91", "#7694ad", 18)
+    skin("btn_muted", (34, 45, 57), (27, 36, 47), (22, 29, 39), "#455668", "#516478", 18)
+    skin("panel", (255, 255, 255), (235, 243, 250), (214, 225, 237), "#e3edf6", "#ffffff", 18)

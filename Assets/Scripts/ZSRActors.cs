@@ -229,7 +229,7 @@ namespace ZombieSurvivalRun
         ZSRProductionArt production;
         float hitPoints, maxHitPoints, walkSpeed, phase, clock, stagger, deathTime, attackTimer;
         bool contacted, attackTelegraphed;
-        int themeLevel;
+        ZSRLevelPlan levelPlan;
 
         public void Construct(ZombieType type)
         {
@@ -320,21 +320,18 @@ namespace ZombieSurvivalRun
             return pivot;
         }
 
-        public void Activate(float x, float z, int level)
+        public void Activate(float x, float z, int level) => Activate(x, z, new ZSRLevelPlan(level));
+
+        internal void Activate(float x, float z, ZSRLevelPlan plan)
         {
-            themeLevel = level;
+            levelPlan = plan;
             transform.position = new Vector3(x, 0, z);
             transform.rotation = Quaternion.Euler(0, 180, 0);
-            maxHitPoints = Kind == ZombieType.Boss ? 880f + Mathf.Max(0, level - 5) * 48f :
-                           Kind == ZombieType.Brute ? 170f + level * 7f :
-                           Kind == ZombieType.Armored ? 98f + level * 3f :
-                           Kind == ZombieType.Runner ? 34f + level * 1.3f :
-                           Kind == ZombieType.Toxic ? 62f + level * 2.2f :
-                           Kind == ZombieType.Crawler ? 41f + level * 1.6f :
-                           54f + level * 1.8f;
+            maxHitPoints = plan.EnemyHealth(Kind);
             hitPoints = maxHitPoints;
             walkSpeed = Kind == ZombieType.Boss ? 0f : Kind == ZombieType.Brute ? .78f : Kind == ZombieType.Runner ? 3.0f :
                 Kind==ZombieType.Crawler?2.6f:Kind==ZombieType.Toxic ? 0.55f:Kind == ZombieType.Armored ? 1.15f : 1.48f;
+            walkSpeed *= plan.EnemySpeedScale;
             Alive = true; contacted = false; attackTelegraphed = false; stagger = 0; deathTime = 0; clock = phase; attackTimer = 2f;
             if(body!=null){body.localEulerAngles=Vector3.zero;body.localPosition=Vector3.zero;}
             if (rigged != null) {rigged.transform.localPosition = Vector3.zero;rigged.transform.localRotation = Quaternion.identity;}
@@ -449,10 +446,10 @@ namespace ZombieSurvivalRun
                     game.WarnBossStrike(p.x, p.z, strikeWidth, 1f - attackTimer / windup);
                 if (attackTimer <= 0)
                 {
-                    attackTimer = Mathf.Max(2.5f, 3.4f - themeLevel * .03f);
+                    attackTimer = levelPlan.BossAttackDelay;
                     attackTelegraphed = false;
                     game.BossStrike(p.x, p.z - .72f);
-                    if (Mathf.Abs(p.x - game.Hero.PositionX) < strikeWidth) game.HurtPlayer(themeLevel >= 15 ? 18 : 15);
+                    if (Mathf.Abs(p.x - game.Hero.PositionX) < strikeWidth) game.HurtPlayer(levelPlan.Level >= 15 ? 18 : 15);
                     else game.Notify("УДАР МУТАНТА МИМО", .9f);
                 }
             }

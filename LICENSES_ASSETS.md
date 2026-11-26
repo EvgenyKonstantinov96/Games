@@ -13,6 +13,7 @@
 | `track_*.obj`, `TrackPropAtlas.png` | Original guardrail, weathering and other meshes adapted from the existing Lux props in `Tools/Art/build_track_props.py`. | Shared finish for obstacles, guardrails and gate pylons. |
 | `TrackGateLabels.png` | Original sign artwork rasterized with DejaVu Sans Condensed Bold under the [DejaVu font license](https://dejavu-fonts.github.io/License.html). | Six bonus labels. The repository includes the atlas image. |
 | `Assets/Resources/UI/ZSRMenuFont.ttf` | Unmodified DejaVu Sans Condensed. [Font license](docs/design/DejaVu-LICENSE.txt). | Bundled game interface font with Cyrillic coverage. |
+| `Assets/Resources/UI/ZSRButtonFont.ttf` | Subset of DejaVu Sans Condensed Bold, including Cyrillic and UI symbols. [Font license](docs/design/DejaVu-LICENSE.txt). | Bundled button captions. |
 | `Assets/Resources/UI/btn_*.png`, `Assets/Resources/UI/panel.png` | Original rounded surfaces authored in `Tools/Art/build_menu_art.py`. | Nine-slice menu panels and buttons. |
 | `combat_*.obj` | Original drone, rotor, grenade and medkit authored in `Tools/Art/build_combat_props.py`. | Combat props using the shared track atlas. |
 | `Assets/Resources/Audio/*.ogg` | Original synthesized score and effects composed in `Tools/Art/build_audio.py`. | Two looping music cues and six gameplay sounds. |

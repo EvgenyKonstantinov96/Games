@@ -7,19 +7,19 @@ using UnityEngine.Rendering.Universal;
 
 namespace ZombieSurvivalRun
 {
-    public enum ZSRState { Menu, Heroes, Arsenal, Bonuses, Items, Levels, Playing, Paused, Victory, Defeat, Story }
+    public enum ZSRState { Menu, Heroes, Arsenal, Bonuses, Items, Levels, Playing, Paused, Victory, Defeat }
     public enum ItemType { Medkit, Grenade, Drone, Armor }
 
     /// <summary>
     /// Zombie Survival Run 0.6.0 premium 3D prototype.
-    /// Self-contained vertical Unity prototype with 15 levels, improved visuals,
+    /// Self-contained vertical Unity prototype with a 1,000-level campaign, improved visuals,
     /// weapon progression and upgradable tactical items.
     /// </summary>
     [DefaultExecutionOrder(-90)]
     public sealed class ZSRGame : MonoBehaviour
     {
-        public const int MaxLevels = 15;
-        public const int MaxUpgradeLevel = 5;
+        public const int MaxLevels = ZSRLevelPlan.Count;
+        public const int MaxUpgradeLevel = ZSRLevelPlan.MaximumRank;
 
         const float RunCameraHeight = 2.96f;
         const float RunCameraDepth = -6.82f;
@@ -35,37 +35,41 @@ namespace ZombieSurvivalRun
         public ZSRState State { get; private set; } = ZSRState.Menu;
         public bool IsRunning => State == ZSRState.Playing;
         public ZSRHero Hero { get; private set; }
-        public int Level { get; private set; } = 1;
+        internal ZSRLevelPlan Plan { get; private set; } = new ZSRLevelPlan(1);
+        public int Level => Plan.Level;
         public int UnlockedLevel { get; private set; } = 1;
-        internal int CompletedStoryLevel { get; private set; }
-        internal ZSRStory.Beat CurrentBeat => ZSRStory.At(Level);
+        internal int ClearedLevel { get; private set; }
+        internal int Payout { get; private set; }
+        internal bool Replaying { get; private set; }
+        internal int ReplayLevel
+        {
+            get
+            {
+                int candidate = Mathf.Min(ClearedLevel, Level - 1);
+                if (candidate > 1 && new ZSRLevelPlan(candidate).IsBoss) candidate--;
+                return candidate;
+            }
+        }
+        internal ZSRStory.Beat StoryBeat { get; private set; }
+        internal bool HasStoryBeat { get; private set; }
         internal (int speaker, string line) Radio
         {
             get
             {
-                if (Elapsed > 2.7f && Elapsed < 8.7f)
-                {
-                    int sibling = 1 - SelectedHero;
-                    return (sibling, CurrentBeat.Line(sibling));
-                }
-                float secondCall = LevelLength * .42f;
-                return Elapsed >= secondCall && Elapsed < secondCall + 6f
-                    ? (SelectedHero, CurrentBeat.Line(SelectedHero)) : (-1, null);
+                int speaker = HasStoryBeat ? ZSRStory.SpeakerAt(Elapsed) : -1;
+                return speaker < 0 ? (-1, null) : (speaker, StoryBeat.Line(speaker));
             }
         }
         public int SelectedHero { get; private set; }
         public WeaponType Weapon { get; private set; } = WeaponType.Rifle;
-        float BaseRunSpeed => 11.7f + (Level - 1) * .22f;
-        float StageRunSpeed => BaseRunSpeed + Mathf.Max(0, Level - 5) * .23f;
-        public float RunSpeed => StageRunSpeed * pace.Scale;
+        public float RunSpeed => Plan.Speed * pace.Scale;
         internal float PaceScale => pace.Scale;
         internal ZSRPace Pace => pace.Mode;
         internal float PaceRecharge => pace.Recharge;
-        // Scale approach depths and the hero's stride with the extra pace.
-        internal float RunPaceMultiplier => StageRunSpeed / BaseRunSpeed;
+        internal float RunPaceMultiplier => Plan.SpawnDepthScale;
         // The road, enemies, pickups and obstacles must advance by the same capped step.
         public float FrameStep => Mathf.Min(Time.deltaTime, .05f);
-        public float LevelLength => IsBossLevel ? 84f + Chapter * 4f : 66f + StageInChapter * 4f + Chapter * 2f;
+        public float LevelLength => Plan.Duration;
         public float Elapsed { get; private set; }
         public float Progress => Mathf.Clamp01(Elapsed / LevelLength);
         public int Coins { get; private set; }
@@ -103,15 +107,19 @@ namespace ZombieSurvivalRun
         public float DroneSeconds => droneTimer;
         public bool BossAlive => boss != null && boss.Alive && boss.gameObject.activeInHierarchy;
         public float BossHealthFraction => BossAlive ? boss.HealthFraction : 0f;
-        public string LevelTitle => LevelNames[Mathf.Clamp(Level - 1, 0, LevelNames.Length - 1)];
-        public int Chapter => Mathf.Clamp((Level - 1) / 5, 0, 2);
-        public int StageInChapter => (Level - 1) % 5;
-        public bool IsBossLevel => Level % 5 == 0;
+        public string LevelTitle => Level <= LevelNames.Length ? LevelNames[Level - 1] :
+            Plan.District.ToUpperInvariant();
+        public int Chapter => Plan.Environment;
+        public int StageInChapter => Plan.Position;
+        public bool IsBossLevel => Plan.IsBoss;
         public int WeaponLevel => WeaponLevelFor(Weapon);
         public int UpgradeCost => WeaponUpgradeCost(Weapon);
         internal int WeaponLevelFor(WeaponType weapon) =>
             Mathf.Clamp(PlayerPrefs.GetInt("zsr40_weapon_level_" + (int)weapon, 1), 1, MaxUpgradeLevel);
-        internal int WeaponUpgradeCost(WeaponType weapon) => WeaponLevelFor(weapon) * 750;
+        internal int CampaignUpgradeCap => ZSRLevelPlan.UpgradeCap(UnlockedLevel);
+        internal int ItemUpgradeCap(ItemType item) => item == ItemType.Medkit
+            ? Mathf.Min(CampaignUpgradeCap, ZSRLevelPlan.MedicalRank) : CampaignUpgradeCap;
+        internal int WeaponUpgradeCost(WeaponType weapon) => ZSRLevelPlan.UpgradeCost(750, WeaponLevelFor(weapon));
 
         public static readonly string[] LevelNames =
         {
@@ -156,8 +164,9 @@ namespace ZombieSurvivalRun
         public void CycleMusic() { if (music != null) music.Cycle(); }
         ZSRZombie boss;
         float shootTimer, reloadTimer, waveTimer, coinTimer, gateTimer, carTimer;
-        float bonusTimer, shieldTimer, magnetTimer, droneTimer, noticeTimer, shake, droneShotTimer;
+        float bonusTimer, shieldTimer, magnetTimer, droneTimer, noticeTimer, shake, droneShotTimer, hitRecovery;
         int damageMultiplier = 1;
+        int waveIndex, coinIndex, gateIndex, obstacleIndex;
         bool reloading, bossSpawned;
         string notice = "";
         BonusKind activeBonus = BonusKind.DoubleDamage;
@@ -182,10 +191,10 @@ namespace ZombieSurvivalRun
 #if UNITY_ANDROID
             Screen.orientation = ScreenOrientation.Portrait;
 #endif
-            Coins = PlayerPrefs.GetInt("zsr40_coins", 2200);
-            UnlockedLevel = Mathf.Clamp(PlayerPrefs.GetInt("zsr40_unlocked", 1), 1, MaxLevels);
-            CompletedStoryLevel = Mathf.Clamp(PlayerPrefs.GetInt("zsr40_story_cleared", UnlockedLevel - 1), 0, MaxLevels);
-            Level = Mathf.Min(UnlockedLevel, CompletedStoryLevel + 1);
+            Coins = Mathf.Clamp(PlayerPrefs.GetInt("zsr40_coins", 2200), 0, 999999999);
+            (UnlockedLevel, ClearedLevel) = ZSRLevelPlan.RestoreProgress(
+                PlayerPrefs.GetInt("zsr40_unlocked", 1), PlayerPrefs.GetInt("zsr40_story_cleared", -1));
+            SelectLevel(ClearedLevel + 1);
             SelectedHero = Mathf.Clamp(PlayerPrefs.GetInt("zsr40_hero", 0), 0, 1);
             Weapon = (WeaponType)Mathf.Clamp(PlayerPrefs.GetInt("zsr40_weapon", 1), 0, 3);
             if (!WeaponOwned(Weapon)) Weapon = WeaponType.Rifle;
@@ -213,31 +222,36 @@ namespace ZombieSurvivalRun
         public bool WeaponOwned(WeaponType t)
             => WeaponPrice(t) == 0 || PlayerPrefs.GetInt("zsr40_weapon_owned_" + (int)t, 0) == 1;
 
-        public int ItemLevel(ItemType item) => Mathf.Clamp(PlayerPrefs.GetInt("zsr40_item_level_" + (int)item, 1), 1, MaxUpgradeLevel);
+        public int ItemLevel(ItemType item) =>
+            Mathf.Clamp(PlayerPrefs.GetInt("zsr40_item_level_" + (int)item, 1), 1, MaximumItemRank(item));
+        internal static int MaximumItemRank(ItemType item) =>
+            item == ItemType.Medkit ? ZSRLevelPlan.MedicalRank : MaxUpgradeLevel;
 
         public int ItemUpgradeCost(ItemType item)
         {
             int level = ItemLevel(item);
             int baseCost = item == ItemType.Medkit ? 950 : item == ItemType.Grenade ? 1100 : item == ItemType.Drone ? 1350 : 1500;
-            return baseCost * level;
+            return ZSRLevelPlan.UpgradeCost(baseCost, level);
         }
 
         public int ItemStartCount(ItemType item) => ItemStartCount(item, ItemLevel(item));
 
         internal static int ItemStartCount(ItemType item, int level) => item switch
         {
-            ItemType.Medkit or ItemType.Grenade => 1 + level / 2,
-            ItemType.Drone => level >= 4 ? 2 : 1,
+            ItemType.Medkit => 1 + Mathf.Min(level, 5) / 2 + BeyondFive(level),
+            ItemType.Grenade => 1 + Mathf.Min(level, 5) / 2 + BeyondFive(level) / 4,
+            ItemType.Drone => (level >= 4 ? 2 : 1) + BeyondFive(level) / 7,
             _ => 0
         };
 
-        internal static int MedkitHealth(int level) => 40 + level * 18;
-        internal static int GrenadeDamage(int level) => 105 + level * 38;
-        internal static float GrenadeRadius(int level) => 4.6f + level * .42f;
-        internal static float DroneDuration(int level) => 10f + level * 2f;
-        internal static int DroneDamage(int level) => 22 + level * 12;
-        internal static float ShieldSeconds(int level) => 8f + (level - 1) * 1.5f;
-        internal static float ArmorReduction(int level) => (level - 1) * .06f;
+        static int BeyondFive(int level) => Mathf.Max(0, level - 5);
+        internal static int MedkitHealth(int level) => 40 + Mathf.Min(5, level) * 18;
+        internal static int GrenadeDamage(int level) => 105 + Mathf.Min(5, level) * 38 + BeyondFive(level) * 22;
+        internal static float GrenadeRadius(int level) => 4.6f + Mathf.Min(5, level) * .42f + BeyondFive(level) * .09f;
+        internal static float DroneDuration(int level) => 10f + Mathf.Min(5, level) * 2f + BeyondFive(level) * .63f;
+        internal static int DroneDamage(int level) => 22 + Mathf.Min(5, level) * 12 + BeyondFive(level) * 6;
+        internal static float ShieldSeconds(int level) => 8f + (Mathf.Min(5, level) - 1) * 1.5f + BeyondFive(level) * .24f;
+        internal static float ArmorReduction(int level) => (Mathf.Min(5, level) - 1) * .06f + BeyondFive(level) * .012f;
 
         public string ThemeName => ZSRCampaignStyle.For(Chapter).Title.ToUpperInvariant();
 
@@ -443,8 +457,11 @@ namespace ZombieSurvivalRun
 
         public void StartLevel(int requested = 0)
         {
-            if (requested >= 1 && requested <= MaxLevels) Level = requested;
-            Level = Mathf.Clamp(Level, 1, MaxLevels);
+            if (requested < 0 || requested > UnlockedLevel) return;
+            if (requested != 0) SelectLevel(requested);
+            Replaying = Level <= ClearedLevel;
+            HasStoryBeat = ZSRStory.TryGet(Level, out var beat);
+            StoryBeat = beat;
             ClearRun();
             worldRoot.SetActive(true);
             RebuildRoad();
@@ -455,7 +472,8 @@ namespace ZombieSurvivalRun
             CancelGesture();
             State = ZSRState.Playing;
             Elapsed = 0;
-            Earned = 0;
+            Earned = Payout = 0;
+            waveIndex = coinIndex = gateIndex = obstacleIndex = 0;
             Eliminated = 0;
             Grenades = ItemStartCount(ItemType.Grenade);
             Medkits = ItemStartCount(ItemType.Medkit);
@@ -469,7 +487,7 @@ namespace ZombieSurvivalRun
             gateTimer = 8.5f;
             carTimer = 9f;
             bonusTimer = 0;
-            shieldTimer = 0;
+            shieldTimer = hitRecovery = 0;
             magnetTimer = 0;
             droneTimer = 0;
             damageMultiplier = 1;
@@ -525,31 +543,32 @@ namespace ZombieSurvivalRun
             shootTimer -= dt; waveTimer -= dt; coinTimer -= dt; gateTimer -= dt; carTimer -= dt;
             bonusTimer = Mathf.Max(0, bonusTimer - dt);
             shieldTimer = Mathf.Max(0, shieldTimer - dt);
+            hitRecovery = Mathf.Max(0, hitRecovery - dt);
             magnetTimer = Mathf.Max(0, magnetTimer - dt);
             droneTimer = Mathf.Max(0, droneTimer - dt);
             noticeTimer = Mathf.Max(0, noticeTimer - dt);
 
             if (bonusTimer <= 0) damageMultiplier = 1;
             combatEffects.UpdateShield(dt, shieldTimer, Hero.transform.position);
-            if (coinTimer <= 0) { SpawnCoins(); coinTimer = UnityEngine.Random.Range(2.4f, 4.3f); }
+            if (coinTimer <= 0) { SpawnCoins(); coinTimer = 2.4f + Plan.Roll(6, coinIndex) * 1.9f; }
             if (gateTimer <= 0 && Elapsed < LevelLength - 13f) { SpawnGates(); gateTimer = 16f + Chapter * 2f; }
-            if (carTimer <= 0 && Elapsed < LevelLength - 10f) { SpawnObstacle(); carTimer = UnityEngine.Random.Range(9f, 14f); }
+            if (carTimer <= 0 && Elapsed < LevelLength - 10f) { SpawnObstacle(); carTimer = Plan.HazardDelay(obstacleIndex); }
             if (waveTimer <= 0 && Elapsed < LevelLength - (IsBossLevel ? 18f : 5f))
             {
                 SpawnWave();
-                waveTimer = Mathf.Max(1.0f, 2.8f - Level * .06f - Elapsed * .0065f);
+                waveTimer = Plan.WaveDelay(Elapsed);
             }
 
             if (IsBossLevel && Elapsed > LevelLength - 18f && !bossSpawned)
             {
-                bossSpawned = true;
-                SpawnEnemy(ZombieType.Boss, 0, 43);
-                if (Level >= 10)
+                SpawnEnemy(ZombieType.Boss, Plan.Level > 15 ? (Plan.Roll(13, 0) - .5f) * 2f : 0f, 43);
+                bossSpawned = BossAlive;
+                if (bossSpawned && Level >= 10)
                 {
                     SpawnEnemy(ZombieType.Brute, -2.7f, 37f);
                     SpawnEnemy(ZombieType.Brute, 2.7f, 39.2f);
                 }
-                Notify("СУПЕР-БОСС НА ПОДХОДЕ!", 2.6f);
+                if (bossSpawned) Notify("СУПЕР-БОСС НА ПОДХОДЕ!", 2.6f);
             }
 
             if (!reloading && !Hero.IsUsingItem && shootTimer <= 0) Shoot();
@@ -565,10 +584,10 @@ namespace ZombieSurvivalRun
             if (Hero.Health <= 0) { Finish(false); return; }
             if (Elapsed >= LevelLength)
             {
-                if (IsBossLevel && BossAlive)
+                if (IsBossLevel && (!bossSpawned || BossAlive))
                 {
                     Notify("УНИЧТОЖЬ БОССА!", 1f);
-                    if (Elapsed >= LevelLength + 24f) Finish(false);
+                    if (Elapsed >= LevelLength + Plan.BossOvertime) Finish(false);
                 }
                 else Finish(true);
             }
@@ -694,32 +713,22 @@ namespace ZombieSurvivalRun
             }
         }
 
-        // Small mixed formations from the first level: enemies are recognizable from a distance.
-        // Height and collision are still owned by each ZSRZombie actor.
         void SpawnWave()
         {
-            int n = Mathf.Clamp(3 + (Level - 1) / 4 + (StageInChapter >= 3 ? 1 : 0), 3, 6);
-            if (IsBossLevel) n = Mathf.Max(3, n - 1);
-            float start = UnityEngine.Random.Range(-.55f, .55f);
-            for (int i = 0; i < n; i++)
+            int wave = waveIndex++;
+            int count = Plan.WaveSize(wave);
+            for (int i = 0; i < count; i++)
             {
-                float roll = UnityEngine.Random.value;
-                ZombieType kind = ZombieType.Walker;
-                if (roll < .27f) kind = ZombieType.Runner;
-                else if (Level >= 2 && roll < .44f) kind = ZombieType.Armored;
-                else if (Level >= 3 && roll < .60f) kind = ZombieType.Toxic;
-                else if (Level >= 5 && roll < .73f) kind = ZombieType.Crawler;
-                else if (Level >= 6 && roll < .86f) kind = ZombieType.Brute;
-                // Slight stagger avoids overlapping identical silhouettes in the camera.
-                float lane = ((i % 3) - 1) * 2.72f + start;
-                float distance = 36f + (i / 3) * 4.4f + UnityEngine.Random.Range(-.9f, .9f);
-                SpawnEnemy(kind, Mathf.Clamp(lane, -3.95f, 3.95f), distance * RunPaceMultiplier);
+                var unit = Plan.WaveUnit(wave, i);
+                SpawnEnemy(unit.kind, unit.x, unit.z);
             }
         }
 
         void SpawnEnemy(ZombieType type, float x, float z)
         {
-            if (enemies.Count >= 44) return;
+            const int enemyLimit = 44;
+            int limit = IsBossLevel && !bossSpawned && type != ZombieType.Boss ? enemyLimit - 1 : enemyLimit;
+            if (enemies.Count >= limit) return;
             if (!pools.ContainsKey(type)) pools[type] = new Queue<ZSRZombie>();
             ZSRZombie enemy;
             if (pools[type].Count > 0) enemy = pools[type].Dequeue();
@@ -730,20 +739,20 @@ namespace ZombieSurvivalRun
                 enemy = go.AddComponent<ZSRZombie>();
                 enemy.Construct(type);
             }
-            enemy.Activate(x, z, Level);
+            enemy.Activate(x, z, Plan);
             enemies.Add(enemy);
             if (type == ZombieType.Boss) boss = enemy;
         }
 
         void SpawnCoins()
         {
-            float x = UnityEngine.Random.Range(-3.3f, 3.3f);
+            float x = (Plan.Roll(7, coinIndex++) - .5f) * 6.6f;
             int amount = 5 + (StageInChapter >= 3 ? 1 : 0);
             for (int i = 0; i < amount; i++)
             {
                 var go = new GameObject("Gold coin");
                 go.transform.SetParent(worldRoot.transform, false);
-                go.AddComponent<ZSRPickup>().Build(x, (36 + i * 2.4f) * RunPaceMultiplier, 25 + Chapter * 10);
+                go.AddComponent<ZSRPickup>().Build(x, (36 + i * 2.4f) * RunPaceMultiplier, Plan.PickupValue);
                 temporary.Add(go);
             }
         }
@@ -755,11 +764,12 @@ namespace ZombieSurvivalRun
             a.transform.SetParent(worldRoot.transform, false);
             b.transform.SetParent(worldRoot.transform, false);
             a.Sister = b; b.Sister = a;
-            // The player sees a real choice instead of the same fixed pair every time.
+            int sequence = gateIndex++;
+            // Keep the two choices responsive to low health.
             BonusKind first = Hero.Health < Hero.MaxHealth * .64f ? BonusKind.Heal :
-                (Elapsed > 34f && UnityEngine.Random.value > .48f ? BonusKind.Magnet : BonusKind.DoubleDamage);
+                (Elapsed > 34f && Plan.Roll(8, sequence) > .48f ? BonusKind.Magnet : BonusKind.DoubleDamage);
             BonusKind second = shieldTimer <= 0f && Level >= 2 ? BonusKind.Shield : BonusKind.RapidFire;
-            if (Level >= 5 && UnityEngine.Random.value > .57f) second = BonusKind.Turret;
+            if (Level >= 5 && Plan.Roll(9, sequence) > .57f) second = BonusKind.Turret;
             if (second == first) second = first == BonusKind.Heal ? BonusKind.Shield : BonusKind.RapidFire;
             float depth = AvailableTrafficDepth(39f * RunPaceMultiplier);
             a.Build(first, -2.5f, depth);
@@ -770,11 +780,20 @@ namespace ZombieSurvivalRun
 
         void SpawnObstacle()
         {
-            var o = new GameObject("Wrecked vehicle");
-            o.transform.SetParent(worldRoot.transform, false);
+            int sequence = obstacleIndex++;
+            float side = Plan.Roll(10, sequence) < .5f ? -1f : 1f;
             float depth = AvailableTrafficDepth(43f * RunPaceMultiplier);
-            o.AddComponent<ZSRObstacle>().Build(UnityEngine.Random.value > .5f ? -2.9f : 2.9f, depth, Chapter);
-            temporary.Add(o);
+            bool split = Plan.SplitHazard(sequence);
+            AddObstacle(side * 2.9f, depth, Plan.ObstacleKind(sequence));
+            if (split) AddObstacle(-side * 2.9f, depth, Plan.ObstacleKind(sequence + 900));
+        }
+
+        void AddObstacle(float x, float depth, int kind)
+        {
+            var obstacle = new GameObject("Road hazard");
+            obstacle.transform.SetParent(worldRoot.transform, false);
+            obstacle.AddComponent<ZSRObstacle>().Build(x, depth, Chapter, kind);
+            temporary.Add(obstacle);
         }
 
         float AvailableTrafficDepth(float desiredDepth)
@@ -786,7 +805,7 @@ namespace ZombieSurvivalRun
                 if (item.GetComponent<ZSRBonusGate>() != null || item.GetComponent<ZSRObstacle>() != null)
                     trafficDepths.Add(item.transform.position.z);
             }
-            return SpaceTraffic(desiredDepth, StageRunSpeed * ZSRRunPace.SurgeScale * 1.30f, trafficDepths);
+            return SpaceTraffic(desiredDepth, Plan.Speed * ZSRRunPace.SurgeScale * 1.30f, trafficDepths);
         }
 
         internal static float SpaceTraffic(float depth, float clearance, List<float> occupied)
@@ -943,7 +962,7 @@ namespace ZombieSurvivalRun
 
         public void HurtPlayer(int amount)
         {
-            if (!IsRunning) return;
+            if (!IsRunning || hitRecovery > 0f) return;
             if (IsShielded)
             {
                 combatEffects.ShieldImpact(Hero.transform.position);
@@ -951,7 +970,8 @@ namespace ZombieSurvivalRun
                 return;
             }
             float reduction = 1f - ArmorReduction(ItemLevel(ItemType.Armor));
-            int finalDamage = Mathf.Max(1, Mathf.RoundToInt(amount * reduction));
+            int finalDamage = Mathf.Max(1, Mathf.RoundToInt(amount * Plan.IncomingDamage * reduction));
+            hitRecovery = Level > 15 ? .26f : 0f;
             Hero.Health = Mathf.Max(0, Hero.Health - finalDamage);
             Hero.Hit();
             shake = .48f;
@@ -994,24 +1014,18 @@ namespace ZombieSurvivalRun
             if (!victory) Hero.Die();
             State = victory ? ZSRState.Victory : ZSRState.Defeat;
             ClearCombat();
+            Payout = Plan.Payout(Earned, victory, !Replaying, Progress);
+            Coins = Mathf.Min(999999999, Coins + Payout);
             if (victory)
             {
-                Earned += 320 + Level * 95 + (IsBossLevel ? 450 : 0);
-                Coins += Earned;
                 UnlockedLevel = Mathf.Max(UnlockedLevel, Mathf.Min(MaxLevels, Level + 1));
-                CompletedStoryLevel = Mathf.Max(CompletedStoryLevel, Level);
-                PlayerPrefs.SetInt("zsr40_story_cleared", CompletedStoryLevel);
+                ClearedLevel = Mathf.Max(ClearedLevel, Level);
+                PlayerPrefs.SetInt("zsr40_story_cleared", ClearedLevel);
                 PlayerPrefs.SetInt("zsr40_unlocked", UnlockedLevel);
-                PlayerPrefs.SetInt("zsr40_coins", Coins);
-                PlayerPrefs.Save();
                 audioSource.PlayOneShot(winAudio, .56f);
             }
-            else
-            {
-                Coins += Mathf.Max(25, Earned / 2);
-                PlayerPrefs.SetInt("zsr40_coins", Coins);
-                PlayerPrefs.Save();
-            }
+            PlayerPrefs.SetInt("zsr40_coins", Coins);
+            PlayerPrefs.Save();
         }
 
         public void Notify(string t, float seconds) { notice = t; noticeTimer = seconds; }
@@ -1030,9 +1044,12 @@ namespace ZombieSurvivalRun
             }
         }
         public void GoMenu() { ClearRun(); State = ZSRState.Menu; Hero.gameObject.SetActive(false); worldRoot.SetActive(false); }
-        public void GoStory() { State = ZSRState.Story; }
         public void GoHeroes() { State = ZSRState.Heroes; }
-        public void GoArsenal() { State = ZSRState.Arsenal; }
+        public void GoArsenal()
+        {
+            if (State == ZSRState.Defeat || State == ZSRState.Victory) GoMenu();
+            State = ZSRState.Arsenal;
+        }
         public void GoBonuses() { State = ZSRState.Bonuses; }
         public void GoItems() { State = ZSRState.Items; }
         public void GoLevels() { State = ZSRState.Levels; }
@@ -1044,7 +1061,7 @@ namespace ZombieSurvivalRun
             PlayerPrefs.Save();
         }
 
-        public void SelectLevel(int index) { Level = Mathf.Clamp(index, 1, MaxLevels); }
+        public void SelectLevel(int index) { Plan = new ZSRLevelPlan(Mathf.Clamp(index, 1, UnlockedLevel)); }
 
         public void SelectWeapon(WeaponType chosen)
         {
@@ -1077,7 +1094,7 @@ namespace ZombieSurvivalRun
         {
             int level = WeaponLevelFor(weapon);
             int cost = WeaponUpgradeCost(weapon);
-            if (!WeaponOwned(weapon) || level >= MaxUpgradeLevel || Coins < cost) return;
+            if (!WeaponOwned(weapon) || level >= CampaignUpgradeCap || Coins < cost) return;
             Coins -= cost;
             PlayerPrefs.SetInt("zsr40_weapon_level_" + (int)weapon, level + 1);
             PlayerPrefs.SetInt("zsr40_coins", Coins);
@@ -1088,7 +1105,7 @@ namespace ZombieSurvivalRun
         {
             int level = ItemLevel(item);
             int cost = ItemUpgradeCost(item);
-            if (level >= MaxUpgradeLevel || Coins < cost) return;
+            if (level >= ItemUpgradeCap(item) || Coins < cost) return;
             Coins -= cost;
             PlayerPrefs.SetInt("zsr40_item_level_" + (int)item, level + 1);
             PlayerPrefs.SetInt("zsr40_coins", Coins);
@@ -1113,7 +1130,7 @@ namespace ZombieSurvivalRun
         public void UnlockForTesting()
         {
             UnlockedLevel = MaxLevels;
-            PlayerPrefs.SetInt("zsr40_story_cleared", CompletedStoryLevel);
+            PlayerPrefs.SetInt("zsr40_story_cleared", ClearedLevel);
             PlayerPrefs.SetInt("zsr40_unlocked", MaxLevels);
             PlayerPrefs.Save();
         }

@@ -64,6 +64,10 @@ def inspect_shared_art():
     with TTFont(ASSETS/'UI/ZSRMenuFont.ttf') as font:
         glyphs = font.getBestCmap()
         assert all(ord(ch) in glyphs for ch in literal_text)
+    with TTFont(ASSETS/'UI/ZSRButtonFont.ttf') as font:
+        assert font['OS/2'].usWeightClass == 700
+        glyphs = font.getBestCmap()
+        assert all(ord(ch) in glyphs for ch in literal_text), sorted(set(ch for ch in literal_text if ord(ch) not in glyphs))
     with Image.open(ASSETS/'ProductionArt/CharacterAtlas_emission.png') as image:
         assert image.size == (1024,1024)
         assert image.getbbox() == (768,256,896,384)
@@ -72,11 +76,16 @@ def inspect_shared_art():
         assert alpha.getpixel((0,0)) == 0 and alpha.getpixel((32,32)) > 220
     for name in ('btn_primary','btn_secondary','btn_muted','panel'):
         with Image.open(ASSETS/f'UI/{name}.png') as image:
-            assert image.size == (256,96) and image.getchannel('A').getpixel((0,0)) < 5
+            assert image.size == (256,96)
+            alpha = image.getchannel('A')
+            assert all(alpha.getpixel((x, y)) < 5 for x, y in ((0,0), (255,0), (0,95), (255,95)))
+            assert alpha.getpixel((18, 8)) > 240 and alpha.getpixel((128, 48)) == 255
+            meta = (ASSETS/f'UI/{name}.png.meta').read_text()
+            assert 'enableMipMap: 0' in meta and 'wrapU: 1' in meta and 'wrapV: 1' in meta
     silhouettes = [(ASSETS/f'Artwork/Weapons/{weapon}.png').read_bytes()
                    for weapon in ('pistol','rifle','shotgun','minigun')]
     assert len(set(silhouettes)) == 4
-    print('ASSETS PASS: Cyrillic and symbol coverage, isolated boss emission, alpha masks, four unique arsenal icons.')
+    print('ASSETS PASS: Cyrillic and symbols in both fonts, 700-weight button captions, rounded button alpha, isolated boss emission, four unique arsenal icons.')
 
 
 if __name__ == '__main__':

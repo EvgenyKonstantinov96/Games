@@ -15,7 +15,8 @@ namespace ZombieSurvivalRun
         public void Build(int index, int sourceLevel)
         {
             level = sourceLevel;
-            chapter = Mathf.Clamp((sourceLevel - 1) / 5, 0, 2);
+            var plan = new ZSRLevelPlan(sourceLevel);
+            chapter = plan.Environment;
             transform.position = new Vector3(0, 0, Length * (index - .5f));
             ZSRVisuals.Box("cracked asphalt deck", transform, new Vector3(0, -.25f, 0),
                 new Vector3(DeckWidth, .45f, Length), ZSRVisuals.AsphaltDeluxe);
@@ -53,7 +54,7 @@ namespace ZombieSurvivalRun
             // Distant skyline is authored once as a separately scrolling parallax layer.
             BuildSurfaceDetails();
             BuildStreetSetDressing();
-            ZSRTrackArt.PlaceChapterLandmark(transform, chapter, index, level % 5 == 0);
+            ZSRTrackArt.PlaceChapterLandmark(transform, chapter, index, plan.IsBoss);
         }
 
         void BuildBuilding(int side, int segment, int row)
@@ -248,13 +249,13 @@ namespace ZombieSurvivalRun
         MeshRenderer approachMarker;
         MaterialPropertyBlock markerTint;
         /// <summary>Four clear obstacle silhouettes: wreck, barricade, spikes and rubble.</summary>
-        public void Build(float x,float z,int chapter,int forcedKind=-1)
+        public void Build(float x, float z, int chapter, int forcedKind = -1)
         {
             transform.position=new Vector3(x,0,z);
             float yaw=Random.Range(-12f,12f);
             var root=ZSRVisuals.Pivot("obstacle detailed 3D prop",transform,Vector3.zero);
             root.localEulerAngles=new Vector3(0,yaw,0);
-            int kind=forcedKind>=0?Mathf.Clamp(forcedKind,0,3):Random.Range(0,4);
+            int kind = forcedKind >= 0 ? Mathf.Clamp(forcedKind, 0, 3) : Random.Range(0, 4);
             contactHalfWidth = kind == 0 ? 1.42f : kind == 1 ? 1.58f : kind == 2 ? 1.54f : 1.61f;
             root.localScale = Vector3.one * (kind == 0 ? 1.14f : kind == 1 ? 1.18f : kind == 2 ? 1.13f : 1.19f);
             bool imported = ZSRPolyforkWorld.TryObstacle(root, kind);
