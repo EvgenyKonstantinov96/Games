@@ -4,6 +4,7 @@ Shader "ZSR/Panorama"
     {
         [MainTexture] _BaseMap ("Sky and skyline", 2D) = "white" {}
         [MainColor] _BaseColor ("Tint", Color) = (1, 1, 1, 1)
+        _HorizonColor ("Horizon haze", Color) = (.34, .39, .47, 1)
     }
 
     SubShader
@@ -24,6 +25,7 @@ Shader "ZSR/Panorama"
             CBUFFER_START(UnityPerMaterial)
                 float4 _BaseMap_ST;
                 half4 _BaseColor;
+                half4 _HorizonColor;
             CBUFFER_END
 
             struct Attributes
@@ -51,7 +53,7 @@ Shader "ZSR/Panorama"
             half4 Frag(Varyings input) : SV_Target
             {
                 half3 sky = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv).rgb * _BaseColor.rgb;
-                return half4(lerp(half3(.026h, .041h, .064h), sky, smoothstep(-2.0, 6.0, input.height)), 1);
+                return half4(lerp(_HorizonColor.rgb * .76h, sky, smoothstep(-1.0, 13.0, input.height)), 1);
             }
             ENDHLSL
         }

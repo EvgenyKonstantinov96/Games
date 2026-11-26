@@ -100,6 +100,16 @@ for path in sorted(ROOT.glob("*.fbx")):
     assert (points[1].translation-points[2].translation).length > .005, path
     assert (points[0].translation-points[-1].translation).length > .2, path
     check_anatomy(skin, rig, scene, path, hero)
+    if path.stem == "Boss":
+        scene.frame_set(132)
+        charge = [rig.pose.bones["Hand"+side].head.copy() for side in ("L", "R")]
+        feet = [rig.pose.bones["Foot"+side].head.copy() for side in ("L", "R")]
+        scene.frame_set(142)
+        reach = [rig.pose.bones["Hand"+side].head.y-origin.y for side,origin in zip(("L","R"),charge)]
+        drift = [(rig.pose.bones["Foot"+side].head-origin).length for side,origin in zip(("L","R"),feet)]
+        assert min(reach) > .44 and max(drift) < .04, (path, reach, drift)
+        print(f"BOSS attack reach L/R {reach[0]:.3f}/{reach[1]:.3f} m, "
+              f"ankle drift L/R {drift[0]:.3f}/{drift[1]:.3f} m", flush=True)
     if hero:
         assert end-start >= 215, action.frame_range
         poses=[]

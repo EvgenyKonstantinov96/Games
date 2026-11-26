@@ -19,9 +19,9 @@ namespace ZombieSurvivalRun
         AnimationMixerPlayable mixer;
         AnimationClipPlayable currentPose, previousPose;
         Motion motion;
-        float age, gaitTime, blend, rate = 1f, actionSpeed = 1f;
+        float age, gaitTime, blend, blendDuration = .09f, rate = 1f, actionSpeed = 1f, steeringRoll;
         bool moving, hero, firing, hasItemClips;
-        Transform muzzleFlash, weaponSocket;
+        Transform muzzleFlash, weaponSocket, spine, footLeft, footRight;
         float flashTime, recoil, aimTime, kick;
         Vector3 aimPoint;
         Quaternion socketRest;
@@ -76,6 +76,13 @@ namespace ZombieSurvivalRun
                 atlasMaterial = ZSRVisuals.MatWithTexture(Color.white, ResourceRoot + "CharacterAtlas", .17f,
                     missingTextureColor: new Color(.23f, .26f, .29f));
                 atlasMaterial.name = "ZSR Character Atlas / shared";
+                var emission = Resources.Load<Texture2D>(ResourceRoot + "CharacterAtlas_emission");
+                if (emission != null && atlasMaterial.HasProperty("_EmissionMap"))
+                {
+                    atlasMaterial.SetTexture("_EmissionMap", emission);
+                    atlasMaterial.SetColor("_EmissionColor", new Color(1.25f, .54f, .28f));
+                    atlasMaterial.EnableKeyword("_EMISSION");
+                }
             }
             skin.sharedMaterial = atlasMaterial;
 
@@ -86,6 +93,12 @@ namespace ZombieSurvivalRun
 
             var actor = root.AddComponent<ZSRBundledCharacter>();
             actor.hero = hero;
+            if (hero)
+            {
+                actor.spine = FindBone(instance.transform, "Spine");
+                actor.footLeft = leftAnkle;
+                actor.footRight = rightAnkle;
+            }
             actor.hasItemClips = hero && take.length >= 7.16f;
             if (hero) actor.ItemHand = FindBone(instance.transform, "HandL");
             if (hero) actor.AttachWeapon(grip, barrel, weapon);
@@ -203,6 +216,7 @@ namespace ZombieSurvivalRun
             age = 0f;
             gaitTime = Mathf.Repeat(stridePhase, 1f) * Durations[(int)Motion.Move] / Fps;
             blend = 0f;
+            steeringRoll = 0f;
             moving = false;
             recoil = 0f;
             aimTime = 0f;
@@ -215,6 +229,13 @@ namespace ZombieSurvivalRun
             rate = Mathf.Clamp(speed, .55f, 1.75f);
             if (motion == Motion.Idle || motion == Motion.Move)
                 Change(run ? Motion.Move : Motion.Idle);
+        }
+
+        public bool TrySetSteeringRoll(float roll)
+        {
+            if (spine == null) return false;
+            steeringRoll = roll;
+            return true;
         }
 
         public void Fire(Vector3 target)
@@ -262,7 +283,7 @@ namespace ZombieSurvivalRun
             if (graph.IsValid()) previousPose.SetTime(currentPose.GetTime());
             motion = next;
             age = 0f;
-            blend = next == Motion.Fire ? .035f : .09f;
+            blend = blendDuration = next == Motion.Fire ? .06f : .10f;
         }
 
         void LateUpdate()
@@ -278,8 +299,10 @@ namespace ZombieSurvivalRun
                 aimTime = Mathf.Max(0f, aimTime - dt);
             }
             if (!hero && motion != Motion.Death && game != null && !game.IsRunning) return;
+            float previousStep = gaitTime;
+            float strideDuration = Durations[(int)Motion.Move] / Fps;
             if (moving)
-                gaitTime = Mathf.Repeat(gaitTime + dt * rate, Durations[(int)Motion.Move] / Fps);
+                gaitTime = Mathf.Repeat(gaitTime + dt * rate, strideDuration);
             int index = (int)motion;
             float speed = motion == Motion.Reload ? actionSpeed : 1f;
             age += dt * speed;
@@ -297,6 +320,13 @@ namespace ZombieSurvivalRun
             }
             blend = Mathf.Max(0f, blend - dt);
             Sample();
+            if (spine != null && motion != Motion.Death && Mathf.Abs(steeringRoll) > .01f)
+                spine.rotation = Quaternion.AngleAxis(steeringRoll, transform.forward) * spine.rotation;
+            if (hero && moving && game != null && game.IsRunning && (motion == Motion.Move || motion == Motion.Fire))
+            {
+                if (gaitTime < previousStep && previousStep >= strideDuration * .5f) game.Footstep(footLeft.position);
+                else if (previousStep < strideDuration * .5f && gaitTime >= strideDuration * .5f) game.Footstep(footRight.position);
+            }
             ApplyAim();
         }
 
@@ -320,7 +350,8 @@ namespace ZombieSurvivalRun
             int index = (int)motion;
             float time = motion == Motion.Move || motion == Motion.Fire ? gaitTime : age;
             currentPose.SetTime((Starts[index] + Mathf.Min(time * Fps, Durations[index])) / Fps);
-            float outgoing = Mathf.Clamp01(blend / .09f);
+            float linear = Mathf.Clamp01(blend / blendDuration);
+            float outgoing = linear * linear * (3f - 2f * linear);
             mixer.SetInputWeight(0, 1f - outgoing);
             mixer.SetInputWeight(1, outgoing);
             graph.Evaluate(0f);

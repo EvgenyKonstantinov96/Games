@@ -16,6 +16,9 @@ namespace ZombieSurvivalRun
         ParticleSystem particles;
         GameObject medkit;
         float medkitLeft;
+        readonly LineRenderer[] shieldEdges = new LineRenderer[2];
+        LineRenderer bossWarning;
+        float shieldFlash;
 
         struct TraceSlot
         {
@@ -111,6 +114,80 @@ namespace ZombieSurvivalRun
         {
             Burst(point, armored ? new Color(.45f, .92f, 1f, .91f) : new Color(1f, .26f, .095f, .90f),
                 armored ? 6 : 3, .035f, 2.2f, .24f);
+        }
+
+        public void BonusPickup(Vector3 feet, Color tint)
+        {
+            tint.a = .72f;
+            for (int side = -1; side <= 1; side += 2)
+                Burst(feet + new Vector3(side * .52f, .12f, .32f), tint, 5, .048f, 1.25f, .44f);
+        }
+
+        public void Footstep(Vector3 ground)
+            => Burst(ground, new Color(.43f, .37f, .32f, .26f), 2, .074f, .54f, .26f);
+
+        public void ShieldImpact(Vector3 feet)
+        {
+            shieldFlash = .22f;
+            BonusPickup(feet, new Color(.36f, .64f, 1f));
+        }
+
+        public void UpdateShield(float dt, float seconds, Vector3 feet)
+        {
+            shieldFlash = Mathf.Max(0f, shieldFlash - dt);
+            for (int i = 0; i < shieldEdges.Length; i++)
+            {
+                if (seconds <= 0f)
+                {
+                    if (shieldEdges[i] != null) shieldEdges[i].enabled = false;
+                    continue;
+                }
+                if (lineMaterial == null) continue;
+                if (shieldEdges[i] == null) shieldEdges[i] = MakeLine("Shield flank arc", 6);
+                var line = shieldEdges[i];
+                line.enabled = true;
+                float side = i == 0 ? -1f : 1f;
+                for (int j = 0; j < line.positionCount; j++)
+                {
+                    float t = j / (line.positionCount - 1f);
+                    line.SetPosition(j, feet + new Vector3(side * (.65f + .23f * Mathf.Sin(t * Mathf.PI)),
+                        .08f + t * .92f, .15f + t * .73f));
+                }
+                float fade = Mathf.Clamp01(seconds * 1.7f);
+                line.startWidth = .038f + shieldFlash * .12f;
+                line.endWidth = .012f;
+                line.startColor = new Color(.30f, .68f, 1f, fade * (.65f + shieldFlash));
+                line.endColor = new Color(.47f, .77f, 1f, .08f * fade);
+            }
+        }
+
+        public void WarnBossStrike(float center, float depth, float halfWidth, float charge)
+        {
+            if (lineMaterial == null) return;
+            if (bossWarning == null)
+            {
+                bossWarning = MakeLine("Boss strike ground boundary", 4);
+                bossWarning.loop = true;
+            }
+            bossWarning.enabled = true;
+            bossWarning.SetPosition(0, new Vector3(center - halfWidth, .026f, -.6f));
+            bossWarning.SetPosition(1, new Vector3(center - halfWidth, .026f, depth - .45f));
+            bossWarning.SetPosition(2, new Vector3(center + halfWidth, .026f, depth - .45f));
+            bossWarning.SetPosition(3, new Vector3(center + halfWidth, .026f, -.6f));
+            bossWarning.widthMultiplier = Mathf.Lerp(.032f, .076f, charge);
+            bossWarning.startColor = bossWarning.endColor = new Color(1f, .27f, .09f, Mathf.Lerp(.45f, .92f, charge));
+        }
+
+        public void ClearBossWarning()
+        {
+            if (bossWarning != null) bossWarning.enabled = false;
+        }
+
+        public void BossStrike(Vector3 at)
+        {
+            ClearBossWarning();
+            Burst(at, new Color(1f, .46f, .18f, .8f), 14, .080f, 4.6f, .55f);
+            Burst(at, new Color(.26f, .20f, .18f, .52f), 10, .48f, 2.3f, .70f);
         }
 
         public void Explode(Vector3 at, float radius)
@@ -229,6 +306,9 @@ namespace ZombieSurvivalRun
 
         public void Clear()
         {
+            shieldFlash = 0f;
+            UpdateShield(0f, 0f, Vector3.zero);
+            ClearBossWarning();
             foreach (var trace in traces) if (trace.Line != null) trace.Line.enabled = false;
             foreach (var blast in blasts) if (blast.Line != null) Destroy(blast.Line.gameObject);
             blasts.Clear();

@@ -193,6 +193,9 @@ class Body:
     def back_at(self, height):
         return min(p.y for p in self.geometry.values() if abs(p.x) < .075 and abs(p.z-height) < .025)
 
+    def chest_surface(self, width, height):
+        return max(p.y for p in self.geometry.values() if abs(p.x-width) < .046 and abs(p.z-height) < .037)
+
     def joint(self, key):
         return self.shape(self.marks[key])
 

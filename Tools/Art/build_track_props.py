@@ -215,6 +215,23 @@ def prop_assets():
     pylon.octagon([(2.25,.165,.048,.023,0,-.142),(2.33,.165,.048,.023,0,-.142)], RIM)
     pylon.save("track_gate_pylon")
 
+    rail = Prop()
+    for top, height, half_width, tile in ((.79, .19, .100, PYLON), (.39, .11, .068, BED)):
+        rail.octagon([(top-height, half_width*.79, 23, .035, 0, 0),
+                      (top-height+.031, half_width, 23, .037, 0, 0),
+                      (top-.024, half_width, 23, .037, 0, 0),
+                      (top, half_width*.75, 23, .033, 0, 0)], tile)
+    for i in range(11):
+        z = 46*((i+.5)/11-.5)
+        rail.octagon([(.05,.143,.121,.032,0,z),(.13,.143,.121,.032,0,z),
+                      (.16,.084,.081,.024,0,z),(.73,.084,.081,.024,0,z),
+                      (.80,.073,.072,.019,0,z)], REBAR)
+        if i % 2 == 0:
+            for x in (-.098,.098):
+                rail.octagon([(.653,.024,.064,.012,x,z),(.687,.024,.064,.012,x,z)], RIM)
+            rail.octagon([(.641,.018,.242,.012,0,z-.69),(.744,.018,.242,.012,0,z-.69)], CHEVRON)
+    rail.save("track_guardrail")
+
 
 def write_metas():
     targets = [(path, MESHES/"lux_wreck_body.obj.meta") for path in MESHES.glob("track_*.obj")]

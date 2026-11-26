@@ -49,16 +49,18 @@ namespace ZombieSurvivalRun.EditorTools
                 else CheckGameplayRig(name, errors);
             }
 
-            foreach (string name in new[] { "CharacterAtlas", "Highway", "Highway_normal", "Horizon", "ParticleSoft" })
+            foreach (string name in new[] { "CharacterAtlas", "CharacterAtlas_emission", "Highway", "Highway_normal", "Horizon", "ParticleSoft" })
                 if (Resources.Load<Texture2D>("ProductionArt/" + name) == null)
                     errors.Add(name + ": Texture2D missing");
 
-            foreach (string name in new[] { "combat_drone", "combat_rotor", "combat_grenade", "combat_medkit" })
+            foreach (string name in new[] { "combat_drone", "combat_rotor", "combat_grenade", "combat_medkit", "track_guardrail" })
             {
                 var model = Resources.Load<GameObject>("Meshes/" + name);
                 if (model == null || model.GetComponentInChildren<MeshFilter>() == null)
                     errors.Add(name + ": combat mesh missing");
             }
+            if (Resources.Load<Font>("UI/ZSRMenuFont") == null)
+                errors.Add("Cyrillic menu font missing");
             foreach (string name in new[] { "Menu", "Run", "Pistol", "Rifle", "Shotgun", "Minigun", "Drone", "Blast" })
                 if (Resources.Load<AudioClip>("Audio/" + name) == null)
                     errors.Add(name + ": audio clip missing");

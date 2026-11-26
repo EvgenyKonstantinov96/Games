@@ -123,6 +123,13 @@ with ZipFile(args.skin_pack) as pack:
         normals_atlas.paste(normal_tile(skin_relief(source,.18)),origin)
 atlas.save(OUT/"CharacterAtlas.png",optimize=True)
 normals_atlas.save(OUT/"CharacterAtlas_normal.png",optimize=True)
+emission = Image.new("RGB", atlas.size)
+y,x = np.mgrid[:128,:128]
+heat = .28 + .72*np.exp(-((x-64)/51)**2-((y-63)/45)**2)
+fracture = .67+.33*np.maximum(0,np.sin(x*.29+y*.14)*np.cos(y*.22-x*.19))
+tile = np.uint8((heat*fracture)[:,:,None]*np.array([252,174,92]))
+emission.paste(Image.fromarray(tile), (6*128,2*128))
+emission.save(OUT/"CharacterAtlas_emission.png",optimize=True)
 if args.characters_only:
     raise SystemExit(0)
 

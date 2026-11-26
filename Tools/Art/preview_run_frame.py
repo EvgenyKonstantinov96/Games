@@ -101,9 +101,17 @@ def mesh_asset(name, position, material, yaw=0, scale=1):
 
 
 atlas=paint("Character atlas",(1,1,1),ART/"CharacterAtlas.png",.73)
+if (ART/"CharacterAtlas_emission.png").exists():
+    nodes, links = atlas.node_tree.nodes, atlas.node_tree.links
+    emission = nodes.new("ShaderNodeTexImage")
+    emission.image = bpy.data.images.load(str(ART/"CharacterAtlas_emission.png"), check_existing=True)
+    light = nodes.get("Principled BSDF")
+    links.new(emission.outputs["Color"], light.inputs["Emission Color"])
+    light.inputs["Emission Strength"].default_value = 1.25
 metal=paint("Weathered blue steel",(.079,.115,.161),rough=.54)
 asphalt=paint("Highway",(.04,.045,.053),ART/"Highway.png",.49)
 road=cube("Elevated highway",(0,62,-.27),(ROAD_WIDTH,151,.48),asphalt)
+cube("Slate distant bridge",(0,164,-.16),(ROAD_WIDTH,156,.20),paint("Distant deck",(.19,.23,.28)))
 nodes,links=asphalt.node_tree.nodes,asphalt.node_tree.links
 mapping=nodes.new("ShaderNodeVectorMath")
 mapping.operation="MULTIPLY"
@@ -120,6 +128,20 @@ for node in nodes:
 
 stripe=paint("Worn road paint",(.48,.43,.37))
 amber=paint("Rail amber",(1,.25,.035),emissive=True)
+props=paint("Track prop atlas",(1,1,1),ART/"TrackPropAtlas.png",.64)
+shoulder_glow = paint("Soft bridge reflector spill",(.87,.37,.125),emissive=True)
+nodes, links = shoulder_glow.node_tree.nodes, shoulder_glow.node_tree.links
+soft = nodes.new("ShaderNodeTexImage")
+soft.image = bpy.data.images.load(str(ART/"ParticleSoft.png"), check_existing=True)
+alpha = nodes.new("ShaderNodeMath")
+alpha.operation = "MULTIPLY"
+alpha.inputs[1].default_value = .21
+links.new(soft.outputs["Alpha"], alpha.inputs[0])
+mix = nodes.new("ShaderNodeMixShader")
+links.new(alpha.outputs[0], mix.inputs[0])
+links.new(nodes.new("ShaderNodeBsdfTransparent").outputs[0], mix.inputs[1])
+links.new(nodes.get("Principled BSDF").outputs[0], mix.inputs[2])
+links.new(mix.outputs[0], nodes.get("Material Output").inputs[0])
 facade=paint("Weathered city facade",(1,1,1),TEXTURES/"city_facades.png",.72)
 emission=facade.node_tree.nodes.new("ShaderNodeTexImage")
 emission.image=bpy.data.images.load(str(TEXTURES/"city_facades_emission.png"),check_existing=True)
@@ -128,13 +150,19 @@ facade.node_tree.links.new(emission.outputs["Color"],facade_shader.inputs["Emiss
 facade_shader.inputs["Emission Strength"].default_value=1.5
 for direction in (-1,1):
     x=direction*RAIL_OFFSET
-    cube("Guardrail",(x,58,.72),(.15,131,.168),metal)
-    cube("Lower railing",(x,58,.30),(.10,131,.12),metal)
+    for center in (19, 65, 111):
+        mesh_asset("track_guardrail",(x,center,0),props)
+        for i in range(0,11,2):
+            marker_z = center+46*((i+.5)/11-.5)-.69
+            cube("Recessed amber guide",(x-direction*.105,marker_z,.695),(.019,.32,.041),amber)
+            bpy.ops.mesh.primitive_plane_add(size=1, location=(x-direction*.65,marker_z,-.015))
+            glow = bpy.context.object
+            glow.scale = (1.14,2.36,1)
+            glow.data.materials.append(shoulder_glow)
+    cube("Distant bridge parapet",(x,164,.39),(.082,156,.13),metal)
     cube("Edge stripe",(direction*number_setting(WORLD_SOURCE,"EdgeStripeX"),58,-.019),(.07,131,.008),stripe)
     for row in range(14):
         y=-4+9*row
-        cube("Railing mount",(x,y,.41),(.16,.26,1.12),metal)
-        cube("Marker",(x-direction*.09,y,.60),(.05,.62,.10),amber)
         if row>2:
             h=7+2.6*((row*7+direction)%6)
             tower_x=x+direction*(4.6+(row%4)*2.4)
@@ -173,10 +201,21 @@ def character(name, pos, yaw, scale=1):
 eva,eva_skin=character("Eva",(0,0,0),0)
 max_rig,max_skin=character("Max",(0,0,0),0)
 max_skin.hide_render=True
-character("Walker",(-.8,11.4,0),math.pi)
-character("Runner",(2.65,16.7,0),math.pi,.97)
-character("Armored",(-2.7,19.5,0),math.pi,1.14)
-props=paint("Track prop atlas",(1,1,1),ART/"TrackPropAtlas.png",.64)
+if "--boss" in sys.argv:
+    boss, _ = character("Boss",(.15,12,0),math.pi,2.6)
+    scene.frame_set(141)
+    boss_pose = [bone.matrix_basis.copy() for bone in boss.pose.bones]
+    boss.animation_data_clear()
+    for bone, pose in zip(boss.pose.bones, boss_pose):
+        bone.matrix_basis = pose
+    warn = paint("Boss strike boundaries",(1,.17,.042),emissive=True)
+    for x in (-2.75,3.05):
+        cube("Strike boundary",(x,5.50,.026),(.060,12.2,.011),warn)
+    cube("Strike boundary near",(.15,-.6,.026),(5.8,.060,.011),warn)
+else:
+    character("Walker",(-.8,11.4,0),math.pi)
+    character("Runner",(2.65,16.7,0),math.pi,.97)
+    character("Armored",(-2.7,19.5,0),math.pi,1.14)
 mesh_asset("track_wreck",(2.9,13,0),props,.13,1.14)
 mesh_asset("track_spikes",(-2.9,8.5,0),props,-.06,1.13)
 mesh_asset("track_barrier",(2.9,31,0),props,.04,1.18)
@@ -256,7 +295,7 @@ if "--combat" in sys.argv:
 bpy.ops.object.camera_add()
 scene.camera=bpy.context.object
 scene.camera.data.sensor_fit="VERTICAL"
-scene.camera.data.clip_end=200
+scene.camera.data.clip_end=230
 scene.render.resolution_percentage=100
 
 def frame_camera(hero_x, width, height):
@@ -308,13 +347,13 @@ def sun(rotation, energy, color):
     lamp=bpy.context.object
     lamp.data.energy=energy;lamp.data.color=color;lamp.data.angle=.07
 
-sun((36,-30,145),1.5,(1,.63,.36))
-sun((55,20,12),.70,(.50,.66,1))
+sun((36,-30,145),1.56,(1,.65,.40))
+sun((55,20,12),.84,(.58,.70,1))
 scene.world=bpy.data.worlds.new("Blue hour")
 scene.world.use_nodes=True
 background=scene.world.node_tree.nodes.get("Background")
 background.inputs[0].default_value=(.20,.28,.42,1)
-background.inputs[1].default_value=.49
+background.inputs[1].default_value=.60
 scene.render.engine="CYCLES"
 scene.cycles.samples=24
 scene.cycles.use_denoising=False

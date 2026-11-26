@@ -19,6 +19,7 @@ namespace ZombieSurvivalRun
             transform.position = new Vector3(0, 0, Length * (index - .5f));
             ZSRVisuals.Box("cracked asphalt deck", transform, new Vector3(0, -.25f, 0),
                 new Vector3(DeckWidth, .45f, Length), ZSRVisuals.AsphaltDeluxe);
+            ZSRTrackArt.PlaceShoulderGlows(transform, Length, RailX);
             for (int side = -1; side <= 1; side += 2)
             {
                 ZSRVisuals.Box("road edge stripe", transform, new Vector3(side * EdgeStripeX, -.019f, 0),
@@ -27,18 +28,14 @@ namespace ZombieSurvivalRun
                     new Vector3(2.23f, .46f, Length), ZSRVisuals.ConcreteDeluxe);
                 ZSRVisuals.Box("cast concrete curb", transform, new Vector3(side * RailX, .055f, 0),
                     new Vector3(.27f, .11f, Length), ZSRVisuals.Concrete);
-                ZSRVisuals.Box("steel guardrail", transform, new Vector3(side * RailX, .72f, 0),
-                    new Vector3(.15f, .168f, Length), ZSRVisuals.Steel);
-                ZSRVisuals.Box("guardrail lower", transform, new Vector3(side * RailX, .30f, 0),
-                    new Vector3(.10f, .12f, Length), ZSRVisuals.Armor);
+                ZSRVisuals.MeshPart("track_guardrail", "Weathered double bridge rail", transform,
+                    new Vector3(side * RailX, 0, 0), Vector3.one, ZSRTrackArt.Surface);
                 for (int k = 0; k < 11; k++)
                 {
                     float z = Length * ((k + .5f) / 11f - .5f);
-                    ZSRVisuals.Box("rail mounting", transform, new Vector3(side * RailX, .50f, z),
-                        new Vector3(.18f, .89f, .16f), ZSRVisuals.MetalWorn);
-                    if (k % 3 == 1)
-                        ZSRVisuals.Box("amber guide reflector", transform, new Vector3(side * (RailX - .083f), .72f, z),
-                            new Vector3(.022f, .052f, .40f), ZSRVisuals.OrangeGlow);
+                    if (k % 2 == 0)
+                        ZSRVisuals.Box("recessed amber guide", transform, new Vector3(side * (RailX - .105f), .695f, z - .69f),
+                            new Vector3(.019f, .041f, .32f), ZSRTrackArt.GuideLight);
                 }
                 for (int b = 0; b < 2; b++) BuildBuilding(side, index, b);
                 BuildLamp(side, side < 0 ? -10f : 12f);

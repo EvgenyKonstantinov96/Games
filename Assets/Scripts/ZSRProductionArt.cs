@@ -391,8 +391,11 @@ namespace ZombieSurvivalRun
             if (dead) return;
             float tilt = Mathf.Clamp(-movement * 1.48f, -11f, 11f);
             lateralLean = Mathf.Lerp(lateralLean, tilt, 1f - Mathf.Exp(-dt * 10f));
-            transform.localRotation = Quaternion.Euler(Mathf.Abs(lateralLean) * .15f,
-                -lateralLean * .40f, lateralLean);
+            if (bundled != null && bundled.TrySetSteeringRoll(lateralLean))
+                transform.localRotation = Quaternion.Euler(0f, -lateralLean * .47f, 0f);
+            else
+                transform.localRotation = Quaternion.Euler(Mathf.Abs(lateralLean) * .15f,
+                    -lateralLean * .40f, lateralLean);
         }
 
         public void Tick(bool running, float speed)

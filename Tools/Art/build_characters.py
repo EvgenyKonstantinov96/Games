@@ -239,6 +239,11 @@ class Character:
                 self.vertices[i] = (x,y+shift,z)
         self.panel((0,.134,h*.553),(.13,.025,.038),3,"Pelvis")
         self.panel((0,.153,h*.553),(.049,.018,.035),5,"Pelvis")
+        for s in (-1,1):
+            height, width = h*.775, s*w*.287
+            front = self.body.chest_surface(width,height)
+            self.panel((width,front+.008,height),(.060,.011,.080),3,"Chest",s*.35)
+            self.panel((width,front+.015,height+.012),(.025,.004,.029),self.trim,"Chest",s*.35)
 
     def fabric_flap(self, top, low, tile, bone):
         """A double-sided irregular fabric edge draped off the skinned cloth."""
@@ -274,10 +279,19 @@ class Character:
                         end = start + v(sign*(.079+i*.021),-.073,.065+i*.025)
                         self.surface(start,end,[(0,.047,.041),(.27,.039,.033),
                                                 (.66,.021,.019),(1,.001,.001)],19,"Chest",8)
-                self.volume((0,.174,h*.731),(.092,.054,.111),14,"Chest",10)
-                for i in range(4):
-                    self.volume(((i-1.5)*.038,.215,h*(.727+.016*i)),(.033,.022,.039),
-                                22 if i in (1,2) else 13,"Chest",8)
+                core_z = h*.733
+                core_front = self.body.chest_surface(0,core_z)
+                self.volume((0,core_front+.006,core_z),(.114,.040,.136),15,"Chest",10)
+                self.volume((0,core_front+.034,core_z),(.048,.023,.069),22,"Chest",10)
+                for side, sign in SIDES:
+                    for layer in range(3):
+                        z = h*(.686+layer*.047)
+                        x = sign*(.102+layer*.027)
+                        front = self.body.chest_surface(x,z)
+                        self.volume((x,front+.007,z),(.075,.036,.042),13 if layer == 1 else 15,"Chest",8)
+                    start = v(sign*.019,core_front+.038,core_z)
+                    end = v(sign*.152,self.body.chest_surface(sign*.152,core_z+.085)+.021,core_z+.085)
+                    self.surface(start,end,[(0,.016,.012),(.48,.012,.009),(1,.003,.002)],22,"Chest",6)
             else:
                 region = self.bones["Chest"][0] + v(-.167,.106,.205)
                 for i in range(3):
@@ -464,13 +478,16 @@ class Character:
                 death=eased_keys([(0,0),(.19,.12),(.52,.61),(.8,.97),(1,1)],t) if state=="Death" else 0
                 fire=eased_keys([(0,1),(.12,.57),(.32,.12),(.45,0),(1,0)],t) if state=="Fire" else 0
                 rear=impact if state=="Hit" else 0
-                key={"Toxic":.42,"Boss":.68,"Brute":.63}.get(self.name,.54)
+                # The boss windup is 0.49 seconds for an 18-frame attack take.
+                key={"Toxic":.42,"Boss":.81,"Brute":.63}.get(self.name,.54)
                 attack=eased_keys([(0,0),(.25,-.48),(key,1),(1,0)],t) if state=="Attack" else 0
+                boss_strike = self.name == "Boss" and state == "Attack"
                 reload=eased_keys([(0,0),(.24,1),(.67,1),(1,0)],t) if state=="Reload" else 0
                 care=eased_keys([(0,0),(.24,1),(.70,1),(1,0)],t) if state=="Medkit" else 0
                 swing_throw=eased_keys([(0,0),(.17,-.38),(.31,-1),(.42,.85),(.61,.64),(1,0)],t) if state=="Throw" else 0
                 crouch=.47 if self.crawler else .098 if moving else .045
                 crouch += (1 if self.tank else .70)*.59*death
+                if boss_strike: crouch += .085*max(0.,attack) - .041*min(0.,attack)
                 swing = math.sin(math.tau*f) if moving else 0.
                 # The pelvis yields under the new support leg and rises
                 # through push-off. Counter-rotation keeps the chest balanced.
@@ -494,6 +511,7 @@ class Character:
                         phase=0
                         toe=None
                         foot.y+=s*.045-.35*death
+                        if boss_strike: foot.x += s*.096
                         if self.crawler: foot.y-=.32
                     placements[side]=(foot,toe,phase,toe_pitch)
                 pelvis_roll = .068*swing if self.hero else .17*swing
@@ -524,6 +542,10 @@ class Character:
                             self.aim_bone(arm.name,origin,(hand-origin)+v(s*.12,0,-.14))
                             elbow=self.rig.pose.bones["Forearm"+side].head.copy()
                             self.aim_bone("Forearm"+side,elbow,hand-elbow)
+                        elif boss_strike:
+                            self.aim_bone(arm.name,origin,v(s*(.45-.20*attack),.34+.91*attack,-.79+.48*attack))
+                            forearm=self.rig.pose.bones["Forearm"+side]
+                            self.aim_bone(forearm.name,forearm.head.copy(),v(s*.13,.39+.72*attack,-.88+.39*attack))
                         else:
                             reach={"Boss":1.1,"Brute":.93,"Toxic":.28}.get(self.name,.78)
                             lead = {"Walker":.68 if side=="L" else .12,

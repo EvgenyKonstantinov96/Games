@@ -52,7 +52,26 @@ namespace ZombieSurvivalRun
         public int Eliminated { get; private set; }
         public int Magazine { get; private set; } = 30;
         public int Ammo { get; private set; } = 30;
+        internal const int GateHealAmount = 45;
+        internal const float RapidFireInterval = .62f;
         public bool IsShielded => shieldTimer > 0;
+        internal float BonusDuration(BonusKind kind) => kind switch
+        {
+            BonusKind.DoubleDamage => 10f + Chapter,
+            BonusKind.RapidFire => 11f,
+            BonusKind.Shield => 8f + (ItemLevel(ItemType.Armor) - 1) * 1.5f,
+            BonusKind.Magnet => 12f,
+            BonusKind.Turret => 10f + ItemLevel(ItemType.Drone) * 2f,
+            _ => 0f
+        };
+        internal float BonusRemaining(BonusKind kind) => kind switch
+        {
+            BonusKind.Shield => shieldTimer,
+            BonusKind.Magnet => magnetTimer,
+            BonusKind.Turret => droneTimer,
+            BonusKind.DoubleDamage or BonusKind.RapidFire when kind == activeBonus => bonusTimer,
+            _ => 0f
+        };
         public bool MagnetActive => magnetTimer > 0;
         public bool IsReloading => reloading;
         public string CurrentNotice => noticeTimer > 0 ? notice : "";
@@ -81,7 +100,7 @@ namespace ZombieSurvivalRun
         readonly List<GameObject> temporary = new List<GameObject>();
         readonly List<ZSRRoadChunk> road = new List<ZSRRoadChunk>();
         readonly List<ZSRGrenadeFlight> grenadesInFlight = new();
-        GameObject worldRoot, shieldEffect, skyline;
+        GameObject worldRoot, skyline, distantDeck;
         ZSRSupportDrone drone;
         ZSRCombatEffects combatEffects;
         ZSRRunMusic music;
@@ -181,13 +200,13 @@ namespace ZombieSurvivalRun
 
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogDensity = .0095f;
+            RenderSettings.fogDensity = .0125f;
             RenderSettings.fogColor = new Color(.24f, .28f, .35f);
             // Tri-lighting adds shape to the imported character models at minimal mobile cost.
             RenderSettings.ambientMode = AmbientMode.Trilight;
             RenderSettings.ambientSkyColor = new Color(.28f, .37f, .57f);
-            RenderSettings.ambientEquatorColor = new Color(.20f, .25f, .35f);
-            RenderSettings.ambientGroundColor = new Color(.10f, .13f, .18f);
+            RenderSettings.ambientEquatorColor = new Color(.25f, .29f, .40f);
+            RenderSettings.ambientGroundColor = new Color(.15f, .17f, .22f);
             RenderSettings.skybox = null;
 
             // A new Unity scene can already contain the template directional light.
@@ -208,18 +227,18 @@ namespace ZombieSurvivalRun
             sun.transform.SetParent(worldRoot.transform, false);
             sun.type = LightType.Directional;
             RenderSettings.sun = sun;
-            sun.intensity = 1.24f;
+            sun.intensity = 1.36f;
             sun.color = new Color(1f, .64f, .39f);
             sun.transform.rotation = Quaternion.Euler(29, -136, 0);
             sun.shadows = LightShadows.Soft;
-            sun.shadowStrength = .72f;
+            sun.shadowStrength = .66f;
             sun.shadowBias = .035f;
             sun.shadowNormalBias = .28f;
 
             var cool = new GameObject("Blue fill light").AddComponent<Light>();
             cool.transform.SetParent(worldRoot.transform, false);
             cool.type = LightType.Directional;
-            cool.intensity = .62f;
+            cool.intensity = .76f;
             cool.color = new Color(.50f, .66f, 1f);
             cool.transform.rotation = Quaternion.Euler(31, 27, 0);
 
@@ -239,7 +258,7 @@ namespace ZombieSurvivalRun
             cameraData.renderPostProcessing = true;
             camera3D.allowHDR = true;
             camera3D.nearClipPlane = .1f;
-            camera3D.farClipPlane = 200f;
+            camera3D.farClipPlane = 230f;
             camera3D.clearFlags = CameraClearFlags.SolidColor;
             camera3D.backgroundColor = new Color(.14f, .18f, .25f);
             FrameRunCamera(0f);
@@ -257,18 +276,6 @@ namespace ZombieSurvivalRun
             Hero = heroObject.AddComponent<ZSRHero>();
             Hero.Build(SelectedHero, Weapon);
 
-            var shield = new GameObject("Protective energy shield");
-            shield.transform.SetParent(Hero.transform, false);
-            shieldEffect = shield;
-            for (int i = 0; i < 24; i++)
-            {
-                float a = i * Mathf.PI * 2 / 24f;
-                ZSRVisuals.Sphere("energy shield link", shield.transform,
-                    new Vector3(Mathf.Sin(a) * 1.22f, 1.46f, Mathf.Cos(a) * 1.22f),
-                    new Vector3(.14f, .16f, .14f), ZSRVisuals.BlueGlow);
-            }
-            ZSRVisuals.Cylinder("shield ring", shield.transform, new Vector3(0, 1.45f, 0), new Vector3(1.28f, .05f, 1.28f), ZSRVisuals.BlueGlow, new Vector3(90, 0, 0));
-            shieldEffect.SetActive(false);
             Hero.gameObject.SetActive(false);
             worldRoot.SetActive(false);
         }
@@ -331,10 +338,12 @@ namespace ZombieSurvivalRun
 
         void RebuildRoad()
         {
-            if(parallaxCity!=null)Destroy(parallaxCity.gameObject);
-            if(skyline!=null)Destroy(skyline);
-            skyline=ZSRVisuals.CityPanorama(worldRoot.transform,Chapter);
-            parallaxCity = ZSRParallaxCity.Create(worldRoot.transform, Chapter, skyline);
+            Color fog = Chapter == 0 ? new Color(.34f, .39f, .47f) : Chapter == 1 ? new Color(.46f, .28f, .24f) : new Color(.21f, .27f, .38f);
+            if (parallaxCity != null) Destroy(parallaxCity.gameObject);
+            if (skyline != null) Destroy(skyline);
+            if (distantDeck == null) distantDeck = ZSRTrackArt.BuildDistantDeck(worldRoot.transform);
+            skyline = ZSRVisuals.CityPanorama(worldRoot.transform, Chapter);
+            parallaxCity = ZSRParallaxCity.Create(worldRoot.transform, Chapter, skyline, fog);
             foreach (var r in road) if (r != null) Destroy(r.gameObject);
             road.Clear();
             for (int i = 0; i < 4; i++)
@@ -345,7 +354,6 @@ namespace ZombieSurvivalRun
                 r.Build(i, Level);
                 road.Add(r);
             }
-            Color fog = Chapter == 0 ? new Color(.34f, .39f, .47f) : Chapter == 1 ? new Color(.46f, .28f, .24f) : new Color(.21f, .27f, .38f);
             RenderSettings.fogColor = fog;
             RenderSettings.ambientLight = Chapter == 0 ? new Color(.49f, .52f, .58f) : Chapter == 1 ? new Color(.51f, .44f, .40f) : new Color(.40f, .43f, .52f);
             camera3D.backgroundColor = Color.Lerp(fog, Color.black, .20f);
@@ -360,7 +368,6 @@ namespace ZombieSurvivalRun
             RebuildRoad();
             Hero.gameObject.SetActive(true);
             Hero.ResetHero(SelectedHero, Weapon);
-            if (shieldEffect != null) shieldEffect.SetActive(false);
 
             State = ZSRState.Playing;
             Elapsed = 0;
@@ -413,6 +420,12 @@ namespace ZombieSurvivalRun
 
         void Update()
         {
+            if ((State == ZSRState.Playing || State == ZSRState.Paused) &&
+                Keyboard.current?.escapeKey.wasPressedThisFrame == true)
+            {
+                TogglePause();
+                return;
+            }
             if (State != ZSRState.Playing) return;
             temporary.RemoveAll(ExpiredRunObject);
             float dt = FrameStep;
@@ -423,7 +436,6 @@ namespace ZombieSurvivalRun
             combatEffects.Tick(dt, RunSpeed, Hero.ItemOrigin);
 
             foreach (var chunk in road) chunk.Tick(dt * RunSpeed);
-            if (shieldEffect != null && shieldEffect.activeSelf) shieldEffect.transform.Rotate(0, 115f * dt, 0);
 
             shootTimer -= dt; waveTimer -= dt; coinTimer -= dt; gateTimer -= dt; carTimer -= dt;
             bonusTimer = Mathf.Max(0, bonusTimer - dt);
@@ -433,7 +445,7 @@ namespace ZombieSurvivalRun
             noticeTimer = Mathf.Max(0, noticeTimer - dt);
 
             if (bonusTimer <= 0) damageMultiplier = 1;
-            if (shieldTimer <= 0 && shieldEffect != null && shieldEffect.activeSelf) shieldEffect.SetActive(false);
+            combatEffects.UpdateShield(dt, shieldTimer, Hero.transform.position);
             if (coinTimer <= 0) { SpawnCoins(); coinTimer = UnityEngine.Random.Range(2.4f, 4.3f); }
             if (gateTimer <= 0 && Elapsed < LevelLength - 13f) { SpawnGates(); gateTimer = 16f + Chapter * 2f; }
             if (carTimer <= 0 && Elapsed < LevelLength - 10f) { SpawnObstacle(); carTimer = UnityEngine.Random.Range(9f, 14f); }
@@ -511,7 +523,6 @@ namespace ZombieSurvivalRun
                 if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed) Hero.TargetX += dt * 8f;
                 if (keyboard.spaceKey.wasPressedThisFrame) ThrowGrenade();
                 if (keyboard.hKey.wasPressedThisFrame) UseMedkit();
-                if (keyboard.escapeKey.wasPressedThisFrame) TogglePause();
             }
 
             var touchscreen = Touchscreen.current;
@@ -553,7 +564,7 @@ namespace ZombieSurvivalRun
             if (target == null) { shootTimer = .08f; return; }
             float rate = Weapon == WeaponType.Pistol ? .33f : Weapon == WeaponType.Rifle ? .13f : Weapon == WeaponType.Shotgun ? .57f : .065f;
             if (SelectedHero == 1) rate *= .90f;
-            if (activeBonus == BonusKind.RapidFire && bonusTimer > 0) rate *= .62f;
+            if (activeBonus == BonusKind.RapidFire && bonusTimer > 0) rate *= RapidFireInterval;
             // Carry the fraction of the frame after the scheduled shot without
             // building a backlog during reloads, item use, or a pause.
             shootTimer = Mathf.Max(-FrameStep, shootTimer) + rate;
@@ -671,20 +682,45 @@ namespace ZombieSurvivalRun
             temporary.Add(o);
         }
 
-        public void ApplyBonus(BonusKind k)
+        public void ApplyBonus(BonusKind kind)
         {
             audioSource.PlayOneShot(winAudio, .37f);
-            if (k == BonusKind.Shield)
+            var appearance = ZSRVeilGateView.Appearance(kind);
+            combatEffects.BonusPickup(Hero.transform.position, appearance.tint);
+            switch (kind)
             {
-                shieldTimer = 8f + (ItemLevel(ItemType.Armor) - 1) * 1.5f;
-                shieldEffect.SetActive(true);
-                Notify("ЩИТ: " + Mathf.RoundToInt(shieldTimer) + " СЕК", 1.7f);
+                case BonusKind.Shield:
+                    shieldTimer = BonusDuration(kind);
+                    break;
+                case BonusKind.DoubleDamage:
+                case BonusKind.RapidFire:
+                    damageMultiplier = kind == BonusKind.DoubleDamage ? 2 : 1;
+                    activeBonus = kind;
+                    bonusTimer = BonusDuration(kind);
+                    break;
+                case BonusKind.Magnet:
+                    magnetTimer = BonusDuration(kind);
+                    break;
+                case BonusKind.Heal:
+                    HealHero(GateHealAmount, false);
+                    return;
+                case BonusKind.Turret:
+                    StartDrone();
+                    break;
             }
-            else if (k == BonusKind.DoubleDamage) { damageMultiplier = 2; activeBonus = k; bonusTimer = 10f + Chapter; Notify("ДВОЙНОЙ УРОН", 1.8f); }
-            else if (k == BonusKind.RapidFire) { damageMultiplier = 1; activeBonus = k; bonusTimer = 11f; Notify("ТУРБО-СТРЕЛЬБА", 1.8f); }
-            else if (k == BonusKind.Magnet) { magnetTimer = 12f; Notify("МАГНИТ МОНЕТ", 1.8f); }
-            else if (k == BonusKind.Heal) HealHero(45, false);
-            else if (k == BonusKind.Turret) { StartDrone(); Notify("ПОДДЕРЖКА С ВОЗДУХА", 1.8f); }
+            Notify(appearance.title.ToUpperInvariant(), 1.65f);
+        }
+
+        internal void WarnBossStrike(float x, float z, float halfWidth, float charge)
+            => combatEffects.WarnBossStrike(x, z, halfWidth, charge);
+
+        internal void Footstep(Vector3 ankle)
+            => combatEffects.Footstep(new Vector3(ankle.x, .035f, ankle.z));
+
+        internal void BossStrike(float x, float z)
+        {
+            combatEffects.BossStrike(new Vector3(x, .14f, z));
+            shake = Mathf.Max(shake, .24f);
         }
 
         public void ThrowGrenade()
@@ -748,13 +784,14 @@ namespace ZombieSurvivalRun
             Hero.Health += restored;
             if (restored > 0)
                 combatEffects.Heal(Hero.ItemOrigin, Hero.transform.position + Vector3.up * 1.15f, useKit);
-            Notify((useKit ? "АПТЕЧКА +" : "ЗДОРОВЬЕ +") + restored + " HP", 1.5f);
+            Notify(restored == 0 ? "ЗДОРОВЬЕ ПОЛНОЕ" :
+                (useKit ? "АПТЕЧКА +" : "ЗДОРОВЬЕ +") + restored + " HP", 1.5f);
         }
 
         public void StartDrone()
         {
             if (drone == null) drone = ZSRSupportDrone.Launch(worldRoot.transform, Hero.transform.position);
-            droneTimer = 10f + ItemLevel(ItemType.Drone) * 2f;
+            droneTimer = BonusDuration(BonusKind.Turret);
             droneShotTimer = .25f;
         }
 
@@ -792,7 +829,12 @@ namespace ZombieSurvivalRun
         public void HurtPlayer(int amount)
         {
             if (!IsRunning) return;
-            if (IsShielded) { Notify("ЩИТ ПОГЛОТИЛ УРОН", .9f); return; }
+            if (IsShielded)
+            {
+                combatEffects.ShieldImpact(Hero.transform.position);
+                Notify("ЩИТ ПОГЛОТИЛ УРОН", .9f);
+                return;
+            }
             float reduction = 1f - (ItemLevel(ItemType.Armor) - 1) * .06f;
             int finalDamage = Mathf.Max(1, Mathf.RoundToInt(amount * reduction));
             Hero.Health = Mathf.Max(0, Hero.Health - finalDamage);
@@ -810,6 +852,7 @@ namespace ZombieSurvivalRun
 
         public void OnZombieKilled(ZSRZombie z)
         {
+            if (z.Kind == ZombieType.Boss) combatEffects.ClearBossWarning();
             Eliminated++;
             Earned += z.Kind == ZombieType.Boss ? 1200 : z.Kind == ZombieType.Brute ? 115 : z.Kind == ZombieType.Armored ? 44 : 20;
             if (Eliminated % 10 == 0) Notify("КОМБО " + Eliminated, 1.0f);

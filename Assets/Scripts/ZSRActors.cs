@@ -438,14 +438,20 @@ namespace ZombieSurvivalRun
             }
             if (Kind == ZombieType.Boss && p.z <= 12.1f)
             {
+                const float strikeWidth = 2.9f;
+                const float windup = .49f;
+                var game = ZSRGame.Instance;
                 attackTimer -= dt;
-                TelegraphAttack(.40f);
+                TelegraphAttack(windup);
+                if (attackTimer > 0f && attackTimer <= windup)
+                    game.WarnBossStrike(p.x, p.z, strikeWidth, 1f - attackTimer / windup);
                 if (attackTimer <= 0)
                 {
                     attackTimer = Mathf.Max(2.5f, 3.4f - themeLevel * .03f);
                     attackTelegraphed = false;
-                    if (Mathf.Abs(dx) < 2.9f) ZSRGame.Instance.HurtPlayer(themeLevel >= 15 ? 18 : 15);
-                    ZSRGame.Instance.Notify("МУТАНТ АТАКУЕТ!", 1.2f);
+                    game.BossStrike(p.x, p.z - .72f);
+                    if (Mathf.Abs(p.x - game.Hero.PositionX) < strikeWidth) game.HurtPlayer(themeLevel >= 15 ? 18 : 15);
+                    else game.Notify("УДАР МУТАНТА МИМО", .9f);
                 }
             }
             if (Kind != ZombieType.Boss && Kind != ZombieType.Toxic && p.z > 1f &&

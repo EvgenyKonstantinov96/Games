@@ -14,16 +14,16 @@ namespace ZombieSurvivalRun
             parent.gameObject.AddComponent<ZSRVeilGateView>().Construct(parent, kind);
         }
 
-        static (int slot, string label, string texture, Color tint) Appearance(BonusKind kind)
+        internal static (int slot, string label, string texture, Color tint, string title) Appearance(BonusKind kind)
         {
             return kind switch
             {
-                BonusKind.DoubleDamage => (0, "×2", "damage", new Color(1f, .42f, .12f)),
-                BonusKind.RapidFire => (1, "ТЕМП", "rapid", new Color(.22f, .83f, 1f)),
-                BonusKind.Shield => (2, "ЩИТ", "shield", new Color(.34f, .51f, 1f)),
-                BonusKind.Heal => (3, "HP", "heal", new Color(.27f, 1f, .57f)),
-                BonusKind.Magnet => (4, "МАГНИТ", "magnet", new Color(1f, .78f, .20f)),
-                _ => (5, "ДРОН", "drone", new Color(.70f, .41f, 1f))
+                BonusKind.DoubleDamage => (0, "×2", "damage", new Color(1f, .54f, .24f), "Двойной урон"),
+                BonusKind.RapidFire => (1, "ТЕМП", "rapid", new Color(.34f, .83f, 1f), "Ускорение стрельбы"),
+                BonusKind.Shield => (2, "ЩИТ", "shield", new Color(.47f, .64f, 1f), "Энергощит"),
+                BonusKind.Heal => (3, "HP", "heal", new Color(.37f, .94f, .59f), "Восстановление здоровья"),
+                BonusKind.Magnet => (4, "МАГНИТ", "magnet", new Color(1f, .79f, .29f), "Магнит монет"),
+                _ => (5, "ДРОН", "drone", new Color(.78f, .58f, 1f), "Воздушная поддержка")
             };
         }
 

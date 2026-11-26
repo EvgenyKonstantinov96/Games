@@ -20,7 +20,7 @@ namespace ZombieSurvivalRun
         const float RepeatLength = 180f;
         const float WrapZ = -27f;
 
-        public static ZSRParallaxCity Create(Transform world, int chapter, GameObject panorama)
+        public static ZSRParallaxCity Create(Transform world, int chapter, GameObject panorama, Color fog)
         {
             var go = new GameObject("SCENERY / independent parallax city (0.06x to 0.18x)");
             go.transform.SetParent(world, false);
@@ -31,6 +31,7 @@ namespace ZombieSurvivalRun
                 if (panorama.TryGetComponent<Renderer>(out var renderer))
                 {
                     city.panoramaMaterial = new Material(renderer.sharedMaterial);
+                    if (city.panoramaMaterial.HasProperty("_HorizonColor")) city.panoramaMaterial.SetColor("_HorizonColor", fog);
                     renderer.sharedMaterial = city.panoramaMaterial;
                 }
             }
