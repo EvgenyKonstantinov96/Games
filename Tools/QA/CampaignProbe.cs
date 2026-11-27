@@ -37,6 +37,45 @@ static class CampaignProbe
         if (!ok) throw new InvalidOperationException(message);
     }
 
+    static void CheckPickupContact()
+    {
+        int checks = 0;
+        foreach (int fps in new[] { 20, 30, 60, 120 })
+        foreach (float speed in new[] { 4.4f, 9f, 16.5f })
+        foreach (float steering in new[] { -8.3f, 0f, 8.3f })
+        foreach (float crossingX in new[] { -2.5f, -1.23f, 0f, 1.23f, 2.5f })
+        {
+            const float start = 5.73f;
+            int left = 0, right = 0;
+            for (int i = 0; i < fps * 2; i++)
+            {
+                float z0 = start - speed*i/fps, z1 = start - speed*(i+1)/fps;
+                float x0 = crossingX - steering*z0/speed, x1 = crossingX - steering*z1/speed;
+                foreach (float gate in new[] { -2.5f, 2.5f })
+                {
+                    if (!ZSRPickupContact.CrossedPlane(z0,z1,x0-gate,x1-gate,out float at)) continue;
+                    Require(Math.Abs(at - (crossingX - gate)) < .0001f, "Lane at instant of contact");
+                    if (ZSRPickupContact.InsideVeil(at))
+                    {
+                        if (gate < 0f) left++; else right++;
+                    }
+                }
+            }
+            Require(left == (crossingX < 0 ? 1 : 0) && right == (crossingX > 0 ? 1 : 0),
+                "Gate pair must grant exactly its chosen side or no bonus");
+            checks++;
+        }
+
+        Require(ZSRPickupContact.CoinTime(0f,0f,6f,-5f,1.1f,out float first) &&
+                Math.Abs(first - 3.8f/11f) < .00001f, "Swept coin pickup at entry");
+        Require(!ZSRPickupContact.CoinTime(6f,0f,3f,-7f,1.1f,out _), "Depth and lateral intervals miss");
+        Require(ZSRPickupContact.CoinTime(3.5f,3.5f,3f,0f,3.6f,out _) &&
+               !ZSRPickupContact.CoinTime(3.5f,3.5f,3f,0f,1.1f,out _), "Magnet reach differs from ordinary reach");
+        Require(!ZSRPickupContact.CoinTime(3.61f,3.61f,3f,0f,3.6f,out _) &&
+               !ZSRPickupContact.CoinTime(0f,0f,-1.21f,-3f,3.6f,out _), "Outside magnet and behind runner");
+        Console.WriteLine($"PICKUPS PASS: {checks} paired crossings from 20 to 120 Hz, lane changes, central gap, coin/magnet sweep.");
+    }
+
     static IEnumerable<int> ExpectedStory()
     {
         for (int level = 5; level <= 15; level += 5) yield return level;
@@ -52,8 +91,35 @@ static class CampaignProbe
             (profile.Magazine * profile.ShotInterval(0) + profile.Reload);
     }
 
+    static void CheckHeroSteering()
+    {
+        foreach (int level in new[] { 1, 5, 15, 90, 1000 })
+        foreach (int hero in new[] { 0, 1 })
+        {
+            float road = new ZSRLevelPlan(level).Speed;
+            float straight = ZSRHeroGait.Cadence(hero, road, 1f, 0f, false);
+            foreach (float sideways in new[] { 0f, 2f, 8f, 21f })
+            {
+                float heading = ZSRHeroGait.Heading(sideways, road);
+                Require(heading >= 0 && heading <= 32f && heading == -ZSRHeroGait.Heading(-sideways, road),
+                    "Symmetric leg heading");
+                float turning = ZSRHeroGait.Cadence(hero, road, 1f, sideways, false);
+                Require(turning >= straight && turning <= 1.75f, "Diagonal stride frequency");
+            }
+            float surge = ZSRHeroGait.Cadence(hero, road, ZSRRunPace.SurgeScale, 0f, false);
+            float walk = ZSRHeroGait.Cadence(hero, road, ZSRRunPace.WalkScale, 0f, true);
+            Require(surge >= straight && walk / 34f < straight / 24f, "Ordered walk/run/sprint cadence");
+        }
+        Require(ZSRHeroGait.Bank(4f, 60f) < ZSRHeroGait.Bank(4f, 0f) &&
+                ZSRHeroGait.Bank(4f, -60f) > 0f && ZSRHeroGait.Bank(0f, 0f) == 0f,
+                "Push, brace and recover balance");
+        Console.WriteLine("HERO PASS: heading, banking and walk/run/sprint cadence for both heroes at five campaign speeds.");
+    }
+
     static void Main()
     {
+        CheckHeroSteering();
+        CheckPickupContact();
         Require(ZSRLevelPlan.RestoreProgress(1, -1) == (1, 0), "New player");
         Require(ZSRLevelPlan.RestoreProgress(12, -1) == (12, 11), "Save before the story key");
         Require(ZSRLevelPlan.RestoreProgress(15, 15) == (16, 15), "Original campaign completed");

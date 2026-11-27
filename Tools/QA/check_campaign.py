@@ -2,6 +2,7 @@
 import argparse
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import tempfile
 
@@ -19,7 +20,7 @@ def main():
     dotnet = runtime / "dotnet"
     if not dotnet.exists():
         dotnet = runtime / "dotnet.exe"
-    sources = [SCRIPTS / (name + ".cs") for name in ("ZSRLevelPlan", "ZSRStory", "ZSRWeaponProfile", "ZSRRunPace")]
+    sources = [SCRIPTS / (name + ".cs") for name in ("ZSRLevelPlan", "ZSRStory", "ZSRWeaponProfile", "ZSRRunPace", "ZSRPickupContact")]
     enums = []
     for symbol in ("ZombieType", "WeaponType"):
         for path in SCRIPTS.glob("*.cs"):
@@ -47,6 +48,21 @@ def main():
                         "-langversion:9.0", f"-out:{exe}", *[f"-r:{dll}" for dll in sorted(shared.glob("*.dll"))],
                         *sources, extracted, ROOT / "Tools/QA/CampaignProbe.cs"], check=True)
         subprocess.run([dotnet, exe], check=True)
+        # The infected use managed UnityEngine vector math. Load those exact
+        # assemblies here so steering and recoil are exercised without stubs.
+        motion = folder / "InfectedMotionProbe.dll"
+        actual_enums = folder / "GameEnums.cs"
+        actual_enums.write_text("namespace ZombieSurvivalRun { " + " ".join(enums) + " }", encoding="utf-8")
+        unity_refs = []
+        for component in ("UnityEngine.CoreModule.dll", "UnityEngine.SharedInternalsModule.dll"):
+            dll = Path(shutil.copy(editor / "Managed/UnityEngine" / component, folder))
+            unity_refs.append(f"-r:{dll}")
+        shutil.copy(exe.with_suffix(".runtimeconfig.json"), motion.with_suffix(".runtimeconfig.json"))
+        subprocess.run([dotnet, editor / "DotNetSdkRoslyn/csc.dll", "-nologo", "-noconfig", "-nostdlib",
+                        "-langversion:9.0", f"-out:{motion}", *[f"-r:{dll}" for dll in sorted(shared.glob("*.dll"))],
+                        *unity_refs, actual_enums, SCRIPTS / "ZSRInfectedMotion.cs",
+                        ROOT / "Tools/QA/InfectedMotionProbe.cs"], check=True)
+        subprocess.run([dotnet, motion], check=True)
 
 
 if __name__ == "__main__":
