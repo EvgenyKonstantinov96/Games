@@ -321,6 +321,7 @@ namespace ZombieSurvivalRun
             var cameraData = camera3D.GetUniversalAdditionalCameraData();
             cameraData.renderType = CameraRenderType.Base;
             cameraData.renderPostProcessing = true;
+            cameraData.antialiasing = AntialiasingMode.FastApproximateAntialiasing;
             camera3D.allowHDR = true;
             camera3D.nearClipPlane = .1f;
             camera3D.farClipPlane = 230f;
@@ -598,6 +599,7 @@ namespace ZombieSurvivalRun
             if (music != null) music.Mix(State, Time.unscaledDeltaTime);
             if (IsRunning)
             {
+                combatEffects.TickSpits(FrameStep, RunSpeed);
                 float jitter = Mathf.PerlinNoise(Time.unscaledTime * 20f, .37f) * 2f - 1f;
                 FrameRunCamera(Hero.PositionX, jitter * shake * .09f);
             }
@@ -657,7 +659,7 @@ namespace ZombieSurvivalRun
 
         ZSRZombie FindTarget() => FindTarget(Hero.PositionX, .6f);
 
-        ZSRZombie FindTarget(float lateralCenter, float minDepth)
+        ZSRZombie FindTarget(float lateralCenter, float minDepth, ZSRSupportDrone turret = null)
         {
             ZSRZombie best = null;
             float score = float.MaxValue;
@@ -665,7 +667,7 @@ namespace ZombieSurvivalRun
             {
                 if (z == null || !z.Alive || !z.gameObject.activeInHierarchy || z.DistanceZ < minDepth || z.DistanceZ > 52) continue;
                 float dist = Mathf.Abs(z.X - lateralCenter);
-                if (dist > 7.3f) continue;
+                if (dist > 7.3f || (turret != null && !turret.CanReach(z.AimPoint))) continue;
                 float s = z.DistanceZ + dist * .5f;
                 if (s < score) { score = s; best = z; }
             }
@@ -857,16 +859,16 @@ namespace ZombieSurvivalRun
             shake = Mathf.Max(shake, .24f);
         }
 
+        internal void ToxicBurst(Vector3 at) => combatEffects.ToxicBurst(at);
+        internal void LaunchToxicSpit(Vector3 at, float lane) => combatEffects.LaunchSpit(at, lane, RunSpeed);
+
         public void ThrowGrenade()
         {
             if (!IsRunning || Grenades <= 0 || Hero.IsUsingItem) return;
             Grenades--;
             Hero.UseItem(false);
-            var target = FindTarget();
-            Vector3 destination = target != null ? target.transform.position : Hero.transform.position + Vector3.forward * 22f;
-            destination.y = .12f;
-            grenadesInFlight.Add(new ZSRGrenadeFlight(worldRoot.transform, combatEffects, Hero.ItemOrigin,
-                target, destination, ItemLevel(ItemType.Grenade)));
+            grenadesInFlight.Add(new ZSRGrenadeFlight(worldRoot.transform, combatEffects,
+                Hero.ItemOrigin, ItemLevel(ItemType.Grenade)));
         }
 
         void UpdateGrenades(float dt)
@@ -874,7 +876,8 @@ namespace ZombieSurvivalRun
             for (int i = grenadesInFlight.Count - 1; i >= 0; i--)
             {
                 var grenade = grenadesInFlight[i];
-                if (!grenade.Tick(dt, RunSpeed, Hero.ItemOrigin)) continue;
+                var aim = grenade.WillRelease(dt) ? FindTarget() : null;
+                if (!grenade.Tick(dt, RunSpeed, Hero.ItemOrigin, aim)) continue;
                 Detonate(grenade.Position, grenade.ItemLevel);
                 grenade.Discard();
                 grenadesInFlight.RemoveAt(i);
@@ -938,11 +941,11 @@ namespace ZombieSurvivalRun
                 drone = null;
                 return;
             }
-            var target = FindTarget(drone.transform.position.x, drone.transform.position.z + .65f);
+            var target = FindTarget(drone.transform.position.x, drone.transform.position.z + .65f, drone);
             Vector3 aim = target != null ? target.AimPoint : drone.transform.position + Vector3.forward * 12f;
             drone.Tick(Hero.PositionX, aim, dt);
             droneShotTimer -= dt;
-            if (droneShotTimer > 0f || target == null) return;
+            if (droneShotTimer > 0f || target == null || !drone.IsOnTarget(aim)) return;
             int itemLevel = ItemLevel(ItemType.Drone);
             droneShotTimer = Mathf.Max(.35f, .90f - itemLevel * .1f);
             Vector3 origin = drone.Muzzle;
@@ -1006,7 +1009,7 @@ namespace ZombieSurvivalRun
         {
             Earned += value;
             audioSource.PlayOneShot(coinAudio, .22f);
-            ZSRVisuals.Explosion(at, .35f, ZSRVisuals.GoldGlow, .14f);
+            combatEffects.CoinPickup(at);
         }
 
         void Finish(bool victory)

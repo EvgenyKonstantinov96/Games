@@ -47,6 +47,47 @@ def inspect_landmarks():
         print(f'LANDMARK PASS {name:10} {triangles} triangles, {min_clearance:.3f} m road headroom.')
 
 
+def inspect_highway():
+    track = (ROOT/'Assets/Scripts/ZSRTrackArt.cs').read_text()
+    world = (ROOT/'Assets/Scripts/ZSRWorld.cs').read_text()
+    width = float(re.search(r'DeckWidth = ([\d.]+)f', world)[1])
+    length = float(re.search(r'Length = ([\d.]+)f', world)[1])
+    repeat = float(re.search(r'SurfaceRepeatLength = ([\d.]+)f', track)[1])
+    assert length / repeat == round(length / repeat)
+    art = RESOURCES/'ProductionArt'
+    color = np.asarray(Image.open(art/'Highway.png'), dtype=float)
+    normal = np.asarray(Image.open(art/'Highway_normal.png'), dtype=float) / 127.5 - 1
+    packed = np.asarray(Image.open(art/'Highway_surface.png'), dtype=float)
+    assert color.shape == (1024,1024,3) and normal.shape == (512,512,3) and packed.shape == (512,512,4)
+    assert np.max(np.abs(np.linalg.norm(normal, axis=2) - 1)) < .012
+    # Abraded paint must resolve on both outside edges and alternate at both lane boundaries.
+    lightness = color.mean(axis=2)
+    for metres in (-4.65, -1.80, 1.80, 4.65):
+        column = round((.5 + metres/width) * color.shape[1])
+        paint = lightness[:,column-2:column+2].mean(axis=1)
+        bright = np.mean(paint > 110)
+        if abs(metres) > 4:
+            assert bright > .91, (metres, bright)
+        else:
+            assert .35 < bright < .48, (metres, bright)
+            # Count whole dashes in a 64-row mip, allowing small chips up close.
+            adjacent_asphalt = lightness[:,column+16:column+20].mean(axis=1)
+            filtered = (paint-adjacent_asphalt).reshape(64,16).mean(axis=1) > 32
+            assert np.count_nonzero(filtered & ~np.roll(filtered, 1)) == 3
+    metal_x = np.where(packed[...,0] > 20)[1]
+    assert .37 * 512 < np.abs(metal_x - 255.5).min()
+    for channel in (color, packed[...,3:]):
+        across_joint = np.abs(channel[0] - channel[-1]).mean()
+        typical_step = np.abs(np.diff(channel, axis=0)).mean()
+        assert across_joint < 1.6 * typical_step, (across_joint, typical_step)
+    spill = np.asarray(Image.open(art/'RoadReflection.png'))[...,3]
+    assert not any((spill[0].any(), spill[-1].any(), spill[:,0].any(), spill[:,-1].any()))
+    assert spill.max() > 212 and .06 < spill.mean() / 255 < .20
+    print(f'BRIDGE SURFACE PASS: {length:g} m module, {length/repeat:g} seamless repeats, three dashes per repeat, '
+          'PBR maps registered, two shoulder drains and feathered lamp mask.')
+
+
+
 def inspect_chapter_textures():
     hues = {}
     for name in ('Industrial','Evacuation'):
@@ -70,4 +111,5 @@ def inspect_chapter_textures():
 
 if __name__ == '__main__':
     inspect_landmarks()
+    inspect_highway()
     inspect_chapter_textures()

@@ -80,7 +80,7 @@ namespace ZombieSurvivalRun
                 ConcreteDark.mainTextureScale = new Vector2(2f, 5f);
                 Sidewalk.mainTextureScale = new Vector2(2f, 6f);
             }
-            AsphaltDeluxe = MatWithTexture(Color.white, "ProductionArt/Highway", .28f, new Vector2(2f, 8f),
+            AsphaltDeluxe = MatWithTexture(Color.white, "ProductionArt/Highway", .28f, Vector2.one,
                 new Color(.12f, .145f, .17f), "Textures/asphalt_v102");
             var roadSurface = Resources.Load<Texture2D>("ProductionArt/Highway_surface");
             if (roadSurface != null && AsphaltDeluxe.HasProperty("_MetallicGlossMap"))

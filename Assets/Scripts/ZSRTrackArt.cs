@@ -6,6 +6,10 @@ namespace ZombieSurvivalRun
     /// <summary>One shared material for the UV-mapped road hazards and gate pylons.</summary>
     public static class ZSRTrackArt
     {
+        // The road texture spans the carriageway exactly once across and repeats every 11.5 m.
+        // Paint, drains and cracks share UVs and therefore stay in contact under grazing light.
+        public const float SurfaceRepeatLength = 11.5f;
+        static Mesh movingDeck, distantDeck;
         static Material paintedMetal;
         static Material shoulderGlow;
         static Mesh shoulderGlowMesh;
@@ -103,42 +107,44 @@ namespace ZombieSurvivalRun
             if (shoulderGlow == null)
             {
                 var shader = Resources.Load<Shader>("ProductionArt/ZSRCombatFX");
-                var texture = Resources.Load<Texture2D>("ProductionArt/ParticleSoft");
+                var texture = Resources.Load<Texture2D>("ProductionArt/RoadReflection");
                 if (shader == null || !shader.isSupported || texture == null) return;
-                shoulderGlow = new Material(shader) { name = "Soft amber by bridge rails" };
+                shoulderGlow = new Material(shader) { name = "Wet asphalt / guide and street lamps" };
                 shoulderGlow.SetTexture("_BaseMap", texture);
             }
             if (shoulderGlowMesh == null)
             {
-                var vertices = new List<Vector3>(48);
-                var uv = new List<Vector2>(48);
-                var tint = new List<Color>(48);
-                var triangles = new List<int>(72);
+                var vertices = new List<Vector3>(56);
+                var uv = new List<Vector2>(56);
+                var tint = new List<Color>(56);
+                var triangles = new List<int>(84);
                 for (int side = -1; side <= 1; side += 2)
                 {
                     for (int marker = 0; marker < 11; marker += 2)
                     {
                         float x = side * (outerX - .65f);
                         float z = length * ((marker + .5f) / 11f - .5f) - .69f;
-                        int start = vertices.Count;
-                        vertices.Add(new Vector3(x - .57f, -.015f, z - 1.18f));
-                        vertices.Add(new Vector3(x + .57f, -.015f, z - 1.18f));
-                        vertices.Add(new Vector3(x + .57f, -.015f, z + 1.18f));
-                        vertices.Add(new Vector3(x - .57f, -.015f, z + 1.18f));
-                        uv.Add(Vector2.zero);
-                        uv.Add(Vector2.right);
-                        uv.Add(Vector2.one);
-                        uv.Add(Vector2.up);
-                        for (int i = 0; i < 4; i++) tint.Add(new Color(1f, 1f, 1f, .21f));
-                        triangles.Add(start);
-                        triangles.Add(start + 2);
-                        triangles.Add(start + 1);
-                        triangles.Add(start);
-                        triangles.Add(start + 3);
-                        triangles.Add(start + 2);
+                        Spill(x, z, .57f, 1.18f, .23f);
                     }
+                    // The elevated fixtures throw a longer reflection toward the outer lane.
+                    Spill(side * (outerX - 1.04f), side < 0 ? -10.35f : 11.65f, 1.13f, 2.68f, .27f);
                 }
-                shoulderGlowMesh = new Mesh { name = "Pooled amber reflections" };
+
+                void Spill(float x, float z, float halfWidth, float halfLength, float strength)
+                {
+                    int start = vertices.Count;
+                    vertices.Add(new Vector3(x - halfWidth, -.015f, z - halfLength));
+                    vertices.Add(new Vector3(x + halfWidth, -.015f, z - halfLength));
+                    vertices.Add(new Vector3(x + halfWidth, -.015f, z + halfLength));
+                    vertices.Add(new Vector3(x - halfWidth, -.015f, z + halfLength));
+                    uv.Add(Vector2.zero);
+                    uv.Add(Vector2.right);
+                    uv.Add(Vector2.one);
+                    uv.Add(Vector2.up);
+                    for (int i = 0; i < 4; i++) tint.Add(new Color(1f, 1f, 1f, strength));
+                    triangles.AddRange(new[] { start, start + 2, start + 1, start, start + 3, start + 2 });
+                }
+                shoulderGlowMesh = new Mesh { name = "Lamp reflections along the bridge shoulder" };
                 shoulderGlowMesh.SetVertices(vertices);
                 shoulderGlowMesh.SetUVs(0, uv);
                 shoulderGlowMesh.SetColors(tint);
@@ -156,14 +162,69 @@ namespace ZombieSurvivalRun
             renderer.receiveShadows = false;
         }
 
+        public static void PlaceRoadDeck(Transform track, float width, float length)
+        {
+            if (movingDeck == null) movingDeck = BuildDeckMesh(width, length, .45f);
+            PlaceDeck(track, movingDeck, new Vector3(0f, -.025f, 0f));
+        }
+
+        static Mesh BuildDeckMesh(float width, float length, float thickness)
+        {
+            float x = width * .5f;
+            float z = length * .5f;
+            float repeats = length / SurfaceRepeatLength;
+            var mesh = new Mesh { name = "Bridge deck with lane-aligned UVs" };
+            var vertices = new List<Vector3>(12);
+            var uv = new List<Vector2>(12);
+            var indices = new List<int>(18);
+            var left = new Vector3(-x, 0f, -z);
+            var right = new Vector3(x, 0f, -z);
+            var end = Vector3.forward * length;
+            var down = Vector3.down * thickness;
+            Face(left, right, 0f, 1f);
+            Face(left + down, left, .002f, .012f);
+            Face(right, right + down, .988f, .998f);
+            mesh.SetVertices(vertices);
+            mesh.SetUVs(0, uv);
+            mesh.SetTriangles(indices, 0);
+            mesh.RecalculateNormals();
+            mesh.RecalculateTangents();
+            return mesh;
+
+            void Face(Vector3 a, Vector3 b, float u0, float u1)
+            {
+                int i = vertices.Count;
+                vertices.Add(a);
+                vertices.Add(a + end);
+                vertices.Add(b + end);
+                vertices.Add(b);
+                uv.Add(new Vector2(u0, 0f));
+                uv.Add(new Vector2(u0, repeats));
+                uv.Add(new Vector2(u1, repeats));
+                uv.Add(new Vector2(u1, 0f));
+                indices.AddRange(new[] { i, i + 1, i + 2, i, i + 2, i + 3 });
+            }
+        }
+
+        static void PlaceDeck(Transform parent, Mesh mesh, Vector3 position)
+        {
+            var surface = new GameObject("Weathered bridge deck", typeof(MeshFilter), typeof(MeshRenderer));
+            surface.transform.SetParent(parent, false);
+            surface.transform.localPosition = position;
+            surface.GetComponent<MeshFilter>().sharedMesh = mesh;
+            var renderer = surface.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = ZSRVisuals.AsphaltDeluxe;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+
         // The last moving deck can end at z=92 just before recycling.
         // Overlap underneath it and extend beyond the far clip in the haze.
         public static GameObject BuildDistantDeck(Transform world)
         {
             const float center = 164f, length = 156f;
             var bridge = ZSRVisuals.Pivot("Distant continuation of the bridge", world, Vector3.zero);
-            ZSRVisuals.Box("Distant bridge deck", bridge, new Vector3(0, -.16f, center),
-                new Vector3(9.7f, .20f, length), ZSRVisuals.AsphaltDeluxe);
+            if (distantDeck == null) distantDeck = BuildDeckMesh(9.7f, length, .20f);
+            PlaceDeck(bridge, distantDeck, new Vector3(0, -.06f, center));
             for (int side = -1; side <= 1; side += 2)
                 ZSRVisuals.Box("Distant bridge parapet", bridge, new Vector3(side * 4.98f, .39f, center),
                     new Vector3(.082f, .13f, length), ZSRVisuals.Armor);

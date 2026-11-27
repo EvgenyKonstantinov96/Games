@@ -61,24 +61,8 @@ def hero_cover(hero):
     texture_meta(target, ASSETS/'UI/menu_wallpaper.png.meta')
 
 
-def road_surface():
-    """Pack wet patches into the URP smoothness channel in a tileable map."""
-    size = 512
-    y,x = np.mgrid[:size,:size]*np.pi*2/size
-    puddles = (np.sin(3*x+2*y)*np.cos(6*y-x) + .48*np.sin(y-3*x) + .36*np.cos(7*x+4*y))
-    water = np.clip((puddles-.47)*1.18,0,1)
-    aggregate = .5+.5*np.sin(x*34+y*38)*np.cos(x*23-y*27)
-    pixels = np.zeros((size,size,4),dtype=np.uint8)
-    pixels[:,:,0] = np.uint8(4+water*9)
-    pixels[:,:,3] = np.uint8(255*np.clip(.22+water*.65+aggregate*.065,0,1))
-    target = ASSETS/'ProductionArt/Highway_surface.png'
-    Image.fromarray(pixels).save(target,optimize=True)
-    texture_meta(target, ASSETS/'ProductionArt/Highway.png.meta', linear=True)
-
-
 if __name__ == '__main__':
     sky('Horizon_Industrial.jpg',ASSETS/'Skyline/city_chapter_2_v100.png','industrial')
     sky('Horizon_Evacuation.jpg',ASSETS/'Skyline/city_chapter_3_v100.png','evacuation')
     for name in ('max','eva'):
         hero_cover(name)
-    road_surface()

@@ -11,6 +11,15 @@ namespace ZombieSurvivalRun
         static readonly Vector3[] Circle = BuildCircle();
         readonly TraceSlot[] traces = new TraceSlot[TraceCount];
         readonly List<BlastRing> blasts = new();
+        readonly SpitSlot[] spits = new SpitSlot[6];
+        const float SpitSeconds = .48f;
+        struct SpitSlot
+        {
+            public LineRenderer Line;
+            public Vector3 From, Landing, Head;
+            public float Age, Scroll;
+            public int LaunchFrame;
+        }
         int nextTrace;
         Material lineMaterial, particleMaterial;
         ParticleSystem particles;
@@ -56,6 +65,9 @@ namespace ZombieSurvivalRun
             main.maxParticles = 192;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.gravityModifier = .18f;
+            var flow = particles.velocityOverLifetime;
+            flow.enabled = true;
+            flow.space = ParticleSystemSimulationSpace.World;
             var emission = particles.emission;
             emission.enabled = false;
             var shape = particles.shape;
@@ -115,6 +127,9 @@ namespace ZombieSurvivalRun
             Burst(point, armored ? new Color(.45f, .92f, 1f, .91f) : new Color(1f, .26f, .095f, .90f),
                 armored ? 6 : 3, .035f, 2.2f, .24f);
         }
+
+        public void CoinPickup(Vector3 at)
+            => Burst(at, new Color(1f, .77f, .30f, .78f), 3, .035f, .72f, .21f);
 
         public void BonusPickup(Vector3 feet, Color tint)
         {
@@ -227,19 +242,80 @@ namespace ZombieSurvivalRun
             Burst(body + new Vector3(.38f, -.27f, .12f), new Color(.64f, 1f, .78f, .42f), 6, .047f, 1.16f, .51f);
         }
 
-        public TrailRenderer GrenadeTrail(Transform grenade)
+        public LineRenderer GrenadeTrail(Transform grenade)
         {
             if (lineMaterial == null) return null;
-            var trail = grenade.gameObject.AddComponent<TrailRenderer>();
+            var trail = grenade.gameObject.AddComponent<LineRenderer>();
             trail.sharedMaterial = lineMaterial;
-            trail.time = .19f;
-            trail.minVertexDistance = .08f;
-            trail.startWidth = .17f;
-            trail.endWidth = .025f;
-            trail.startColor = new Color(1f, .70f, .28f, .95f);
-            trail.endColor = new Color(1f, .28f, .06f, 0);
+            trail.positionCount = 6;
+            trail.useWorldSpace = true;
+            trail.startWidth = .011f;
+            trail.endWidth = .085f;
+            trail.startColor = new Color(.76f, .24f, .07f, 0f);
+            trail.endColor = new Color(1f, .73f, .32f, .83f);
             trail.shadowCastingMode = ShadowCastingMode.Off;
+            trail.receiveShadows = false;
+            trail.enabled = false;
             return trail;
+        }
+
+        public void LaunchSpit(Vector3 from, float lane, float speed)
+        {
+            if (lineMaterial == null) return;
+            for (int i = 0; i < spits.Length; i++)
+            {
+                ref var slot = ref spits[i];
+                if (slot.Line != null && slot.Line.enabled) continue;
+                if (slot.Line == null)
+                {
+                    slot.Line = MakeLine("Toxic spit", 2);
+                    slot.Line.startWidth = .026f;
+                    slot.Line.endWidth = .13f;
+                    slot.Line.startColor = new Color(.49f, .60f, .16f, .12f);
+                    slot.Line.endColor = new Color(.77f, .96f, .21f, .92f);
+                    slot.Line.numCapVertices = 3;
+                }
+                slot.From = slot.Head = from;
+                slot.Landing = new Vector3(lane, .16f, SpitSeconds * speed);
+                slot.Age = slot.Scroll = 0f;
+                slot.LaunchFrame = Time.frameCount;
+                slot.Line.SetPosition(0, from);
+                slot.Line.SetPosition(1, from);
+                slot.Line.enabled = true;
+                return;
+            }
+        }
+
+        public void TickSpits(float dt, float speed)
+        {
+            for (int i = 0; i < spits.Length; i++)
+            {
+                ref var shot = ref spits[i];
+                if (shot.Line == null || !shot.Line.enabled || shot.LaunchFrame == Time.frameCount) continue;
+                float step = Mathf.Min(dt, SpitSeconds - shot.Age);
+                shot.Age += step;
+                shot.Scroll += speed * step;
+                float t = shot.Age / SpitSeconds;
+                Vector3 previous = shot.Head;
+                shot.Head = Vector3.Lerp(shot.From, shot.Landing, t) + Vector3.back * shot.Scroll;
+                shot.Head.y += 2.8f * t * (1f - t);
+                Vector3 movement = shot.Head - previous;
+                shot.Line.SetPosition(0, shot.Head - Vector3.ClampMagnitude(movement * (.055f / Mathf.Max(.001f, step)), .95f));
+                shot.Line.SetPosition(1, shot.Head);
+                if (shot.Age < SpitSeconds) continue;
+
+                shot.Line.enabled = false;
+                ToxicBurst(shot.Head);
+                var game = ZSRGame.Instance;
+                Vector3 offset = shot.Head - game.Hero.transform.position;
+                if (Mathf.Abs(offset.x) <= .83f && Mathf.Abs(offset.z) <= .95f) game.HurtPlayer(8);
+            }
+        }
+
+        public void ToxicBurst(Vector3 at)
+        {
+            Burst(at, new Color(.60f, .81f, .20f, .70f), 8, .068f, 2.6f, .42f);
+            Burst(at, new Color(.42f, .53f, .16f, .32f), 5, .27f, 1.2f, .56f);
         }
 
         void Burst(Vector3 at, Color color, int count, float size, float speed, float lifetime)
@@ -265,6 +341,12 @@ namespace ZombieSurvivalRun
 
         public void Tick(float dt, float speed, Vector3 hand)
         {
+            if (particles != null)
+            {
+                // Give dust, fragments and impact smoke the same road-relative motion as their source.
+                var flow = particles.velocityOverLifetime;
+                flow.z = -speed;
+            }
             for (int i = 0; i < traces.Length; i++)
             {
                 ref var slot = ref traces[i];
@@ -311,6 +393,7 @@ namespace ZombieSurvivalRun
             UpdateShield(0f, 0f, Vector3.zero);
             ClearBossWarning();
             foreach (var trace in traces) if (trace.Line != null) trace.Line.enabled = false;
+            foreach (var shot in spits) if (shot.Line != null) shot.Line.enabled = false;
             foreach (var blast in blasts) if (blast.Line != null) Destroy(blast.Line.gameObject);
             blasts.Clear();
             if (particles != null) particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);

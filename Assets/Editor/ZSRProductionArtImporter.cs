@@ -9,7 +9,7 @@ namespace ZombieSurvivalRun.EditorTools
     {
         const string Folder = "Assets/Resources/ProductionArt/";
 
-        public override uint GetVersion() => 4;
+        public override uint GetVersion() => 5;
 
         void OnPreprocessModel()
         {
@@ -44,7 +44,7 @@ namespace ZombieSurvivalRun.EditorTools
             importer.anisoLevel = name.StartsWith("Highway") ? 4 : 1;
             var android = importer.GetPlatformTextureSettings("Android");
             android.overridden = true;
-            android.maxTextureSize = name.StartsWith("Horizon") || name.StartsWith("CharacterAtlas") ? 1024 : 512;
+            android.maxTextureSize = name.StartsWith("Horizon") || name.StartsWith("CharacterAtlas") || name == "Highway" ? 1024 : 512;
             android.format = name == "Highway_normal" ? TextureImporterFormat.ASTC_5x5 : TextureImporterFormat.ASTC_6x6;
             importer.SetPlatformTextureSettings(android);
         }

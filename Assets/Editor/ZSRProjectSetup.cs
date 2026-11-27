@@ -35,9 +35,28 @@ namespace ZombieSurvivalRun.EditorTools
             {
                 QueueSetup();return;
             }
-            if(File.Exists(ScenePath)&&AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(PipelinePath)!=null)return;
+            if (File.Exists(ScenePath) && AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(PipelinePath) != null)
+            {
+                var renderer = AssetDatabase.LoadAssetAtPath<UniversalRendererData>(RendererPath);
+                if (renderer != null) { RestorePostProcessing(renderer); return; }
+            }
             if (!File.Exists(ScenePath) && HasUntitledScene()) return;
             CreateScene();
+        }
+
+        static void RestorePostProcessing(UniversalRendererData renderer)
+        {
+            if (renderer.postProcessData != null) return;
+            const string path = "Packages/com.unity.render-pipelines.universal/Runtime/Data/PostProcessData.asset";
+            var data = AssetDatabase.LoadAssetAtPath<PostProcessData>(path);
+            if (data == null)
+            {
+                Debug.LogWarning("[ZSR] Missing URP post-processing data at " + path);
+                return;
+            }
+            renderer.postProcessData = data;
+            EditorUtility.SetDirty(renderer);
+            AssetDatabase.SaveAssetIfDirty(renderer);
         }
 
         static bool HasUntitledScene()
@@ -68,6 +87,7 @@ namespace ZombieSurvivalRun.EditorTools
                     rp=ScriptableObject.CreateInstance<UniversalRendererData>();
                     AssetDatabase.CreateAsset(rp,RendererPath);
                 }
+                RestorePostProcessing(rp);
                 var urp=AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(PipelinePath);
                 if(urp==null)
                 {

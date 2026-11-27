@@ -83,13 +83,43 @@ def build_gate_labels():
     for index, (word, accent) in enumerate(cards):
         card = Image.new("RGBA", (256, 128))
         d = ImageDraw.Draw(card)
-        d.rounded_rectangle((7, 7, 249, 120), radius=17, fill="#0d1722", outline="#5e7485", width=3)
-        d.rounded_rectangle((19, 20, 237, 108), radius=10, fill="#151f2b")
-        d.line((27, 15, 229, 15), fill=accent, width=4)
-        d.line((90, 112, 166, 112), fill=accent, width=3)
-        size = min(74, int(285 / len(word)))
+        # Cast housings and etched symbols remain distinct even in grayscale.
+        outline = [(17,7),(239,7),(250,18),(250,106),(238,119),(18,119),(6,107),(6,19)]
+        d.polygon(outline, fill="#405767", outline="#a0aeb0", width=2)
+        inset = [(20,12),(236,12),(245,21),(245,103),(235,113),(21,113),(11,103),(11,22)]
+        d.polygon(inset, fill="#18232c")
+        d.rounded_rectangle((23,37,232,105), radius=8, fill="#0c1824", outline="#344655", width=1)
+        d.line((39,26,106,26), fill=accent, width=3)
+        d.line((150,26,217,26), fill=accent, width=3)
+        for x in (17,239):
+            for y in (23,103):
+                d.ellipse((x-2,y-2,x+2,y+2), fill="#849599")
+        if index == 0:
+            for x in (115,125):
+                d.line((x,17,x+9,25,x,33), fill=accent, width=3)
+        elif index == 1:
+            d.polygon([(128,15),(117,27),(126,27),(123,36),(139,21),(130,21),(135,15)], fill=accent)
+        elif index == 2:
+            d.polygon([(128,14),(139,19),(137,29),(128,36),(119,29),(117,19)], outline=accent, width=3)
+        elif index == 3:
+            d.rectangle((124,15,131,35), fill=accent)
+            d.rectangle((118,21,137,28), fill=accent)
+        elif index == 4:
+            d.arc((118,15,138,35), 0, 180, fill=accent, width=4)
+            for x in (119,136):
+                d.line((x,15,x,26), fill=accent, width=4)
+        else:
+            d.line((117,20,128,29,139,20), fill=accent, width=3)
+            for x in (117,139):
+                d.ellipse((x-6,16,x+6,22), outline=accent, width=2)
+            d.rounded_rectangle((123,25,133,31), radius=2, fill=accent)
+        size = 63
         font = ImageFont.truetype(font_path, size)
-        d.text((128, 64), word, font=font, anchor="mm", fill="#f5faff", stroke_width=1, stroke_fill="#0c111b")
+        while font.getlength(word) > 194:
+            size -= 1
+            font = ImageFont.truetype(font_path, size)
+        box = d.textbbox((0,0),word,font=font)
+        d.text((128-(box[0]+box[2])/2,72-(box[1]+box[3])/2), word, font=font, fill="#f0f5f4")
         atlas.alpha_composite(card, (index % 2 * 256, index // 2 * 128))
     atlas.save(ART / "TrackGateLabels.png", optimize=True)
 

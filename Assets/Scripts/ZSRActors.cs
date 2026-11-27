@@ -149,48 +149,38 @@ namespace ZombieSurvivalRun
         void Update()
         {
             var g=ZSRGame.Instance;
-            if(g==null||body==null)return;
+            if (g == null || body == null || g.State == ZSRState.Paused) return;
             float dt=g.FrameStep;
             bool running=g.IsRunning;
             if (running && itemTime > 0f) itemTime = Mathf.Max(0f, itemTime - dt);
             bool walking = running && g.Pace == ZSRPace.Walk;
-            float gaitRate = (Selection == 0 ? 1f : 1.07f) * g.RunPaceMultiplier *
-                (walking ? 1f : Mathf.Max(.74f, g.PaceScale));
+            float previousVelocity = velocityX;
+            if (running && dt > 0f)
+            {
+                Vector3 position = transform.position;
+                position.x = Mathf.SmoothDamp(position.x, TargetX, ref velocityX, .14f, 21f, dt);
+                transform.position = position;
+            }
+            float sideways = running ? velocityX : 0f;
+            float acceleration = running && dt > 0f ? (sideways - previousVelocity) / dt : 0f;
+            float gaitRate = ZSRHeroGait.Cadence(Selection, g.Plan.Speed, g.PaceScale, sideways, walking);
             if (production != null)
             {
-                if (running)
-                {
-                    Vector3 p = transform.position;
-                    p.x = Mathf.SmoothDamp(p.x, TargetX, ref velocityX, .14f, 21f, dt);
-                    transform.position = p;
-                }
                 production.Tick(running, gaitRate, walking);
-                float steering = running ? velocityX + (TargetX - transform.position.x) * 1.7f : 0f;
-                production.SetLateralLean(steering, dt);
+                production.SetLateralLean(sideways, acceleration, g.RunSpeed, dt);
                 hitT = Mathf.MoveTowards(hitT, 0, dt * 3.2f);
                 return;
             }
             if (rigged != null)
             {
-                if (running)
-                {
-                    Vector3 p = transform.position;
-                    p.x = Mathf.SmoothDamp(p.x, TargetX, ref velocityX, .14f, 21f, dt);
-                    transform.position = p;
-                }
-                rigged.transform.localEulerAngles = new Vector3(0, 0,
-                    Mathf.Clamp(-(velocityX + (TargetX - transform.position.x) * 1.5f) * 1.48f, -11f, 11f) + hitT * 4f);
+                rigged.transform.localEulerAngles = new Vector3(0, ZSRHeroGait.Heading(sideways, g.RunSpeed),
+                    ZSRHeroGait.Bank(sideways, acceleration) + hitT * 4f);
                 if (running) rigged.SetRunningSpeed(walking ? gaitRate * .60f : gaitRate);
                 hitT = Mathf.MoveTowards(hitT, 0, dt * 3.2f);
                 return;
             }
-            if(running)
-            {
-                var p=transform.position;
-                p.x=Mathf.SmoothDamp(p.x,TargetX,ref velocityX,.14f,21f,dt);
-                transform.position=p;
-                stride += dt * (Selection == 0 ? 10.2f : 11.2f) * g.RunPaceMultiplier;
-            }
+            if (running)
+                stride += dt * 10.2f * gaitRate * (walking ? .60f : 1f);
             float gait=running?Mathf.Sin(stride):0f;
             float leftLift=running?Mathf.Max(0,-gait):0f;
             float rightLift=running?Mathf.Max(0,gait):0f;
@@ -222,6 +212,7 @@ namespace ZombieSurvivalRun
         public float HealthFraction => Mathf.Clamp01(hitPoints / maxHitPoints);
         public float DistanceZ => transform.position.z;
         public float X => transform.position.x;
+        internal Vector3 TravelVelocity { get; private set; }
         public Vector3 AimPoint => transform.position + Vector3.up * (Kind == ZombieType.Boss ? 3.2f : Kind == ZombieType.Brute ? 2.6f : Kind==ZombieType.Crawler ? 0.85f:1.55f);
 
         Transform body, torso, armL, armR, legL, legR, head;
@@ -229,7 +220,9 @@ namespace ZombieSurvivalRun
         ZSRProductionArt production;
         float hitPoints, maxHitPoints, walkSpeed, phase, clock, stagger, deathTime, attackTimer;
         bool contacted, attackTelegraphed;
+        float spitLane;
         ZSRLevelPlan levelPlan;
+        ZSRInfectedMotion motion;
 
         public void Construct(ZombieType type)
         {
@@ -332,6 +325,8 @@ namespace ZombieSurvivalRun
             walkSpeed = Kind == ZombieType.Boss ? 0f : Kind == ZombieType.Brute ? .78f : Kind == ZombieType.Runner ? 3.0f :
                 Kind==ZombieType.Crawler?2.6f:Kind==ZombieType.Toxic ? 0.55f:Kind == ZombieType.Armored ? 1.15f : 1.48f;
             walkSpeed *= plan.EnemySpeedScale;
+            motion.Reset(Kind);
+            TravelVelocity = Vector3.zero;
             Alive = true; contacted = false; attackTelegraphed = false; stagger = 0; deathTime = 0; clock = phase; attackTimer = 2f;
             if(body!=null){body.localEulerAngles=Vector3.zero;body.localPosition=Vector3.zero;}
             if (rigged != null) {rigged.transform.localPosition = Vector3.zero;rigged.transform.localRotation = Quaternion.identity;}
@@ -343,36 +338,51 @@ namespace ZombieSurvivalRun
 
         public void TakeHit(int damage, Vector3 source)
         {
-            if (!Alive) return;
+            if (!Alive || damage <= 0) return;
             hitPoints -= damage;
             stagger = Mathf.Min(1f, stagger + .40f);
+            Vector3 direction = transform.position - source;
+            bool flinch = motion.Hit(new Vector2(direction.x, direction.z), damage, maxHitPoints);
             ZSRGame.Instance.SpawnImpact(AimPoint, Kind == ZombieType.Armored);
-            if (hitPoints > 0)
+            if (hitPoints > 0 && flinch)
             {
-                // An actual hit reaction must be played for living enemies, not only death VFX.
                 if (production != null) production.Hit();
                 if (rigged != null) rigged.Hit();
             }
             if (hitPoints <= 0)
             {
-                Alive = false;
-                deathTime = .8f;
-                if (rigged != null) rigged.Die();
-                if (production != null) production.Die();
+                Fall();
                 ZSRGame.Instance.OnZombieKilled(this);
             }
+        }
+
+        void Fall()
+        {
+            Alive = false;
+            deathTime = .95f; // The authored collapse lasts 21 frames at 30 Hz.
+            motion.Fall(walkSpeed);
+            if (rigged != null) rigged.Die();
+            if (production != null) production.Die();
+        }
+
+        void FaceTravel()
+        {
+            transform.rotation = Quaternion.Euler(motion.Pitch, 180f - motion.Yaw, motion.Roll);
         }
 
         void Update()
         {
             if (ZSRGame.Instance == null || !ZSRGame.Instance.IsRunning || body == null) return;
             float dt = ZSRGame.Instance.FrameStep;
+            if (dt <= 0f) return;
             if (!Alive)
             {
                 deathTime -= dt;
-                float t = 1 - Mathf.Clamp01(deathTime / .8f);
+                float t = 1 - Mathf.Clamp01(deathTime / .95f);
                 if (rigged == null && production == null) body.localEulerAngles = new Vector3(t * 75, 0, t * 54);
-                transform.position += Vector3.back * (ZSRGame.Instance.RunSpeed * .52f) * dt;
+                Vector2 slide = motion.Slide(ZSRGame.Instance.RunSpeed, dt);
+                transform.position += new Vector3(slide.x, 0, slide.y);
+                FaceTravel();
                 if (deathTime <= 0) ZSRGame.Instance.RecycleZombie(this);
                 return;
             }
@@ -382,7 +392,7 @@ namespace ZombieSurvivalRun
                 float rate = Kind == ZombieType.Runner ? 1.53f : Kind == ZombieType.Crawler ? 1.18f :
                     Kind == ZombieType.Brute ? .69f : Kind == ZombieType.Armored ? .82f :
                     Kind == ZombieType.Boss ? .60f : Kind == ZombieType.Toxic ? .91f : .97f;
-                production.Tick(true, rate);
+                production.Tick(true, rate * levelPlan.EnemySpeedScale);
                 production.SetZombieMovementStyle(Kind);
             }
             else if (rigged != null)
@@ -413,25 +423,37 @@ namespace ZombieSurvivalRun
             if(Kind==ZombieType.Crawler)body.localPosition=new Vector3(0,-.34f+Mathf.Abs(gait)*.04f,0);
             }
 
-            Vector3 p = transform.position;
-            p.z -= (Kind == ZombieType.Boss ? 2.5f : ZSRGame.Instance.RunSpeed + walkSpeed) * dt;
-            float dx = ZSRGame.Instance.Hero.PositionX - p.x;
-            p.x += Mathf.Clamp(dx, -1, 1) * dt * (Kind == ZombieType.Runner ? 1.9f : Kind == ZombieType.Boss ? .38f : .84f);
+            Vector3 previous = transform.position;
+            float heroX = ZSRGame.Instance.Hero.PositionX;
+            Vector2 travel = motion.Pursue(heroX - previous.x, walkSpeed, ZSRGame.Instance.RunSpeed, dt);
+            Vector3 p = previous + new Vector3(travel.x, 0f, travel.y);
+            p.x = Mathf.Clamp(p.x, -4.45f, 4.45f);
             if (Kind == ZombieType.Boss && p.z < 12f) p.z = 12f;
+            float dx = heroX - p.x;
+            TravelVelocity = (p - previous) / dt;
             transform.position = p;
+            FaceTravel();
 
-            if(Kind==ZombieType.Toxic && p.z>1.25f && p.z<13f)
+            if (Kind == ZombieType.Toxic && !contacted && p.z > 1.25f)
             {
-                attackTimer-=dt;
-                TelegraphAttack(.25f);
-                if(attackTimer<=0)
+                // Scale the approach distance with road speed so the wind-up remains visible.
+                var game = ZSRGame.Instance;
+                float approach = 5f + (game.RunSpeed + walkSpeed) * .9f;
+                if (!attackTelegraphed && p.z < approach && Mathf.Abs(dx) < 2.2f)
                 {
-                    attackTimer=3.1f;
-                    attackTelegraphed = false;
-                    if(Mathf.Abs(dx)<2.2f)
+                    attackTelegraphed = true;
+                    spitLane = heroX;
+                    attackTimer = .42f;
+                    if (production != null) production.Attack();
+                    game.ToxicBurst(AimPoint);
+                }
+                else if (attackTelegraphed)
+                {
+                    attackTimer -= dt;
+                    if (attackTimer <= 0f)
                     {
-                        ZSRGame.Instance.HurtPlayer(8);
-                        ZSRVisuals.Explosion(AimPoint,.95f,ZSRVisuals.ToxicGlow,.3f);
+                        contacted = true;
+                        game.LaunchToxicSpit(AimPoint, spitLane);
                     }
                 }
             }
@@ -467,9 +489,7 @@ namespace ZombieSurvivalRun
             {
                 contacted = true;
                 ZSRGame.Instance.HurtPlayer(Kind == ZombieType.Brute ? 25 : Kind == ZombieType.Armored ? 16 : Kind == ZombieType.Runner ? 12 : 8);
-                Alive = false; deathTime = .6f;
-                if (production != null) production.Die();
-                if (rigged != null) rigged.Die();
+                Fall();
             }
             // Enemies that missed the player must leave the active list and return to the pool.
             // Without this, after a few waves the 44-enemy cap stopped all subsequent spawns.

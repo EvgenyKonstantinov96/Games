@@ -430,6 +430,72 @@ class Character:
             angle = math.radians(toe_pitch)
             self.aim_bone(forefoot.name,forefoot.head.copy(),v(0,math.cos(angle),math.sin(angle)))
 
+    def rest_limb(self, name, heading, height, weight):
+        bone = self.rig.pose.bones[name]
+        direction = bone.tail - bone.head
+        vertical = max(-.92, min(.92, (height - bone.head.z) / direction.length))
+        target = heading.normalized() * math.sqrt(1 - vertical * vertical) + v(0, 0, vertical)
+        turn = direction.normalized().rotation_difference(target)
+        partial = Quaternion().slerp(turn, weight).to_matrix().to_4x4() @ bone.matrix
+        partial.translation = bone.head.copy()
+        bone.matrix = partial
+        bpy.context.view_layer.update()
+
+    def settle_infected(self, t):
+        # The knees give first. The shoulder catches the pavement, rebounds
+        # slightly, and settles with the full skinned surface touching the road.
+        roll, pitch = {"Walker": (98, -23), "Runner": (-81, -47),
+                       "Armored": (105, 6), "Brute": (-99, -12),
+                       "Toxic": (-95, -26), "Crawler": (62, -16),
+                       "Boss": (97, -18)}[self.name]
+        fall = eased_keys(((0, 0), (.24, .035), (.48, .29), (.76, 1.),
+                           (.87, .945), (1., .975)), t)
+        pelvis = self.rig.pose.bones["Pelvis"]
+        posed = pelvis.matrix.copy()
+        rotation = (Matrix.Rotation(math.radians(roll) * fall, 4, "Y") @
+                    Matrix.Rotation(math.radians(pitch) * fall, 4, "X"))
+        turned = rotation @ posed
+        side_travel = .29 if self.crawler else .18
+        turned.translation = posed.translation + v(side_travel * math.copysign(fall, roll), .12 * fall, 0)
+        pelvis.matrix = turned
+        bpy.context.view_layer.update()
+        graph = bpy.context.evaluated_depsgraph_get()
+        mesh = self.mesh.evaluated_get(graph)
+        if not hasattr(self, "trunk_vertices"):
+            groups = self.mesh.vertex_groups
+            self.trunk_vertices = [vertex.index for vertex in self.mesh.data.vertices if
+                groups[max(vertex.groups, key=lambda group: group.weight).group].name
+                in ("Pelvis", "Spine", "Chest", "Head")]
+        floor = min(mesh.data.vertices[i].co.z for i in self.trunk_vertices)
+        give = eased_keys(((0, 0), (.32, 0), (.55, .15), (.74, .69), (.92, 1), (1, 1)), t)
+        if give:
+            along = math.copysign(1, roll)
+            for side, sign in SIDES:
+                # The top arm crosses the body while the lower arm unfolds.
+                # Bent knees turn out in opposite directions as the hip lands.
+                across = sign * along
+                self.rest_limb("UpperArm"+side, v(-along*.70, across*.81, 0), floor+.11, give)
+                self.rest_limb("Forearm"+side, v(along*.42, across*.88, 0), floor+.066, give)
+                self.rest_limb("Hand"+side, v(along*.27, across, 0), floor+.043, give)
+                self.rest_limb("Thigh"+side, v(-along*.88, across*.61, 0), floor+.14, give)
+                self.rest_limb("Shin"+side, v(-along*.94, -across*.36, 0), floor+.10, give)
+                self.rest_limb("Foot"+side, v(-along*.31, -across, 0), floor+.062, give)
+            mesh = self.mesh.evaluated_get(graph)
+        lowest = min(vertex.co.z for vertex in mesh.data.vertices)
+        if give > .8:
+            contact = (give - .8) / .2
+            for side, sign in SIDES:
+                across = sign * along
+                self.rest_limb("Forearm"+side, v(along*.42, across*.88, 0), lowest+.040, contact)
+                self.rest_limb("Hand"+side, v(along*.27, across, 0), lowest+.023, contact)
+                self.rest_limb("Shin"+side, v(-along*.94, -across*.36, 0), lowest+.055, contact)
+                self.rest_limb("Foot"+side, v(-along*.31, -across, 0), lowest+.030, contact)
+            mesh = self.mesh.evaluated_get(graph)
+            lowest = min(vertex.co.z for vertex in mesh.data.vertices)
+        turned.translation.z -= lowest
+        pelvis.matrix = turned
+        bpy.context.view_layer.update()
+
     def hero_arms(self, swing, care, toss, reload, fire, hit, death):
         chest = self.rig.pose.bones["Chest"]
         base = self.bones["Chest"][0]
@@ -580,6 +646,8 @@ class Character:
                     if self.hero and side == "L":
                         curl += .16*care-.29*max(0.,swing_throw)
                     self.grip_fingers(side,curl)
+                if state == "Death" and not self.hero:
+                    self.settle_infected(t)
                 for bone in self.rig.pose.bones:
                     if bone.name == "ForwardMarker":
                         continue

@@ -133,30 +133,8 @@ emission.save(OUT/"CharacterAtlas_emission.png",optimize=True)
 if args.characters_only:
     raise SystemExit(0)
 
-n=512
-y,x=np.mgrid[:n,:n]
-xx=x+5*np.sin(2*np.pi*y/n*4)+2.6*np.sin(2*np.pi*(x+y)/n*11)
-yy=y+5*np.sin(2*np.pi*x/n*3)+2.7*np.sin(2*np.pi*(x-y)/n*13)
-near=np.full(x.shape, float("inf"))
-second=near.copy()
-for a,b in rng.uniform(0,n,(24,2)):
-    dx=(xx-a+n*.5)%n-n*.5
-    dy=(yy-b+n*.5)%n-n*.5
-    d=dx*dx+dy*dy
-    second=np.minimum(second,np.maximum(near,d))
-    near=np.minimum(near,d)
-edge=(np.sqrt(second)-np.sqrt(near))*.5
-crack=np.exp(-edge*1.55)
-wear=np.sin(x/n*2*np.pi)*np.cos(y/n*6*np.pi)
-chip=rng.normal(0,1.55,(n,n))+1.9*wear
-color=np.array([54,57,62])[None,None,:] + (chip-20*crack)[:,:,None]
-Image.fromarray(np.uint8(np.clip(color,0,255))).save(OUT/"Highway.png",optimize=True)
-height=-.095*crack+rng.normal(0,.005,(n,n))
-dy=(np.roll(height,-1,0)-np.roll(height,1,0))*2.0
-dx=(np.roll(height,-1,1)-np.roll(height,1,1))*2.0
-normals=np.stack([-dx,dy,np.ones_like(dx)],axis=-1)
-normals/=np.linalg.norm(normals,axis=-1,keepdims=True)
-Image.fromarray(np.uint8(np.clip(normals*127.5+127.5,0,255))).save(OUT/"Highway_normal.png",optimize=True)
+from build_highway import build as build_highway
+build_highway()
 
 # Single feathered mask shared by flame, sparks and smoke particle renderers.
 n=64

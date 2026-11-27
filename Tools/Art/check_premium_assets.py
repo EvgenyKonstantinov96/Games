@@ -4,7 +4,7 @@ import math
 import re
 
 from fontTools.ttLib import TTFont
-from PIL import Image
+from PIL import Image, ImageFont
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / 'Assets/Scripts'
@@ -82,6 +82,26 @@ def inspect_shared_art():
             assert alpha.getpixel((18, 8)) > 240 and alpha.getpixel((128, 48)) == 255
             meta = (ASSETS/f'UI/{name}.png.meta').read_text()
             assert 'enableMipMap: 0' in meta and 'wrapU: 1' in meta and 'wrapV: 1' in meta
+    with Image.open(ASSETS/'UI/menu_symbols.png') as atlas:
+        assert atlas.size == (256, 256)
+        alpha = atlas.getchannel('A')
+        cells = []
+        for slot in range(16):
+            x, y = 64 * (slot % 4), 64 * (slot // 4)
+            cell = alpha.crop((x, y, x + 64, y + 64))
+            if slot >= 13:
+                assert cell.getbbox() is None
+                continue
+            left, top, right, bottom = cell.getbbox()
+            assert min(left, top, 64 - right, 64 - bottom) >= 3, slot
+            assert cell.resize((24, 24), Image.Resampling.LANCZOS).getextrema()[1] >= 190, slot
+            cells.append(cell.tobytes())
+        assert len(set(cells)) == 13
+    title_font = ImageFont.truetype(str(ASSETS/'UI/ZSRButtonFont.ttf'), 21)
+    for source, tag in (('ZSRGame', 'string[] LevelNames'), ('ZSRLevelPlan', 'string[] Districts')):
+        names = (SCRIPTS/(source + '.cs')).read_text().split(tag, 1)[1].split('};', 1)[0]
+        assert all(title_font.getlength(name.upper()) <= 332 for name in re.findall(r'"([^"]+)"', names))
+    print('MENU PASS: 13 distinct antialiased atlas symbols with clear gutters; all 55 level/district titles fit the home mission card.')
     silhouettes = [(ASSETS/f'Artwork/Weapons/{weapon}.png').read_bytes()
                    for weapon in ('pistol','rifle','shotgun','minigun')]
     assert len(set(silhouettes)) == 4

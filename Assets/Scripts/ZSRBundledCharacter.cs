@@ -18,6 +18,11 @@ namespace ZombieSurvivalRun
         PlayableGraph graph;
         AnimationMixerPlayable mixer;
         AnimationClipPlayable currentPose, previousPose;
+        AnimationLayerMixerPlayable heroLayers;
+        AnimationMixerPlayable lowerBody;
+        AnimationClipPlayable legRun, legWalk;
+        AvatarMask legMask;
+        float walkBlend, legWeight, steeringHeading;
         Motion motion;
         float age, gaitPhase, blend, blendDuration = .09f, rate = 1f, actionSpeed = 1f, steeringRoll;
         bool moving, hero, firing, walking, hasItemClips, hasWalkClips;
@@ -183,7 +188,9 @@ namespace ZombieSurvivalRun
             {
                 if (filter.sharedMesh == null) continue;
                 Bounds bounds = filter.sharedMesh.bounds;
-                Vector3 end = filter.transform.TransformPoint(new Vector3(bounds.center.x, bounds.center.y, bounds.max.z));
+                // The rifle's tip sits on the axis authored into both barrel rings.
+                float axisY = weapon == WeaponType.Rifle ? .04f : bounds.center.y;
+                Vector3 end = filter.transform.TransformPoint(new Vector3(bounds.center.x, axisY, bounds.max.z));
                 Vector3 tip = socket.InverseTransformPoint(end);
                 if (tip.z <= maxZ) continue;
                 maxZ = tip.z;
@@ -211,9 +218,48 @@ namespace ZombieSurvivalRun
             graph.Connect(currentPose, 0, mixer, 0);
             graph.Connect(previousPose, 0, mixer, 1);
             var output = AnimationPlayableOutput.Create(graph, "Skin", animator);
-            output.SetSourcePlayable(mixer);
+            if (hero && spine != null)
+            {
+                // The upper-body takes include baked legs starting at frame zero.
+                // Keep the pelvis and both leg chains on the same clock through every action.
+                heroLayers = AnimationLayerMixerPlayable.Create(graph, 2);
+                lowerBody = AnimationMixerPlayable.Create(graph, 2);
+                legRun = AnimationClipPlayable.Create(graph, take);
+                legWalk = AnimationClipPlayable.Create(graph, take);
+                legRun.SetApplyFootIK(false);
+                legWalk.SetApplyFootIK(false);
+                graph.Connect(legRun, 0, lowerBody, 0);
+                graph.Connect(legWalk, 0, lowerBody, 1);
+                graph.Connect(mixer, 0, heroLayers, 0);
+                graph.Connect(lowerBody, 0, heroLayers, 1);
+                heroLayers.SetInputWeight(0, 1f);
+                legMask = CreateLegMask(animator.transform, spine);
+                heroLayers.SetLayerMaskFromAvatarMask(1, legMask);
+                output.SetSourcePlayable(heroLayers);
+            }
+            else output.SetSourcePlayable(mixer);
             graph.Play();
             Sample();
+        }
+
+        static AvatarMask CreateLegMask(Transform root, Transform spine)
+        {
+            var mask = new AvatarMask();
+            // These shipped FBXs use generic transform bindings relative to the Animator.
+            // In particular the pelvis moves, while the entire Spine branch belongs to the action.
+            Transform pelvis = spine.parent;
+            var bones = root.GetComponentsInChildren<Transform>(true);
+            mask.transformCount = bones.Length;
+            for (int i = 0; i < bones.Length; i++)
+            {
+                Transform bone = bones[i];
+                string path = "";
+                for (var child = bone; child != root; child = child.parent)
+                    path = path.Length == 0 ? child.name : child.name + "/" + path;
+                mask.SetTransformPath(i, path);
+                mask.SetTransformActive(i, bone.IsChildOf(pelvis) && !bone.IsChildOf(spine));
+            }
+            return mask;
         }
 
         public void ResetMotion(float stridePhase)
@@ -223,7 +269,7 @@ namespace ZombieSurvivalRun
             gaitPhase = Mathf.Repeat(stridePhase, 1f);
             walking = false;
             blend = 0f;
-            steeringRoll = 0f;
+            walkBlend = legWeight = steeringHeading = steeringRoll = 0f;
             moving = false;
             recoil = 0f;
             aimTime = 0f;
@@ -242,10 +288,11 @@ namespace ZombieSurvivalRun
                 Change(run ? Locomotion : Motion.Idle);
         }
 
-        public bool TrySetSteeringRoll(float roll)
+        public bool TrySetSteering(float roll, float heading)
         {
             if (spine == null) return false;
             steeringRoll = roll;
+            steeringHeading = heading;
             return true;
         }
 
@@ -311,8 +358,11 @@ namespace ZombieSurvivalRun
             }
             if (!hero && motion != Motion.Death && game != null && !game.IsRunning) return;
             float previousStep = gaitPhase;
-            float strideDuration = Durations[(int)Locomotion] / Fps;
-            if (moving)
+            bool striding = moving && motion != Motion.Death;
+            walkBlend = Mathf.MoveTowards(walkBlend, walking ? 1f : 0f, dt / .14f);
+            legWeight = Mathf.MoveTowards(legWeight, striding ? 1f : 0f, dt / .10f);
+            float strideDuration = Mathf.Lerp(Durations[(int)Motion.Move], Durations[(int)Motion.Walk], walkBlend) / Fps;
+            if (striding)
                 gaitPhase = Mathf.Repeat(gaitPhase + dt * rate / strideDuration, 1f);
             int index = (int)motion;
             float speed = motion == Motion.Reload ? actionSpeed : 1f;
@@ -323,22 +373,22 @@ namespace ZombieSurvivalRun
                 if (motion == Motion.Idle || motion == Locomotion) age %= duration;
                 else if (!IsShooting(motion) || aimTime <= 0f)
                 {
-                    // These baked actions finish at the first stride pose.
-                    if (motion == Motion.Reload || motion == Motion.Medkit || motion == Motion.Throw)
-                        gaitPhase = 0f;
                     Change(moving ? Locomotion : Motion.Idle);
                 }
             }
             blend = Mathf.Max(0f, blend - dt);
             Sample();
-            if (spine != null && motion != Motion.Death && Mathf.Abs(steeringRoll) > .01f)
+            if (spine != null && motion != Motion.Death &&
+                (Mathf.Abs(steeringRoll) > .01f || Mathf.Abs(steeringHeading) > .01f))
             {
                 float lean = steeringRoll * (walking ? .72f : 1f);
-                spine.rotation = Quaternion.AngleAxis(lean, transform.forward) * spine.rotation;
+                float counterTurn = -steeringHeading * (aimTime > 0f ? .82f : .55f);
+                spine.rotation = Quaternion.AngleAxis(counterTurn, transform.up) *
+                    Quaternion.AngleAxis(lean, transform.forward) * spine.rotation;
                 if (head != null)
                     head.rotation = Quaternion.AngleAxis(-lean * .36f, transform.forward) * head.rotation;
             }
-            if (hero && moving && game != null && game.IsRunning && IsGait(motion))
+            if (hero && striding && game != null && game.IsRunning)
             {
                 if (gaitPhase < previousStep && previousStep >= .5f) game.Footstep(footLeft.position);
                 else if (previousStep < .5f && gaitPhase >= .5f) game.Footstep(footRight.position);
@@ -370,6 +420,15 @@ namespace ZombieSurvivalRun
             float outgoing = linear * linear * (3f - 2f * linear);
             mixer.SetInputWeight(0, 1f - outgoing);
             mixer.SetInputWeight(1, outgoing);
+            if (legMask != null)
+            {
+                legRun.SetTime((Starts[(int)Motion.Move] + gaitPhase * Durations[(int)Motion.Move]) / Fps);
+                Motion walk = hasWalkClips ? Motion.Walk : Motion.Move;
+                legWalk.SetTime((Starts[(int)walk] + gaitPhase * Durations[(int)walk]) / Fps);
+                lowerBody.SetInputWeight(0, 1f - walkBlend);
+                lowerBody.SetInputWeight(1, walkBlend);
+                heroLayers.SetInputWeight(1, legWeight);
+            }
             graph.Evaluate(0f);
         }
 
@@ -384,6 +443,7 @@ namespace ZombieSurvivalRun
         void OnDestroy()
         {
             if (graph.IsValid()) graph.Destroy();
+            if (legMask != null) Destroy(legMask);
         }
     }
 }

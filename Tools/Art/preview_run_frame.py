@@ -118,26 +118,33 @@ if (ART/"CharacterAtlas_emission.png").exists():
     light.inputs["Emission Strength"].default_value = 1.25
 metal=paint("Weathered blue steel",(.079,.115,.161),rough=.54)
 asphalt=paint("Highway",(.04,.045,.053),ART/"Highway.png",.49)
-road=cube("Elevated highway",(0,62,-.27),(ROAD_WIDTH,151,.48),asphalt)
-cube("Slate distant bridge",(0,164,-.16),(ROAD_WIDTH,156,.20),paint("Distant deck",(.19,.23,.28)))
+track_source = (ROOT/"Assets/Scripts/ZSRTrackArt.cs").read_text()
+repeat_length = number_setting(track_source, "SurfaceRepeatLength")
+
+
+def bridge_top(name, start, distance, y):
+    half = ROAD_WIDTH / 2
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata([(-half,start,y), (half,start,y), (half,start+distance,y), (-half,start+distance,y)], [], [(0,1,2,3)])
+    uv = mesh.uv_layers.new(name="Bridge metres")
+    end = distance / repeat_length
+    for index, coord in enumerate(((0,0),(1,0),(1,end),(0,end))):
+        uv.data[index].uv = coord
+    obj = bpy.data.objects.new(name,mesh)
+    bpy.context.collection.objects.link(obj)
+    mesh.materials.append(asphalt)
+
+
+bridge_top("First four road sections",-46,184,-.025)
+bridge_top("Distant bridge",86,156,-.06)
 nodes,links=asphalt.node_tree.nodes,asphalt.node_tree.links
-mapping=nodes.new("ShaderNodeVectorMath")
-mapping.operation="MULTIPLY"
-mapping.inputs[1].default_value=(2,26,1)
-links.new(nodes.new("ShaderNodeTexCoord").outputs["Generated"],mapping.inputs[0])
-separate=nodes.new("ShaderNodeSeparateXYZ")
-links.new(mapping.outputs[0],separate.inputs[0])
-combine=nodes.new("ShaderNodeCombineXYZ")
-links.new(separate.outputs["X"],combine.inputs["X"])
-links.new(separate.outputs["Y"],combine.inputs["Y"])
-for node in nodes:
-    if node.type=="TEX_IMAGE":
-        links.new(combine.outputs[0],node.inputs["Vector"])
 if (ART/"Highway_surface.png").exists():
     wetness = nodes.new("ShaderNodeTexImage")
     wetness.image = bpy.data.images.load(str(ART/"Highway_surface.png"),check_existing=True)
     wetness.image.colorspace_settings.name = "Non-Color"
-    links.new(combine.outputs[0], wetness.inputs["Vector"])
+    channels = nodes.new("ShaderNodeSeparateColor")
+    links.new(wetness.outputs["Color"], channels.inputs["Color"])
+    links.new(channels.outputs["Red"], nodes.get("Principled BSDF").inputs["Metallic"])
     roughness = nodes.new("ShaderNodeMath")
     roughness.operation = "MULTIPLY_ADD"
     roughness.inputs[1].default_value = -.66
@@ -145,16 +152,15 @@ if (ART/"Highway_surface.png").exists():
     links.new(wetness.outputs["Alpha"], roughness.inputs[0])
     links.new(roughness.outputs[0],nodes.get("Principled BSDF").inputs["Roughness"])
 
-stripe=paint("Worn road paint",(.48,.43,.37))
 amber=paint("Chapter marker lights",guide_color,emissive=True)
 props=paint("Track prop atlas",(1,1,1),ART/"TrackPropAtlas.png",.64)
 shoulder_glow = paint("Soft bridge reflector spill",guide_color,emissive=True)
 nodes, links = shoulder_glow.node_tree.nodes, shoulder_glow.node_tree.links
 soft = nodes.new("ShaderNodeTexImage")
-soft.image = bpy.data.images.load(str(ART/"ParticleSoft.png"), check_existing=True)
+soft.image = bpy.data.images.load(str(ART/"RoadReflection.png"), check_existing=True)
 alpha = nodes.new("ShaderNodeMath")
 alpha.operation = "MULTIPLY"
-alpha.inputs[1].default_value = .21
+alpha.inputs[1].default_value = .23
 links.new(soft.outputs["Alpha"], alpha.inputs[0])
 mix = nodes.new("ShaderNodeMixShader")
 links.new(alpha.outputs[0], mix.inputs[0])
@@ -178,8 +184,12 @@ for direction in (-1,1):
             glow = bpy.context.object
             glow.scale = (1.14,2.36,1)
             glow.data.materials.append(shoulder_glow)
+        lamp_z = center + (-10.35 if direction < 0 else 11.65)
+        bpy.ops.mesh.primitive_plane_add(size=1, location=(x-direction*1.04, lamp_z, -.015))
+        lamp_spill = bpy.context.object
+        lamp_spill.scale = (2.26,5.36,1)
+        lamp_spill.data.materials.append(shoulder_glow)
     cube("Distant bridge parapet",(x,164,.39),(.082,156,.13),metal)
-    cube("Edge stripe",(direction*number_setting(WORLD_SOURCE,"EdgeStripeX"),58,-.019),(.07,131,.008),stripe)
     for row in range(14):
         y=-4+9*row
         if row>2:
@@ -188,8 +198,6 @@ for direction in (-1,1):
             profile=(row+direction)%4
             mesh_asset(f"zsr_city_{profile}_{row%2}",(tower_x,y,0),facade,
                        0 if direction<0 else math.pi,(5.9,6.7,h))
-    for k in range(27):
-        cube("Lane dash",(direction*1.8,-4+k*3.65,-.016),(.085,1.65,.016),stripe)
 
 sky=paint("Distant panorama",(1,1,1),ART/horizon,emissive=True)
 mesh=bpy.data.meshes.new("Atmosphere UV")
@@ -407,7 +415,7 @@ background=scene.world.node_tree.nodes.get("Background")
 background.inputs[0].default_value=(*sky_color,1)
 background.inputs[1].default_value=.60
 scene.render.engine="CYCLES"
-scene.cycles.samples=24
-scene.cycles.use_denoising=False
+scene.cycles.samples = 64
+scene.cycles.use_denoising = False
 scene.render.filepath=str(OUT)
 bpy.ops.render.render(write_still=True)

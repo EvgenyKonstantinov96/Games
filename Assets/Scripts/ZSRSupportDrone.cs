@@ -4,11 +4,14 @@ namespace ZombieSurvivalRun
 {
     sealed class ZSRSupportDrone : MonoBehaviour
     {
+        const float SwivelLimit = 65f;
+        const float TrackingDegreesPerSecond = 220f;
         readonly Transform[] rotors = new Transform[4];
         Transform gimbal, muzzle;
         GameObject flash;
         float age, flashTime;
         Vector3 velocity;
+        Quaternion aimRotation = Quaternion.identity;
 
         public Vector3 Muzzle => muzzle.position;
 
@@ -60,7 +63,13 @@ namespace ZombieSurvivalRun
                 Mathf.Clamp(-velocity.x * 3.8f, -14f, 14f));
             for (int i = 0; i < rotors.Length; i++)
                 rotors[i].Rotate(0f, (i == 0 || i == 3 ? 1f : -1f) * 2700f * dt, 0f, Space.Self);
-            Aim(aim);
+            Vector3 direction = aim - gimbal.position;
+            if (direction.sqrMagnitude > .001f)
+            {
+                var desiredAim = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(direction), SwivelLimit);
+                aimRotation = Quaternion.RotateTowards(aimRotation, desiredAim, TrackingDegreesPerSecond * dt);
+                gimbal.rotation = aimRotation;
+            }
             if (flashTime > 0f)
             {
                 flashTime -= dt;
@@ -68,12 +77,9 @@ namespace ZombieSurvivalRun
             }
         }
 
-        public void Aim(Vector3 target)
-        {
-            Vector3 direction = target - gimbal.position;
-            if (direction.sqrMagnitude > .001f)
-                gimbal.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(direction), 62f);
-        }
+        public bool CanReach(Vector3 point) => Vector3.Angle(transform.forward, point - gimbal.position) <= SwivelLimit;
+
+        public bool IsOnTarget(Vector3 point) => Vector3.Angle(gimbal.forward, point - Muzzle) <= 4f;
 
         public void Fire()
         {

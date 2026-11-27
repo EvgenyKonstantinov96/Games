@@ -9,7 +9,6 @@ namespace ZombieSurvivalRun
         const float Length = 46f;
         const float DeckWidth = 9.7f;
         const float RailX = 4.98f;
-        const float EdgeStripeX = 4.65f;
         int level, chapter;
 
         public void Build(int index, int sourceLevel)
@@ -18,13 +17,10 @@ namespace ZombieSurvivalRun
             var plan = new ZSRLevelPlan(sourceLevel);
             chapter = plan.Environment;
             transform.position = new Vector3(0, 0, Length * (index - .5f));
-            ZSRVisuals.Box("cracked asphalt deck", transform, new Vector3(0, -.25f, 0),
-                new Vector3(DeckWidth, .45f, Length), ZSRVisuals.AsphaltDeluxe);
+            ZSRTrackArt.PlaceRoadDeck(transform, DeckWidth, Length);
             ZSRTrackArt.PlaceShoulderGlows(transform, Length, RailX, ZSRCampaignStyle.For(chapter).Accent);
             for (int side = -1; side <= 1; side += 2)
             {
-                ZSRVisuals.Box("road edge stripe", transform, new Vector3(side * EdgeStripeX, -.019f, 0),
-                    new Vector3(.07f, .008f, Length), ZSRVisuals.White);
                 ZSRVisuals.Box("sidewalk", transform, new Vector3(side * 6.04f, -.23f, 0),
                     new Vector3(2.23f, .46f, Length), ZSRVisuals.ConcreteDeluxe);
                 ZSRVisuals.Box("cast concrete curb", transform, new Vector3(side * RailX, .055f, 0),
@@ -40,15 +36,6 @@ namespace ZombieSurvivalRun
                 }
                 for (int b = 0; b < 2; b++) BuildBuilding(side, index, b);
                 BuildLamp(side, side < 0 ? -10f : 12f);
-            }
-
-            const int laneDashes = 13;
-            for (int i = 0; i < laneDashes; i++)
-            {
-                float z = Length * ((i + .5f) / laneDashes - .5f);
-                foreach (float x in new[] { -1.8f, 1.8f })
-                    ZSRVisuals.Box("reflective lane marking", transform, new Vector3(x, -.019f, z),
-                        new Vector3(.072f, .008f, 1.58f), ZSRVisuals.White);
             }
 
             // Distant skyline is authored once as a separately scrolling parallax layer.
@@ -182,63 +169,125 @@ namespace ZombieSurvivalRun
     public sealed class ZSRPickup : MonoBehaviour
     {
         public int Value = 25;
+        static Material brass;
+        Transform token;
+        float previousHeroX, phase, flightTime, flightDuration, pocketOffset;
+        Vector3 launch;
         bool claimed;
+
         public void Build(float x, float z, int value)
         {
             Value = value;
             transform.position = new Vector3(x, .97f, z);
-            ZSRVisuals.Cylinder("gold circular rim", transform, Vector3.zero, new Vector3(.53f, .060f, .53f), ZSRVisuals.GoldGlow, new Vector3(90, 0, 0));
-            ZSRVisuals.Cylinder("inner coin", transform, new Vector3(0, 0, -.08f), new Vector3(.39f, .04f, .39f), ZSRVisuals.Gold, new Vector3(90, 0, 0));
-            ZSRVisuals.Box("currency sign", transform, new Vector3(0, 0, -.14f), new Vector3(.05f, .45f, .03f), ZSRVisuals.GoldGlow);
+            var game = ZSRGame.Instance;
+            previousHeroX = game != null && game.Hero != null ? game.Hero.PositionX : 0f;
+            phase = z * .29f + x;
+            if (brass == null)
+            {
+                brass = ZSRVisuals.MatWithTexture(Color.white, "ProductionArt/SalvageToken", .67f);
+                if (brass.HasProperty("_Metallic")) brass.SetFloat("_Metallic", .56f);
+                if (brass.HasProperty("_EmissionColor"))
+                {
+                    brass.EnableKeyword("_EMISSION");
+                    brass.SetColor("_EmissionColor", new Color(.19f, .078f, .014f));
+                }
+            }
+            token = ZSRVisuals.MeshPart("salvage_token", "Stamped brass supply token", transform,
+                Vector3.zero, Vector3.one, brass).transform;
+            var renderer = token.GetComponent<MeshRenderer>();
+            if (renderer != null)
+                renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         }
-        void Update()
+
+        void LateUpdate()
         {
-            if (ZSRGame.Instance == null || !ZSRGame.Instance.IsRunning) return;
-            float dt = ZSRGame.Instance.FrameStep;
-            transform.position += Vector3.back * ZSRGame.Instance.RunSpeed * dt;
-            transform.Rotate(0, 170f * dt, 0);
-            float radius = ZSRGame.Instance.MagnetActive ? ZSRGame.MagnetRadius : 1.1f;
-            if (!claimed && transform.position.z < 2.2f && transform.position.z > -1.2f && Mathf.Abs(transform.position.x - ZSRGame.Instance.Hero.PositionX) < radius)
+            var game = ZSRGame.Instance;
+            if (game == null || !game.IsRunning || token == null) return;
+            float dt = game.FrameStep;
+            Vector3 hero = game.Hero.transform.position;
+            if (claimed)
+            {
+                flightTime += dt;
+                float t = Mathf.Clamp01(flightTime / flightDuration);
+                Vector3 pocket = hero + new Vector3(pocketOffset, .89f, .10f);
+                transform.position = Vector3.Lerp(launch, pocket, t * (.35f + .65f * t)) +
+                    Vector3.up * (.72f * t * (1f - t));
+                token.localScale = Vector3.one * (1f - .84f * t);
+                if (t >= 1f) Destroy(gameObject);
+                return;
+            }
+
+            Vector3 from = transform.position;
+            Vector3 to = from + Vector3.back * (game.RunSpeed * dt);
+            transform.position = to;
+            float beat = game.Elapsed * 3.6f + phase;
+            token.localPosition = Vector3.up * (.068f * Mathf.Sin(beat));
+            token.localRotation = Quaternion.Euler(7f * Mathf.Sin(beat), 56f * Mathf.Sin(beat * .72f), -7f);
+            float reach = game.MagnetActive ? ZSRGame.MagnetRadius : 1.1f;
+            if (ZSRPickupContact.CoinTime(from.x - previousHeroX, to.x - hero.x, from.z - hero.z, to.z - hero.z,
+                    reach, out float arrival))
             {
                 claimed = true;
-                ZSRGame.Instance.CollectCoin(Value, transform.position);
-                Destroy(gameObject);
+                launch = Vector3.Lerp(from, to, arrival) + token.localPosition;
+                token.localPosition = Vector3.zero;
+                transform.position = launch;
+                pocketOffset = launch.x < Mathf.Lerp(previousHeroX, hero.x, arrival) ? -.25f : .25f;
+                flightDuration = game.MagnetActive ? .27f : .14f;
+                game.CollectCoin(Value, launch);
             }
-            if (transform.position.z < -5f) Destroy(gameObject);
+            else if (to.z < hero.z - 5f) Destroy(gameObject);
+            previousHeroX = hero.x;
         }
     }
 
-    /// <summary>Gameplay and collision timing. Art is handled by ZSRVeilGateView.</summary>
+    /// <summary>One choice per pair, determined at the actual crossing of the veil.</summary>
     public sealed class ZSRBonusGate : MonoBehaviour
     {
         public BonusKind Kind;
         public ZSRBonusGate Sister;
-        bool claimed;
+        [SerializeField] ZSRVeilGateView view;
+        float previousHeroX;
+        bool resolved;
 
         public void Build(BonusKind kind, float x, float z)
         {
             Kind = kind;
             transform.position = new Vector3(x, 0, z);
-            ZSRVeilGateView.Build(transform, kind);
+            var game = ZSRGame.Instance;
+            previousHeroX = game != null && game.Hero != null ? game.Hero.PositionX : 0f;
+            view = ZSRVeilGateView.Build(transform, kind);
         }
 
-        void Update()
+        void LateUpdate()
         {
-            if (ZSRGame.Instance == null || !ZSRGame.Instance.IsRunning) return;
             var game = ZSRGame.Instance;
+            if (game == null || !game.IsRunning || view == null) return;
             float previousZ = transform.position.z;
-            transform.position += Vector3.back * game.RunSpeed * game.FrameStep;
-            float heroZ = game.Hero.transform.position.z;
-            if (!claimed && previousZ > heroZ && transform.position.z <= heroZ)
+            transform.position += Vector3.back * (game.RunSpeed * game.FrameStep);
+            float gateX = transform.position.x;
+            Vector3 hero = game.Hero.transform.position;
+            float distance = transform.position.z - hero.z;
+            if (!resolved && ZSRPickupContact.CrossedPlane(previousZ - hero.z, distance,
+                    previousHeroX - gateX, hero.x - gateX, out float hitX))
             {
-                claimed = true;
-                if (Mathf.Abs(transform.position.x - game.Hero.PositionX) < 1.55f)
+                bool crossed = ZSRPickupContact.InsideVeil(hitX);
+                Resolve(crossed, hitX);
+                if (crossed)
                 {
+                    if (Sister != null) Sister.Resolve(false, 0f);
                     game.ApplyBonus(Kind);
-                    if (Sister != null) Sister.claimed = true;
                 }
             }
-            if (transform.position.z < -7f) Destroy(gameObject);
+            view.Tick(game.Elapsed, distance, hero.x - gateX);
+            previousHeroX = hero.x;
+            if (distance < -7f) Destroy(gameObject);
+        }
+
+        void Resolve(bool crossed, float hitX)
+        {
+            if (resolved) return;
+            resolved = true;
+            view.Resolve(crossed, hitX);
         }
     }
 

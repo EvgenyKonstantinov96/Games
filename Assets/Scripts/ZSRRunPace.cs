@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace ZombieSurvivalRun
@@ -46,6 +47,27 @@ namespace ZombieSurvivalRun
             Scale = 1f;
             Recharge = remaining = 0f;
         }
+    }
+
+    internal static class ZSRHeroGait
+    {
+        // The authored clips already have different step lengths. Change their cadence
+        // gradually as the road speeds up, with a small allowance for diagonal travel.
+        internal static float Cadence(int hero, float roadSpeed, float paceScale, float sideways, bool walking)
+        {
+            float forward = Math.Max(1f, roadSpeed * paceScale);
+            float diagonal = MathF.Sqrt(1f + sideways * sideways / (forward * forward));
+            float tempo = walking ? 1f : MathF.Sqrt(paceScale);
+            return Math.Clamp((hero == 1 ? 1.07f : 1f) * MathF.Sqrt(roadSpeed / 11.7f) *
+                tempo * Math.Min(diagonal, 1.16f), .74f, 1.75f);
+        }
+
+        internal static float Heading(float sideways, float forward) =>
+            Math.Clamp(MathF.Atan2(sideways, Math.Max(1f, forward)) * (180f / MathF.PI), -32f, 32f);
+
+        // Bank into the push, then brace in the opposite direction when braking.
+        internal static float Bank(float sideways, float acceleration) =>
+            Math.Clamp(-sideways * .58f - Math.Clamp(acceleration, -65f, 65f) * .13f, -13f, 13f);
     }
 
     /// <summary>Classifies each press once. Deltas are expressed as fractions of screen width.</summary>

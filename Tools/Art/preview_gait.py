@@ -11,6 +11,7 @@ args = sys.argv[sys.argv.index("--")+1:]
 assets, output = map(lambda x: Path(x).resolve(), args[:2])
 output.mkdir(parents=True, exist_ok=True)
 walking = "--walk" in args
+falling = "--fall" in args
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 scene = bpy.context.scene
@@ -23,6 +24,14 @@ texture.image = bpy.data.images.load(str(assets/"CharacterAtlas.png"))
 shader = nodes.get("Principled BSDF")
 shader.inputs["Roughness"].default_value = .68
 atlas.node_tree.links.new(texture.outputs["Color"], shader.inputs["Base Color"])
+if falling:
+    normals = nodes.new("ShaderNodeTexImage")
+    normals.image = bpy.data.images.load(str(assets/"CharacterAtlas_normal.png"))
+    normals.image.colorspace_settings.name = "Non-Color"
+    normal = nodes.new("ShaderNodeNormalMap")
+    normal.inputs["Strength"].default_value = .35
+    atlas.node_tree.links.new(normals.outputs["Color"], normal.inputs["Color"])
+    atlas.node_tree.links.new(normal.outputs["Normal"], shader.inputs["Normal"])
 
 cast = (
     ("Eva",(-1.94,0,0),math.pi*.52), ("Max",(-.73,0,0),math.pi*.65),
@@ -30,6 +39,9 @@ cast = (
 )
 if walking:
     cast = (("Eva",(-.79,0,0),math.pi*.51), ("Max",(.79,0,0),math.pi*.66))
+if falling:
+    cast = (("Walker",(-1.78,0,0),math.pi*.89), ("Runner",(0,0,0),math.pi*1.11),
+            ("Brute",(1.80,0,0),math.pi*1.04))
 for name, position, yaw in cast:
     old = set(bpy.data.objects)
     bpy.ops.import_scene.fbx(filepath=str(assets/(name+".fbx")))
@@ -73,16 +85,21 @@ bpy.ops.object.camera_add(location=(.02,-11,4.1))
 camera = bpy.context.object
 camera.rotation_euler = (Vector((0,0,.97))-camera.location).to_track_quat("-Z","Y").to_euler()
 camera.data.type = "ORTHO"
-camera.data.ortho_scale = 4.04 if walking else 5.44
+camera.data.ortho_scale = 6.2 if falling else 4.04 if walking else 5.44
 scene.camera = camera
 scene.render.engine = "CYCLES"
 scene.cycles.samples = 20
 scene.cycles.use_denoising = False
+if falling:
+    scene.cycles.samples = 8
+    scene.cycles.use_denoising = True
 scene.render.resolution_x,scene.render.resolution_y = 704,396
 scene.render.resolution_percentage = 100
 scene.render.image_settings.file_format = "PNG"
 scene.render.fps = 30
 scene.frame_start,scene.frame_end = (219,252) if walking else (33,56)
+if falling:
+    scene.frame_start, scene.frame_end = 147, 168
 if "--step" in args:
     scene.frame_step = int(args[args.index("--step")+1])
 if "--still" in args:

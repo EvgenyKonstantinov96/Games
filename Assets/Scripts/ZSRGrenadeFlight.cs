@@ -4,63 +4,76 @@ namespace ZombieSurvivalRun
 {
     sealed class ZSRGrenadeFlight
     {
-        const float ReleaseTime = .22f;
+        const float Windup = .22f;
+        const float GroundHeight = .12f;
+        const float TrailSeconds = .13f;
         readonly GameObject model;
-        readonly TrailRenderer trail;
-        readonly ZSRZombie target;
-        Vector3 start, landing;
-        float elapsed;
-        bool tracking;
-        readonly float duration, height;
+        readonly LineRenderer trail;
+        float windupLeft = Windup;
+        float age, duration, height, roadTravel;
+        Vector3 launch, landingOnRoad;
 
         public Vector3 Position => model.transform.position;
         public int ItemLevel { get; }
+        public bool WillRelease(float step) => windupLeft > 0f && step >= windupLeft;
 
-        public ZSRGrenadeFlight(Transform parent, ZSRCombatEffects effects, Vector3 hand, ZSRZombie target,
-            Vector3 destination, int itemLevel)
+        public ZSRGrenadeFlight(Transform parent, ZSRCombatEffects effects, Vector3 hand, int itemLevel)
         {
-            this.target = target;
-            tracking = target != null;
             ItemLevel = itemLevel;
-            start = hand;
-            landing = destination;
-            float distance = Vector3.Distance(hand, destination);
-            duration = Mathf.Clamp(.44f + distance * .008f, .52f, .81f);
-            height = Mathf.Clamp(.85f + distance * .042f, 1.2f, 2.8f);
             model = ZSRVisuals.MeshPart("combat_grenade", "Live grenade", parent, Vector3.zero, Vector3.one, ZSRTrackArt.Surface);
             model.transform.position = hand;
             ZSRVisuals.Sphere("Fuse indicator", model.transform, new Vector3(0, .106f, 0),
                 new Vector3(.035f, .027f, .035f), ZSRVisuals.OrangeGlow);
             trail = effects.GrenadeTrail(model.transform);
-            if (trail != null) trail.emitting = false;
         }
 
-        public bool Tick(float dt, float runSpeed, Vector3 hand)
+        public bool Tick(float step, float runSpeed, Vector3 hand, ZSRZombie aimAtRelease)
         {
-            elapsed += dt;
-            if (tracking && target != null && target.Alive && Mathf.Abs(target.DistanceZ - landing.z) < 4f)
+            if (windupLeft > 0f)
             {
-                landing.x = target.X;
-                landing.z = Mathf.Max(.75f, target.DistanceZ);
-            }
-            else
-            {
-                // A recycled enemy can become a different wave member.
-                tracking = false;
-                landing.z = Mathf.Max(.75f, landing.z - runSpeed * dt);
+                float held = Mathf.Min(windupLeft, step);
+                windupLeft -= held;
+                step -= held;
+                model.transform.position = hand;
+                if (windupLeft > 0f) return false;
+
+                launch = hand;
+                var target = aimAtRelease != null ? aimAtRelease.transform.position : hand + Vector3.forward * 22f;
+                target.y = GroundHeight;
+                float distance = Vector3.Distance(launch, target);
+                duration = Mathf.Clamp(.44f + distance * .008f, .52f, .81f);
+                height = Mathf.Clamp(.85f + distance * .042f, 1.2f, 2.8f);
+                // Freeze the aim at release. Store it in road coordinates so a subsequent
+                // change of runner pace moves the whole flight with the scrolling scene.
+                var velocity = aimAtRelease != null ? aimAtRelease.TravelVelocity : Vector3.back * runSpeed;
+                landingOnRoad = target + velocity * duration;
+                landingOnRoad.z = Mathf.Max(.75f, landingOnRoad.z) + runSpeed * duration;
+                landingOnRoad.y = GroundHeight;
             }
 
-            if (elapsed < ReleaseTime)
+            float flying = Mathf.Min(step, duration - age);
+            age += flying;
+            roadTravel += runSpeed * flying;
+            model.transform.position = ArcPoint(age);
+            float turn = age / duration;
+            model.transform.rotation = Quaternion.Euler(610f * turn, 105f * turn, 40f * turn);
+            if (trail != null && age > 0f)
             {
-                start = hand;
-                model.transform.position = hand;
-                return false;
+                trail.enabled = true;
+                float tailAge = Mathf.Max(0f, age - TrailSeconds);
+                for (int i = 0; i < trail.positionCount; i++)
+                    trail.SetPosition(i, ArcPoint(Mathf.Lerp(tailAge, age, i / (trail.positionCount - 1f))));
             }
-            if (trail != null && !trail.emitting) trail.emitting = true;
-            float t = Mathf.Clamp01((elapsed - ReleaseTime) / duration);
-            model.transform.position = Vector3.Lerp(start, landing, t) + Vector3.up * (4f * t * (1f - t) * height);
-            model.transform.rotation = Quaternion.Euler(610f * t, 105f * t, 40f);
-            return t >= 1f;
+            return age >= duration;
+        }
+
+        Vector3 ArcPoint(float time)
+        {
+            float t = time / duration;
+            var p = Vector3.Lerp(launch, landingOnRoad, t);
+            p.y += 4f * height * t * (1f - t);
+            p.z -= roadTravel;
+            return p;
         }
 
         public void Discard()

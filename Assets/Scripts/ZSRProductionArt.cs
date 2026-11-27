@@ -142,7 +142,7 @@ namespace ZombieSurvivalRun
         float hitUntil;
         float shootUntil;
         int currentState = 0;
-        float lateralLean;
+        float lateralLean, strideHeading;
         public Transform WeaponAnchor { get; private set; }
 
         public static ZSRProductionArt CreateHero(Transform parent, int selected, WeaponType gun)
@@ -386,16 +386,16 @@ namespace ZombieSurvivalRun
             if(motion != null) motion.Running = true;
         }
 
-        public void SetLateralLean(float movement, float dt)
+        public void SetLateralLean(float sideways, float acceleration, float forward, float dt)
         {
             if (dead) return;
-            float tilt = Mathf.Clamp(-movement * 1.48f, -11f, 11f);
-            lateralLean = Mathf.Lerp(lateralLean, tilt, 1f - Mathf.Exp(-dt * 10f));
-            if (bundled != null && bundled.TrySetSteeringRoll(lateralLean))
-                transform.localRotation = Quaternion.Euler(0f, -lateralLean * .47f, 0f);
+            float settle = 1f - Mathf.Exp(-dt * 12f);
+            lateralLean = Mathf.Lerp(lateralLean, ZSRHeroGait.Bank(sideways, acceleration), settle);
+            strideHeading = Mathf.Lerp(strideHeading, ZSRHeroGait.Heading(sideways, forward), settle);
+            if (bundled != null && bundled.TrySetSteering(lateralLean, strideHeading))
+                transform.localRotation = Quaternion.Euler(0f, strideHeading, 0f);
             else
-                transform.localRotation = Quaternion.Euler(Mathf.Abs(lateralLean) * .15f,
-                    -lateralLean * .40f, lateralLean);
+                transform.localRotation = Quaternion.Euler(Mathf.Abs(lateralLean) * .15f, strideHeading, lateralLean);
         }
 
         public void Tick(bool running, float speed, bool walking = false)

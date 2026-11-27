@@ -9,9 +9,15 @@ namespace ZombieSurvivalRun
         Material veilMaterial, signMaterial, accentMaterial;
         Mesh veilMesh, signMesh;
 
-        public static void Build(Transform parent, BonusKind kind)
+        static readonly int Drive = Shader.PropertyToID("_Drive");
+        bool resolved, selected;
+        float passageStart, contactU;
+
+        public static ZSRVeilGateView Build(Transform parent, BonusKind kind)
         {
-            parent.gameObject.AddComponent<ZSRVeilGateView>().Construct(parent, kind);
+            var view = parent.gameObject.AddComponent<ZSRVeilGateView>();
+            view.Construct(parent, kind);
+            return view;
         }
 
         internal static (int slot, string label, string texture, Color tint, string title) Appearance(BonusKind kind)
@@ -67,10 +73,32 @@ namespace ZombieSurvivalRun
             }
             signMaterial = new Material(displayShader) { name = "Gate sign / " + appearance.label };
             signMaterial.SetTexture("_BaseMap", labels);
+            signMaterial.SetFloat("_LabelCenter", .25f + .5f * (appearance.slot % 2));
             signMaterial.renderQueue = (int)RenderQueue.Transparent + 1;
             var uv = new Rect(appearance.slot % 2 * .5f, .75f - appearance.slot / 2 * .25f, .5f, .25f);
             signMesh = PlacePanel("Bonus sign / " + appearance.label, parent, new Vector3(0f, 2.65f, -.26f),
                 new Vector2(2.42f, 1.20f), signMaterial, uv);
+        }
+
+        internal void Resolve(bool crossed, float hitX)
+        {
+            resolved = true;
+            selected = crossed;
+            contactU = Mathf.Clamp01(.5f + hitX / 2.38f);
+            passageStart = ZSRGame.Instance.Elapsed;
+            if (signMaterial != null) signMaterial.SetFloat("_Visibility", crossed ? .74f : .31f);
+            if (!crossed && veilMaterial != null) veilMaterial.SetFloat("_Visibility", .25f);
+        }
+
+        internal void Tick(float elapsed, float distance, float runnerOffset)
+        {
+            if (veilMaterial == null) return;
+            float contact = resolved ? contactU : Mathf.Clamp01(.5f + runnerOffset / 2.38f);
+            float pressure = Mathf.Clamp01(1f - distance / 3.2f) *
+                             Mathf.Clamp01((1.72f - Mathf.Abs(runnerOffset)) / .45f);
+            if (resolved) pressure = selected ? 1f : 0f;
+            float release = selected ? Mathf.Clamp01((elapsed - passageStart) / .32f) : 0f;
+            veilMaterial.SetVector(Drive, new Vector4(Mathf.Repeat(elapsed * .18f, 1f), contact, pressure, release));
         }
 
         static void BuildFallbackSign(Transform parent, string label)

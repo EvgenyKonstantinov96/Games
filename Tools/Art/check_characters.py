@@ -100,6 +100,19 @@ for path in sorted(ROOT.glob("*.fbx")):
     assert (points[1].translation-points[2].translation).length > .005, path
     assert (points[0].translation-points[-1].translation).length > .2, path
     check_anatomy(skin, rig, scene, path, hero)
+    if not hero:
+        floors, heads = [], []
+        graph = bpy.context.evaluated_depsgraph_get()
+        for frame in range(147, 169):
+            scene.frame_set(frame)
+            model = skin.evaluated_get(graph)
+            floors.append(min((model.matrix_world @ vertex.co).z for vertex in model.data.vertices))
+            heads.append((rig.matrix_world @ rig.pose.bones["Head"].head).z)
+        assert max(map(abs, floors)) < .012, (path, "death contact", floors)
+        assert heads[-1] < heads[0] * .50, (path, "head remained upright", heads)
+        assert abs(heads[-1] - heads[-2]) < .025, (path, "unsettled landing", heads)
+        print(f"FALL {path.stem}: 22 poses, pavement error {max(map(abs, floors)):.3f} m, "
+              f"head {heads[0]:.2f} to {heads[-1]:.2f} m", flush=True)
     if path.stem == "Boss":
         scene.frame_set(132)
         charge = [rig.pose.bones["Hand"+side].head.copy() for side in ("L", "R")]
