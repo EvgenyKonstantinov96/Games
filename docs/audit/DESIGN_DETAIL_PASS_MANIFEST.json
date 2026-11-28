@@ -1,0 +1,56 @@
+{
+  "code_commit": "e77db6627f27b8cc5604eafee341cc39c353f88e",
+  "base_commit": "d0307fe8006fb2f48536e34670c15425495f6b1f",
+  "unity_version": "6000.3.28f1",
+  "asset_sha256": {
+    "Assets/Resources/ProductionArt/Armored.fbx": "219c61b236f4c36b80971ba8057b708a0cbc53b6c00af026d58ff8b0ff247ee9",
+    "Assets/Resources/ProductionArt/Boss.fbx": "d34668a2cfe2bdf3d1e0149cd83bdc6dffe4a9e50ba5be6f8cac65c996119c9d",
+    "Assets/Resources/ProductionArt/Brute.fbx": "10a5c8fb6eb042c9ae3e2331fb5b3adcf57c12e9175ee88356d1b9cc51edb0b2",
+    "Assets/Resources/ProductionArt/Crawler.fbx": "9bbaf7a4a629e986f5c979533a8db60566758fc83e093c71ccbd65b1980bc20b",
+    "Assets/Resources/ProductionArt/Eva.fbx": "56de30123639a571096e3e989152335ba81c18852daa79da6c9f46219fa3191d",
+    "Assets/Resources/ProductionArt/Max.fbx": "cc2ab32d51de19ba9c61ded6e59fe0f9811d91bfcb47139138101c42c0461605",
+    "Assets/Resources/ProductionArt/Runner.fbx": "b2f383dfe04dcfcab879695b7bbb69e5e20c3f2b8d7a9dfc4211042756839d66",
+    "Assets/Resources/ProductionArt/Toxic.fbx": "9d639b78bc1f0bf53c881919faedbdfadd136c1721b7b0c305f9f046481ff959",
+    "Assets/Resources/ProductionArt/Walker.fbx": "5e0bb3a4734c6047a1facdf3cdee51fc313a6591fb7bedabe4b68e835d2808da",
+    "Assets/Resources/ProductionArt/CharacterAtlas.png": "3f7a903637501ed23869623c84e6572a4ffe076b820095f659342f56a3ebc149",
+    "Assets/Resources/ProductionArt/CharacterAtlas_emission.png": "0f8a724599b9a90c632a315c1340388a8b64d2813b71f537b80fb55265d62f2e",
+    "Assets/Resources/ProductionArt/CharacterAtlas_normal.png": "dff66abed32767a2b350c08b4a1f932c618a3ff3efe1756e2894286a5eff8e03",
+    "Assets/Resources/ProductionArt/CharacterAtlas_surface.png": "09d3af5d748282ae9718b85bea0a530a268498fa8ffd7d0ade8d0b7f91b95843",
+    "Assets/Resources/ProductionArt/TrackPropAtlas.png": "ec44b0686c568e36d46eed0d5878e129bea653dc1bb615b285a26bd909367e7d",
+    "Assets/Resources/ProductionArt/TrackPropAtlas_normal.png": "4837fe893d85ff8509aa6616fd5b99cc6537119082608bb67219398ee40cb38b",
+    "Assets/Resources/ProductionArt/TrackPropAtlas_surface.png": "220f5faa764e4f78b3f8c32e8546e53b5b379fff4c5cd9d8f76ad53d0bf62946",
+    "Assets/Resources/Textures/city_facades.png": "a18a92addfa78cba6fcf3b004892424dc719983f2b52d2d7c69bd6ceb7431020",
+    "Assets/Resources/Textures/city_facades_emission.png": "5776a9929ae44f2b45c2b1cefdac1a3ba35d8ef3636764370f831b3d04cd5f9f",
+    "Assets/Resources/Meshes/track_barrier.obj": "7cca003f53e4201a5d322c33fe5035aebb06b070a532fcb482f012f7da44e969",
+    "Assets/Resources/Meshes/track_gate_pylon.obj": "7d59760b8236faa26110b07d403826a070ec773bda16f654d5d7f98f73a2a8d8",
+    "Assets/Resources/Meshes/track_guardrail.obj": "6305113d0f250357e1a1b9959abf0eab33a556cd8b3160a03721b85e156d389f",
+    "Assets/Resources/Meshes/track_spikes.obj": "ab2f5d07e94eb38d2737ba51a1df609f5745787fe2ae166af90fd1e1127317bd",
+    "Assets/Resources/Meshes/track_rubble.obj": "4fb64492af4cd5422a2555ba99f178a76b1a45a0bd7c64cc9033744c005d3581",
+    "Assets/Resources/Meshes/track_wreck.obj": "bf13799341fca3d97d83f1101f48dbe47dc9cf7a3810e171a980417a7108e640"
+  },
+  "character_surfaces": {
+    "result": "PASS",
+    "normal_max_unit_error": 0.013423,
+    "smoothness_medians": {
+      "0": 35.0,
+      "3": 92.0,
+      "4": 104.0,
+      "19": 65.0,
+      "21": 124.0,
+      "24": 82.0,
+      "26": 60.0,
+      "36": 210.0,
+      "40": 38.0,
+      "41": 37.0
+    },
+    "deterministic_repeat": true,
+    "sha256": {
+      "CharacterAtlas.png": "3f7a903637501ed23869623c84e6572a4ffe076b820095f659342f56a3ebc149",
+      "CharacterAtlas_normal.png": "dff66abed32767a2b350c08b4a1f932c618a3ff3efe1756e2894286a5eff8e03",
+      "CharacterAtlas_surface.png": "09d3af5d748282ae9718b85bea0a530a268498fa8ffd7d0ade8d0b7f91b95843",
+      "CharacterAtlas_emission.png": "0f8a724599b9a90c632a315c1340388a8b64d2813b71f537b80fb55265d62f2e"
+    },
+    "scope": "Python asset checks only; Unity import/render/device acceptance not tested"
+  },
+  "scope": "Blender and resource/managed-code checks; native Unity and Android blocked by missing Editor licence"
+}
