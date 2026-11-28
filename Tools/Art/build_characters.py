@@ -9,10 +9,12 @@ from pathlib import Path
 from zipfile import ZipFile
 
 import bpy
+import bmesh
 from mathutils import Matrix, Quaternion, Vector
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from gait import eased_keys, foot_target
 from makehuman_body import Body, SIDES
+from character_atlas import uv as atlas_uv
 
 OUT = Path(sys.argv[sys.argv.index("--") + 1]).resolve()
 OUT.mkdir(parents=True, exist_ok=True)
@@ -30,7 +32,7 @@ CAST = [
     ("Eva", 1.81, .43, .37, 1, 10, 5),
     ("Walker", 1.89, .40, .31, 6, 11, 7),
     ("Runner", 1.86, .38, .30, 7, 12, 8),
-    ("Armored", 1.98, .56, .36, 4, 11, 5),
+    ("Armored", 1.98, .56, .36, 0, 11, 5),
     ("Brute", 2.10, .76, .48, 13, 13, 8),
     ("Toxic", 1.84, .47, .34, 6, 12, 21),
     ("Crawler", 1.72, .44, .31, 7, 11, 8),
@@ -49,7 +51,7 @@ class Character:
         self.hero = self.name in ("Max", "Eva")
         self.crawler = self.name == "Crawler"
         self.tank = self.name in ("Brute", "Boss")
-        self.trousers = {"Walker": 2, "Runner": 8, "Toxic": 2, "Crawler": 8,
+        self.trousers = {"Walker": 2, "Runner": 8, "Toxic": 2, "Crawler": 8,"Armored":2,
                          "Brute": 20}.get(self.name, self.cloth)
         self.random = random.Random(self.name)
         self.bones = {}
@@ -197,57 +199,21 @@ class Character:
                 knee = self.bones["Shin"+side][0]
                 self.panel(knee+v(0,.064,-.025), (.098,.029,.114), 4, "Shin"+side)
                 self.panel(knee+v(0,.083,.012), (.065,.012,.014), self.trim, "Shin"+side)
-            eye = self.body.joint(("r-" if sign < 0 else "l-")+"eye")
-            eye.y -= .006
-            self.volume(eye, (.012,.013,.011), 16, "Head", 7)
-            self.volume(eye+v(0,.011,0), (.005,.004,.005), 17 if self.hero else self.trim, "Head", 7)
+        from survivor_clothing import append_fitted_head_part
+        append_fitted_head_part(self,CLOTHING,'eyes','low-poly',
+                                36 if self.name=='Max' else 37 if self.name=='Eva' else 38,.85)
         if self.hero:
             from survivor_clothing import append_hair
             append_hair(self,CLOTHING)
             self.hero_kit()
         else:
             self.infection()
+            from infected_detail import append_infected_details
+            append_infected_details(self,CLOTHING)
 
     def hero_kit(self):
-        h,w=self.h,self.shoulder
-        self.panel((0,.126,h*.719),(w*.61,.082,.287),4,"Chest")
-        first = len(self.vertices)
-        pack_center = v(0,-.151,h*.711)
-        self.panel(pack_center,(w*.69,.154,.277),0,"Chest")
-        self.panel(pack_center+v(0,-.078,-.022),(w*.54,.027,.186),2,"Chest")
-        self.panel(pack_center+v(0,-.096,.036),(w*.43,.012,.020),self.trim,"Chest")
-        self.panel(pack_center+v(0,-.098,.018),(w*.31,.005,.008),8,"Chest")
-        self.panel(pack_center+v(0,-.036,-.142),(w*.57,.071,.034),3,"Chest")
-        if self.name == "Max":
-            self.panel(pack_center+v(-w*.30,-.015,.054),(.075,.058,.131),3,"Chest")
-            mast = pack_center+v(-w*.34,-.015,.113)
-            self.surface(mast,mast+v(-.016,-.006,.110),
-                         [(0,.009,.009),(.16,.008,.008),(.88,.005,.005),(1,.002,.002)],
-                         4,"Chest",6)
-        else:
-            self.panel(pack_center+v(-w*.17,-.096,-.044),(.070,.008,.054),1,"Chest")
-            self.panel(pack_center+v(-w*.17,-.101,-.044),(.032,.004,.009),16,"Chest")
-            self.panel(pack_center+v(-w*.17,-.101,-.044),(.009,.004,.032),16,"Chest")
-        for s in (-1,1):
-            self.panel((s*w*.25,-.234,h*.720),(.030,.016,.238),3,"Chest",s*.14)
-            self.panel((s*w*.228,-.245,h*.685),(.025,.012,.023),4,"Chest",s*.14)
-            self.panel((s*w*.318,-.198,h*.671),(.089,.061,.107),8 if self.name=="Eva" else 0,"Chest")
-            self.panel((s*w*.318,-.232,h*.702),(.080,.014,.028),4,"Chest")
-            self.panel((s*w*.22,-.251,h*.664),(.087,.006,.012),3,"Chest")
-            self.panel((s*w*.26,.156,h*.704),(.069,.055,.155),0,"Chest",s*.05)
-        shift = self.body.back_at(pack_center.z) - .049 - pack_center.y
-        for i in range(first,len(self.vertices)):
-            x,y,z = self.vertices[i]
-            if y < 0:
-                self.vertices[i] = (x,y+shift,z)
-        self.panel((0,.134,h*.553),(.13,.025,.038),3,"Pelvis")
-        self.panel((0,.153,h*.553),(.049,.018,.035),5,"Pelvis")
-        for s in (-1,1):
-            height, width = h*.775, s*w*.287
-            front = self.body.chest_surface(width,height)
-            self.panel((width,front+.008,height),(.060,.011,.080),3,"Chest",s*.35)
-            self.panel((width,front+.015,height+.012),(.025,.004,.029),self.trim,"Chest",s*.35)
-
+        from tactical_wardrobe import append_field_gear
+        append_field_gear(self)
         for side,sign in SIDES:
             ankle=self.bones["Foot"+side][0]
             # A close fitting ankle boot, not a rigid mid-calf bucket. Blend
@@ -277,9 +243,8 @@ class Character:
     def infection(self):
         h,w=self.h,self.shoulder
         if self.name=="Armored":
-            self.volume((0,.018,h*.977),(.118,.125,.092),4,"Head",14)
-            self.panel((0,.127,h*.957),(.178,.028,.054),3,"Head")
-            self.panel((0,.146,h*.956),(.125,.012,.017),5,"Head")
+            from infected_detail import append_fitted_helmet
+            append_fitted_helmet(self)
             self.panel((0,.143,h*.745),(w*.72,.092,.267),4,"Chest")
             self.panel((0,.184,h*.699),(w*.63,.038,.095),3,"Chest")
             self.panel((0,.202,h*.681),(w*.50,.018,.060),4,"Chest")
@@ -288,12 +253,21 @@ class Character:
                 self.panel((s*w*.51,.135,h*.775),(.115,.027,.054),3,"Chest",s*.28)
                 self.panel((s*w*.50,.156,h*.818),(.083,.012,.026),5,"Chest",s*.24)
         elif self.tank:
+            for side,sign in SIDES:
+                for digit in range(1,6):
+                    key=f'Finger{digit}{side}'
+                    a,b,_=self.bones[key]
+                    direction=(b-a).normalized()
+                    reach=.052 if self.name=='Boss' else .028
+                    self.surface(b-direction*.007,b+direction*reach+v(0,.008,-.006),
+                                 [(0,.009,.007),(.28,.008,.006),(.76,.004,.003),(1,.001,.001)],
+                                 19,key,8)
             if self.name == "Boss":
                 for side, sign in SIDES:
                     shoulder = self.bones["UpperArm"+side][0]
                     for i in range(3):
-                        start = shoulder + v(-sign*(.08+.053*i),-.042,.018+i*.027)
-                        end = start + v(sign*(.079+i*.021),-.073,.065+i*.025)
+                        start = shoulder + v(sign*(.018+.035*i),.035,.015+i*.012)
+                        end = start + v(sign*(.10+i*.021),.018,.115+i*.025)
                         self.surface(start,end,[(0,.047,.041),(.27,.039,.033),
                                                 (.66,.021,.019),(1,.001,.001)],19,"Chest",8)
                 core_z = h*.733
@@ -301,14 +275,9 @@ class Character:
                 self.volume((0,core_front+.006,core_z),(.114,.040,.136),15,"Chest",10)
                 self.volume((0,core_front+.034,core_z),(.048,.023,.069),22,"Chest",10)
                 for side, sign in SIDES:
-                    for layer in range(3):
-                        z = h*(.686+layer*.047)
-                        x = sign*(.102+layer*.027)
-                        front = self.body.chest_surface(x,z)
-                        self.volume((x,front+.007,z),(.075,.036,.042),13 if layer == 1 else 15,"Chest",8)
                     start = v(sign*.019,core_front+.038,core_z)
                     end = v(sign*.152,self.body.chest_surface(sign*.152,core_z+.085)+.021,core_z+.085)
-                    self.surface(start,end,[(0,.016,.012),(.48,.012,.009),(1,.003,.002)],22,"Chest",6)
+                    self.surface(start,end,[(0,.007,.004),(.48,.005,.004),(1,.001,.001)],22,"Chest",7)
             else:
                 region = self.bones["Chest"][0] + v(-.167,.106,.205)
                 for i in range(3):
@@ -349,7 +318,6 @@ class Character:
             if self.name=="Walker":
                 self.fabric_flap((v(-.23,.042,h*.798),v(-.134,.128,h*.807)),
                                  (v(-.18,.133,h*.687),v(-.273,.061,h*.742)),6,"Chest")
-                self.panel((.087,.123,h*.908),(.026,.057,.046),15,"Head",.4)
                 # Rolled, mismatched sleeve and dangling work-shirt seam.
                 origin = self.bones["UpperArmR"][0]
                 self.surface(origin+v(.013,-.010,-.059),origin+v(.019,-.008,-.102),
@@ -378,27 +346,7 @@ class Character:
         uv = data.uv_layers.new(name="Atlas")
         for p,(tile,coords) in zip(data.polygons,self.tiles):
             for loop,(x,y) in zip(p.loop_indices,coords):
-                if tile >= 40:
-                    slot = tile-40
-                    if slot == 0:
-                        uv.data[loop].uv = (.5+x*.5, .5+y*.5)
-                    elif slot == 1:
-                        uv.data[loop].uv = (x*.5, y*.5)
-                    else:
-                        cell = slot-2
-                        uv.data[loop].uv = (.5+(cell%2+x)*.25, (1-cell//2+y)*.25)
-                elif tile < 24:
-                    uv.data[loop].uv=((tile%8+.035+x*.93)/8, (7-tile//8+.035+y*.93)/8)
-                elif tile < 32:
-                    slot=tile-24
-                    uv.data[loop].uv=((slot%4+.013+x*.974)/4, (1-slot//4+.013+y*.974)/4)
-                else:
-                    uv.data[loop].uv=((tile-32+.013+x*.974)/4, (.035+y*.93)/8+.50)
-        for polygon, (tile, _) in zip(data.polygons, self.tiles):
-            if tile < 40:
-                for loop in polygon.loop_indices:
-                    old = uv.data[loop].uv
-                    uv.data[loop].uv = (old.x*.5, .5+old.y*.5)
+                uv.data[loop].uv = atlas_uv(tile,x,y)
         groups={name:skin.vertex_groups.new(name=name) for name in self.bones}
         for i, weights in enumerate(self.weights):
             for key,weight in weights.items():
@@ -702,6 +650,23 @@ class Character:
             proxy.name = self.name+"_LOD"+str(index)
             bpy.context.collection.objects.link(proxy)
             proxy.modifiers.clear()
+            # The shared material has multiple atlas islands. Split UV seams
+            # before collapse so distant meshes cannot interpolate skin pixels
+            # through another garment or the unrelated opposite atlas corner.
+            bm=bmesh.new()
+            bm.from_mesh(proxy.data)
+            uv_layer=bm.loops.layers.uv.active
+            seams=[]
+            for edge in bm.edges:
+                if len(edge.link_faces)!=2:continue
+                a,b=edge.link_faces
+                first={loop.vert:loop[uv_layer].uv.copy() for loop in a.loops if loop.vert in edge.verts}
+                second={loop.vert:loop[uv_layer].uv.copy() for loop in b.loops if loop.vert in edge.verts}
+                if any((first[vertex]-second[vertex]).length_squared>1e-12 for vertex in edge.verts):
+                    seams.append(edge)
+            bmesh.ops.split_edges(bm,edges=seams)
+            bm.to_mesh(proxy.data)
+            bm.free()
             reduction = proxy.modifiers.new("Distance topology","DECIMATE")
             reduction.ratio = ratio
             evaluated = proxy.evaluated_get(bpy.context.evaluated_depsgraph_get())

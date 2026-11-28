@@ -5,6 +5,8 @@ from pathlib import Path
 
 import bpy
 from mathutils import Vector
+sys.path.insert(0,str(Path(__file__).resolve().parent))
+from character_atlas import SLOTS,SIZE
 
 ROOT=Path(sys.argv[sys.argv.index("--")+1])
 CAST={"Max","Eva","Walker","Runner","Armored","Brute","Toxic","Crawler","Boss"}
@@ -86,6 +88,11 @@ for path in sorted(ROOT.glob("*.fbx")):
         triangles.append(len(lod.data.loop_triangles))
         assert all(1<=len(v.groups)<=4 and abs(sum(g.weight for g in v.groups)-1)<.001
                    for v in lod.data.vertices),(path,index,"weights")
+        uv=lod.data.uv_layers.active
+        for polygon in lod.data.polygons:
+            points=[(uv.data[i].uv.x*SIZE,(1-uv.data[i].uv.y)*SIZE) for i in polygon.loop_indices]
+            assert any(all(x-.01<=u<=x+w+.01 and y-.01<=v<=y+h+.01 for u,v in points)
+                       for x,y,w,h in SLOTS.values()),(path,index,'face crosses atlas islands',polygon.index)
     budget=30000 if path.stem in ("Max","Eva") else 19000
     assert triangles[0]<budget and triangles[1]<triangles[0]*.57 and triangles[2]<triangles[0]*.31,(path,triangles)
     print(f"LOD {path.stem}: {triangles} triangles, one skeleton and atlas",flush=True)

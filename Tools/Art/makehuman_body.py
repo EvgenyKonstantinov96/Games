@@ -156,7 +156,8 @@ class Body:
         apply_target(self.source, macro / f"universal-{body_type}-{build}.target", amount)
         if not character.hero and name != "Armored":
             apply_target(self.source, data / "targets/expression/units/caucasian/mouth-open.target",
-                         .67 if name == "Boss" else .35)
+                         {"Boss":.93,"Toxic":.79,"Walker":.65,"Runner":.59,
+                          "Crawler":.68,"Brute":.66}.get(name,.35))
         self.bind_weights = read_weights(data)
         self.used = sorted({i for face in self.faces for i, _ in face})
         self.marks = {key: sum((self.source[i] for i in sorted(group)), Vector((0, 0, 0))) / len(group)
@@ -170,6 +171,19 @@ class Body:
                          (self.top, self.height))
         self.depth_origin = neck.z
         self.geometry = {i:self.shape(self.source[i]) for i in self.used}
+        if character.tank:
+            # Add radial forearm mass and enlarged hands around anatomical axes.
+            # The skeleton and joint anchors retain their existing positions.
+            for index,p in self.geometry.items():
+                weights=self.bind_weights[index]
+                side='L' if p.x<0 else 'R'
+                key='r-' if side=='L' else 'l-'
+                elbow,wrist=self.joint(key+'elbow'),self.joint(key+'hand')
+                axis=wrist-elbow
+                projection=elbow+axis*max(0,min(1,(p-elbow).dot(axis)/axis.length_squared))
+                p+=(p-projection)*weights.get('Forearm'+side,0.)*(.38 if character.name=='Boss' else .24)
+                hand=weights.get('Hand'+side,0.)+sum(weights.get(f'Finger{digit}{side}',0.) for digit in range(1,6))
+                p+=(p-wrist)*hand*(.48 if character.name=='Boss' else .24)
 
     def midpoint(self, name):
         return (self.marks["l-"+name]+self.marks["r-"+name])*.5
@@ -188,7 +202,10 @@ class Body:
             width += (.35 if self.actor.name == "Brute" else .57)*smooth(.40,.83,z/height)*(1-smooth(.84,.93,z/height))
         if self.actor.name == "Eva":
             width -= .055*smooth(.63,.80,z/height)*(1-smooth(.84,.93,z/height))
-        return Vector((x*self.horizontal*width, (depth-self.depth_origin)*self.horizontal+.04, z))
+        depth_scale=1.
+        if self.actor.tank:
+            depth_scale+=(.14 if self.actor.name=='Brute' else .22)*smooth(.50,.75,z/height)*(1-smooth(.86,.93,z/height))
+        return Vector((x*self.horizontal*width, (depth-self.depth_origin)*self.horizontal*depth_scale+.04, z))
 
     def back_at(self, height):
         return min(p.y for p in self.geometry.values() if abs(p.x) < .075 and abs(p.z-height) < .025)
@@ -197,7 +214,11 @@ class Body:
         return max(p.y for p in self.geometry.values() if abs(p.x-width) < .046 and abs(p.z-height) < .037)
 
     def joint(self, key):
-        return self.shape(self.marks[key])
+        point=self.shape(self.marks[key])
+        if self.actor.tank and 'finger-' in key:
+            wrist=self.shape(self.marks[key[:2]+'hand'])
+            point=wrist+(point-wrist)*(1.48 if self.actor.name=='Boss' else 1.24)
+        return point
 
     def foot_bone(self, side):
         ankle = self.joint(("r-" if side == "L" else "l-")+"ankle")
@@ -214,7 +235,7 @@ class Body:
         return result
 
     def bare(self, side):
-        return self.actor.crawler or (side == "R" and self.actor.name in ("Runner", "Toxic", "Brute", "Boss"))
+        return self.actor.crawler or self.actor.name=='Boss' or (side == "R" and self.actor.name in ("Runner", "Toxic", "Brute"))
 
     def append(self):
         actor = self.actor
@@ -257,11 +278,20 @@ class Body:
             if region == "trousers":
                 tile = actor.trousers if not actor.hero else 2
             elif region == "shirt":
-                tile = actor.cloth
+                tile = 16 if actor.name=="Eva" else actor.cloth
             elif region == "glove":
                 tile = 3
             else:
                 tile = self.skin_slot
+            from survivor_clothing import torn_opening
+            if not actor.hero and torn_opening(actor,p,.70):
+                tile=15
+            if not actor.hero and p.z>actor.h*.88 and p.y>.060:
+                # Surface-bound cuts on cheeks and jaw, never floating plates.
+                mouth=actor.body.joint('mouth')
+                line=.061+(p.z-mouth.z-.027)*.22
+                if mouth.z+.004<p.z<mouth.z+.061 and abs(abs(p.x)-line)<.006:
+                    tile=15
             if tile == self.skin_slot:
                 coords = tuple(self.uv[j] for _, j in face)
             else:
@@ -273,7 +303,7 @@ class Body:
         indices = {i:k for k,i in enumerate(used)}
         atlas_faces = [(tuple(indices[i] for i in face), coords) for face, coords in atlas_faces]
         base, first_face = append_reduced(actor, actor.name+" anatomical mesh", [points[i] for i in used],
-                                          atlas_faces, tiles, [weights[i] for i in used], .46 if actor.hero else .32)
+                                          atlas_faces, tiles, [weights[i] for i in used], .53 if actor.hero else .40)
         if actor.hero:
             self.hair(base, first_face)
 
@@ -291,6 +321,8 @@ class Body:
 
     def clothing(self, p, side, weights):
         actor = self.actor
+        from survivor_clothing import torn_opening
+        if torn_opening(actor,p,1.5):return "skin"
         x, y, z = p
         height = self.height
         shoulder, elbow = (actor.bones[name+side][0] for name in ("UpperArm", "Forearm"))
@@ -300,6 +332,10 @@ class Body:
         lower = weights.get("Forearm"+side,0.)
         if weights.get("Head",0.) > .5:
             return "skin"
+        if actor.tank:
+            arm=sum(value for bone,value in weights.items() if bone.startswith(('UpperArm','Forearm','Hand','Finger')))
+            if arm>.30 or z>height*.55:return 'skin'
+            return 'trousers' if z>height*.39 else 'skin'
         if hand > .48:
             return "glove" if actor.name in ("Max","Eva","Armored") and digits < .72 else "skin"
         if upper+lower+hand > .45:

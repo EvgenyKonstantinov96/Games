@@ -5,6 +5,7 @@ import re
 
 from fontTools.ttLib import TTFont
 from PIL import Image, ImageFont
+from character_atlas import SIZE,SLOTS,box
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / 'Assets/Scripts'
@@ -70,7 +71,19 @@ def inspect_shared_art():
         assert all(ord(ch) in glyphs for ch in literal_text), sorted(set(ch for ch in literal_text if ord(ch) not in glyphs))
     with Image.open(ASSETS/'ProductionArt/CharacterAtlas_emission.png') as image:
         assert image.size == (2048,2048)
-        assert image.getbbox() == (768,256,896,384)
+        assert image.getbbox() == box(22)
+    occupied=set()
+    for slot,(x,y,w,h) in SLOTS.items():
+        assert x>=0 and y>=0 and x+w<=SIZE and y+h<=SIZE
+        # All rectangles align to 64 texel blocks; prove no map islands overlap.
+        pixels={(a,b) for a in range(x//64,(x+w)//64) for b in range(y//64,(y+h)//64)}
+        assert not pixels & occupied,slot
+        occupied |= pixels
+    assert SLOTS[24][2:]==SLOTS[25][2:]==(768,768)
+    for suffix in ('','_normal','_surface'):
+        with Image.open(ASSETS/f'ProductionArt/CharacterAtlas{suffix}.png') as image:
+            assert image.size==(SIZE,SIZE)
+    print('ATLAS PASS: nonoverlapping 2048 islands; 768² hero skins, nine times previous skin pixels, one shared material.')
     with Image.open(ASSETS/'ProductionArt/ParticleSoft.png') as image:
         alpha = image.getchannel('A')
         assert alpha.getpixel((0,0)) == 0 and alpha.getpixel((32,32)) > 220
