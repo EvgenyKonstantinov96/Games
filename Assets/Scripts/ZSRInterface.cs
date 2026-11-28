@@ -567,8 +567,8 @@ namespace ZombieSurvivalRun
                     skinTint: Color.Lerp(Panel, tint, inspecting ? .32f : .10f));
                 Image(weaponArts[i], 4, 9, 75, 49, false, slot.transform, open ? 1f : .54f);
                 ButtonCaption(WeaponNames[i], 2, 61, 79, 23, 10, Color.white, TextAnchor.MiddleCenter, slot.transform);
-                string availability = equipped ? "ВЫБРАНО" : g.WeaponOwned(chosen) ? "В НАЛИЧИИ" :
-                    open ? "● " + Money(g.WeaponPrice(chosen)) : "ОТ УР. " + g.WeaponUnlockLevel(chosen);
+                string availability = !open ? "ОТ УР. " + g.WeaponUnlockLevel(chosen) : equipped ? "ВЫБРАНО" :
+                    g.WeaponOwned(chosen) ? "В НАЛИЧИИ" : "● " + Money(g.WeaponPrice(chosen));
                 Label(availability, 2, 87, 79, 22, 10, equipped ? Gold : TextMuted, parent: slot.transform);
                 if (inspecting) Block("selected weapon", 24, 110, 35, 3, tint, slot.transform);
             }
@@ -589,7 +589,8 @@ namespace ZombieSurvivalRun
             Label(data.Role, 23, 301, 343, 22, 13, accent, TextAnchor.MiddleCenter, false);
 
             Block("gun stats card", 13, 474, 364, 130, Panel);
-            Label("РАНГ " + level + " / " + ZSRGame.MaxUpgradeLevel, 25, 478, 340, 25, 13, Gold, TextAnchor.MiddleLeft);
+            Label("РАНГ " + level + " / " + ZSRGame.MaxUpgradeLevel +
+                (owned && !unlocked ? "  •  СОХРАНЁН" : ""),25,478,340,25,13,Gold,TextAnchor.MiddleLeft);
             string damage = data.Damage(level).ToString();
             if (!max && owned) damage += " → " + data.Damage(level + 1);
             WeaponStat("УРОН", damage, 25, 516, 103, accent);
@@ -606,7 +607,7 @@ namespace ZombieSurvivalRun
             bool rankUnlocked = level < g.CampaignUpgradeCap;
             string upgrade = max ? "МАКСИМАЛЬНЫЙ РАНГ" : !rankUnlocked ? RankUnlock(level + 1) :
                 g.Coins >= cost ? "УЛУЧШИТЬ  ● " + Money(cost) : "ДО УЛУЧШЕНИЯ  ● " + Money(cost - g.Coins);
-            if (owned) Button(upgrade, 16, 675, 358, 54, Orange, () => g.UpgradeWeapon(weapon), 15,
+            if (owned && unlocked) Button(upgrade, 16, 675, 358, 54, Orange, () => g.UpgradeWeapon(weapon), 15,
                 !max && rankUnlocked && g.Coins >= cost);
         }
 

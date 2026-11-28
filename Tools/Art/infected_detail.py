@@ -66,3 +66,5 @@ def append_fitted_helmet(actor):
     # Forehead rim positioned from the eye landmark instead of guessed height.
     front=eye.y+.025
     actor.panel((0,front,cutoff+.001),(.188,.025,.025),3,'Head')
+    # Weathered security insignia distinguishes the sole armored class.
+    actor.panel((0,.195,actor.h*.770),(.079,.008,.062),48,'Chest')

@@ -93,9 +93,12 @@ class Character:
             self.bone("Forearm"+side, elbow, wrist, "UpperArm"+side)
             self.bone("Hand"+side, wrist, knuckles, "Forearm"+side)
             for digit in range(1, 6):
-                start = body.joint(key+f"finger-{digit}-1")
-                tip = body.joint(key+f"finger-{digit}-4")
-                self.bone(f"Finger{digit}{side}", start, tip, "Hand"+side)
+                joints=[body.joint(key+f"finger-{digit}-{i}") for i in range(1,5)]
+                parent='Hand'+side
+                for i,suffix in enumerate(('', 'Middle', 'Tip')):
+                    name=f'Finger{digit}{suffix}{side}'
+                    self.bone(name,joints[i],joints[i+1],parent)
+                    parent=name
         if self.hero:
             wrist = self.bones["HandR"][0]
             self.bone("WeaponGrip", wrist, wrist+v(0,.11,0), "HandR")
@@ -255,7 +258,7 @@ class Character:
         elif self.tank:
             for side,sign in SIDES:
                 for digit in range(1,6):
-                    key=f'Finger{digit}{side}'
+                    key=f'Finger{digit}Tip{side}'
                     a,b,_=self.bones[key]
                     direction=(b-a).normalized()
                     reach=.052 if self.name=='Boss' else .028
@@ -516,10 +519,11 @@ class Character:
             palm.negate()
         palm = wrist_rotation @ palm
         for digit in range(1,6):
-            bone = self.rig.pose.bones[f"Finger{digit}{side}"]
-            direction = (bone.tail-bone.head).normalized()
-            strength = curl*(.37 if digit == 1 else .79 if digit == 2 else 1.)
-            self.aim_bone(bone.name,bone.head.copy(),direction+palm*strength)
+            for suffix,factor in (('',1.),('Middle',.72),('Tip',.46)):
+                bone = self.rig.pose.bones[f"Finger{digit}{suffix}{side}"]
+                direction = (bone.tail-bone.head).normalized()
+                strength = curl*factor*(.37 if digit == 1 else .79 if digit == 2 else 1.)
+                self.aim_bone(bone.name,bone.head.copy(),direction+palm*strength)
 
     def animate(self):
         # Contact, compression, passing and extension poses. Feet are solved against
@@ -555,10 +559,10 @@ class Character:
                 crouch=.47 if self.crawler else .054 if walking else .098 if moving else .045
                 crouch += (1 if self.tank else .70)*.59*death
                 if boss_strike: crouch += .085*max(0.,attack) - .041*min(0.,attack)
-                swing = math.sin(math.tau*f) if moving else 0.
+                swing = eased_keys(((0,0),(.23,.96),(.50,0),(.73,-.96),(1,0)),f) if moving else 0.
                 # The pelvis yields under the new support leg and rises
                 # through push-off. Counter-rotation keeps the chest balanced.
-                contact=eased_keys(((0,-.010),(.21,-.040),(.67,.027),(1,-.010)),(f*2)%1) if moving else 0
+                contact=eased_keys(((0,-.008),(.19,-.034),(.63,.019),(1,-.008)),(f*2)%1) if moving else 0
                 if walking: contact *= .46
                 pelvis=self.bones["Pelvis"][0]+v(.025*swing,.015-.17*death,-crouch+contact)
                 placements = {}
@@ -598,6 +602,14 @@ class Character:
                     head=self.rig.pose.bones["Head"]
                     self.aim_bone("Head",head.head.copy(),v(-.20+.045*swing,.21+.082*swing,.99))
                 if self.hero:
+                    # Shoulder girdle yields slightly under the rifle/backpack.
+                    # Solve wrists after this adjustment so the weapon stays gripped.
+                    breath=.003*math.sin(math.tau*t)
+                    for side,s in SIDES:
+                        clavicle=self.rig.pose.bones['Clavicle'+side]
+                        direction=clavicle.tail-clavicle.head
+                        self.aim_bone(clavicle.name,clavicle.head.copy(),
+                                      direction+v(0,-s*.006*swing,breath+s*.004*swing))
                     self.hero_arms(swing * (.55 if walking else 1.),care,swing_throw,reload,fire,rear,death)
                 for side,s in SIDES:
                     foot,toe,phase,toe_pitch=placements[side]

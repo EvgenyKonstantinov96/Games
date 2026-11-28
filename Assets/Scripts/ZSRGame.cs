@@ -208,8 +208,8 @@ namespace ZombieSurvivalRun
                 PlayerPrefs.GetInt("zsr40_unlocked", 1), PlayerPrefs.GetInt("zsr40_story_cleared", -1));
             SelectLevel(ClearedLevel + 1);
             SelectedHero = Mathf.Clamp(PlayerPrefs.GetInt("zsr40_hero", 0), 0, 1);
-            Weapon = (WeaponType)Mathf.Clamp(PlayerPrefs.GetInt("zsr40_weapon", 1), 0, 3);
-            if (!WeaponOwned(Weapon)) Weapon = WeaponType.Rifle;
+            Weapon = (WeaponType)Mathf.Clamp(PlayerPrefs.GetInt("zsr40_weapon", 0), 0, 3);
+            Weapon = ZSRWeaponProfile.RestoreSelection(Weapon, UnlockedLevel, WeaponOwned(Weapon));
 
             ZSRVisuals.Init();
             BuildScene();
@@ -478,6 +478,7 @@ namespace ZombieSurvivalRun
         public void StartLevel(int requested = 0)
         {
             if (requested < 0 || requested > UnlockedLevel) return;
+            Weapon = ZSRWeaponProfile.RestoreSelection(Weapon, UnlockedLevel, WeaponOwned(Weapon));
             if (requested != 0) SelectLevel(requested);
             Replaying = Level <= ClearedLevel;
             HasStoryBeat = ZSRStory.TryGet(Level, out var beat);
@@ -1144,7 +1145,7 @@ namespace ZombieSurvivalRun
         {
             int level = WeaponLevelFor(weapon);
             int cost = WeaponUpgradeCost(weapon);
-            if (!WeaponOwned(weapon) || level >= CampaignUpgradeCap || Coins < cost) return;
+            if (!WeaponLevelUnlocked(weapon) || !WeaponOwned(weapon) || level >= CampaignUpgradeCap || Coins < cost) return;
             Coins -= cost;
             PlayerPrefs.SetInt("zsr40_weapon_level_" + (int)weapon, level + 1);
             PlayerPrefs.SetInt("zsr40_coins", Coins);

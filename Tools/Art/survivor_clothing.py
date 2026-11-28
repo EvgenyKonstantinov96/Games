@@ -161,6 +161,31 @@ def append_garment(actor, pack):
                     continue
                 t=max(0,min(1,(p.z-hem)/(actor.h*.69-hem)))
                 p.z+=(desired-hem)*(1-t*t*(3-2*t))
+                # The field jacket has a sewn hem, not the source shirt's
+                # long pointed tails. Preserve the upper torso and sleeves.
+                if p.z<desired+.025:
+                    p.z=max(p.z,desired+.008+.003*math.cos(p.x*14))
+    # Add restrained cloth volume and compression folds around real joints.
+    # This deforms the fitted garment, never the anatomy or joint anchors.
+    for p,entries in zip(positions,weights):
+        side='L' if p.x<0 else 'R'
+        knee=actor.bones['Shin'+side][0]
+        leg=entries.get('Thigh'+side,0)+entries.get('Shin'+side,0)
+        if leg>.65 and .23<p.z<actor.h*.54:
+            radial=Vector((p.x-knee.x,p.y-knee.y,0))
+            if radial.length>.02:
+                zone=math.exp(-((p.z-knee.z)/.13)**2)
+                fold=zone*(.005+.005*math.cos((p.z-knee.z)*76+(p.x-knee.x)*15))
+                slack=.008*math.exp(-((p.z-(knee.z+.19))/.16)**2)
+                p+=radial.normalized()*(fold+slack)
+        elbow=actor.bones['Forearm'+side][0]
+        arm=entries.get('UpperArm'+side,0)+entries.get('Forearm'+side,0)
+        if actor.hero and arm>.7:
+            axis=actor.bones['Hand'+side][0]-actor.bones['UpperArm'+side][0]
+            offset=p-elbow; along=offset.dot(axis.normalized())
+            radial=offset-axis.normalized()*along
+            if radial.length>.02:
+                p+=radial.normalized()*(.004*math.exp(-(along/.075)**2)*(1+math.cos(along*105)))
     # Proxy fitting can assign adjacent armpit or crotch vertices to dissimilar
     # base-body triangles. Smooth that transition before reducing the garment.
     neighbors=[set() for _ in positions]

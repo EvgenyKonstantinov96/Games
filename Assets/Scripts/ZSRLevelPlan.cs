@@ -65,7 +65,8 @@ namespace ZombieSurvivalRun
         internal float WaveDelay(float elapsed)
         {
             if (Level <= OriginalLevels) return Math.Max(1f, 2.8f - Level * .06f - elapsed * .0065f);
-            return Math.Max(1.08f + (1f - escalation) * .23f, 2.10f - escalation * .35f - elapsed * .006f);
+            float pistolAllowance = Level < ZSRWeaponProfile.For(WeaponType.Rifle).UnlockLevel ? .30f : 0f;
+            return pistolAllowance + Math.Max(1.08f + (1f - escalation) * .23f, 2.10f - escalation * .35f - elapsed * .006f);
         }
 
         internal ZSRFormation Formation(int wave)
@@ -82,6 +83,7 @@ namespace ZombieSurvivalRun
                 int size = Math.Clamp(3 + (Level - 1) / 4 + (Position >= 3 ? 1 : 0), 3, 6);
                 return IsBoss ? Math.Max(3, size - 1) : size;
             }
+            if (Level < ZSRWeaponProfile.For(WeaponType.Rifle).UnlockLevel) return 3;
             ZSRFormation formation = Formation(wave);
             return formation == ZSRFormation.Rush || (escalation > .55f && wave % 3 == 1) ? 6 : 5;
         }

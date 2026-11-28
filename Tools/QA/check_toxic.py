@@ -41,6 +41,7 @@ def extract():
         "using System.Collections.Generic; using UnityEngine; using UnityEngine.InputSystem;",
         "namespace ZombieSurvivalRun {",
         block(actor, "public enum ZombieType"),
+        block(actor, "public enum WeaponType"),
         block(game, "public enum ZSRState"),
         block(game, "public enum ItemType"),
         block(game, "public enum ZSRDamageKind"),
@@ -88,7 +89,7 @@ def main():
         subprocess.run([dotnet, editor / "DotNetSdkRoslyn/csc.dll", "-nologo", "-noconfig", "-nostdlib",
                         "-langversion:10", f"-out:{exe}", f"-r:engine={engine}",
                         *[f"-r:{dll}" for dll in sorted(shared.glob("*.dll"))],
-                        *(SCRIPTS / (name + ".cs") for name in ("ZSRInfectedMotion", "ZSRRunPace", "ZSRLevelPlan", "ZSRStory")),
+                        *(SCRIPTS / (name + ".cs") for name in ("ZSRInfectedMotion", "ZSRRunPace", "ZSRLevelPlan", "ZSRStory", "ZSRWeaponProfile")),
                         extracted, ROOT / "Tools/QA/ToxicSpitProbe.cs"], check=True)
         subprocess.run([dotnet, exe], check=True)
 

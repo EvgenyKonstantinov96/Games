@@ -94,7 +94,7 @@ namespace ZombieSurvivalRun {
    public int WeaponLevelFor(WeaponType w)=>weaponLevels.GetValueOrDefault(w,1); public int WeaponUpgradeCost(WeaponType w)=>ZSRLevelPlan.UpgradeCost(750,WeaponLevelFor(w));
    public void SetWeaponRank(WeaponType w,int rank)=>weaponLevels[w]=rank;
    public void UpgradeWeapon(WeaponType w){int cost=WeaponUpgradeCost(w);if(WeaponOwned(w)&&Coins>=cost){weaponLevels[w]=WeaponLevelFor(w)+1; Coins-=cost;}}
-   public ZSRState State=ZSRState.Menu;public readonly HeroModel Hero=new(); public int Coins=2719, Level=2, UnlockedLevel=6,SelectedHero=1,Earned=245,Eliminated=18,Ammo=4,Magazine=30,Medkits=2,Grenades=1,Drones=1;public WeaponType Weapon=WeaponType.Rifle; public int WeaponLevel=>WeaponLevelFor(Weapon);public int UpgradeCost=>WeaponUpgradeCost(Weapon);
+   public ZSRState State=ZSRState.Menu;public readonly HeroModel Hero=new(); public int Coins=2719, Level=2, UnlockedLevel=6,SelectedHero=1,Earned=245,Eliminated=18,Ammo=4,Magazine=30,Medkits=2,Grenades=1,Drones=1;public WeaponType Weapon=WeaponType.Pistol; public int WeaponLevel=>WeaponLevelFor(Weapon);public int UpgradeCost=>WeaponUpgradeCost(Weapon);
    public bool IsReloading=false,BossAlive=false;public bool IsRunning=>State==ZSRState.Playing; public float BossHealthFraction=.62f,DroneSeconds=0,Progress=.57f;
    public string MusicLabel="МУЗЫКА ВКЛ",CurrentNotice="";public int Chapter=>Plan.Environment;public string LevelTitle=>Level>15?Plan.District.ToUpperInvariant():Level switch {5=>"МУТАНТ У ВОРОТ",7=>"ПРОРЫВ К КВАРТАЛАМ",12=>"ВОЕННЫЙ КОРИДОР",_=>"ТЁМНЫЙ ПРОСПЕКТ"};
    public float BonusDuration(BonusKind k)=>k switch{BonusKind.DoubleDamage=>10,BonusKind.RapidFire=>11,BonusKind.Shield=>8,BonusKind.Magnet=>12,BonusKind.Turret=>12,_=>0};

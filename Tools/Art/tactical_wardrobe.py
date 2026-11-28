@@ -71,6 +71,15 @@ def append_field_gear(actor):
             x,z=side*.115,h*.737
             pouch((x,surface(x,z)+.028,z),(.083,.025,.065),1,'Chest')
 
+    # Sewn sleeve insignia on the garment, fitted from the actual upper arm.
+    for side in ('L','R'):
+        shoulder=actor.bones['UpperArm'+side][0]
+        elbow=actor.bones['Forearm'+side][0]
+        p=shoulder.lerp(elbow,.30)
+        nearby=sorted(body,key=lambda q:(q.x-p.x)**2+(q.z-p.z)**2)[:12]
+        front=max(q.y for q in nearby)+.007
+        actor.panel((p.x,front,p.z),(.075,.006,.085),46 if actor.name=='Max' else 47,'UpperArm'+side)
+
     # Shoulder straps follow a rounded route across the real shoulders.
     for side in (-1,1):
         x=side*w*.245

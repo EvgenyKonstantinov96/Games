@@ -5,8 +5,8 @@ from mathutils import Vector
 
 # Forward reach, rear reach, stance share, swing clearance, right foot phase.
 PROFILES = {
-    "Max": (.44, .49, .44, .265, .50),
-    "Eva": (.42, .43, .43, .245, .50),
+    "Max": (.42, .46, .42, .315, .50),
+    "Eva": (.40, .42, .42, .295, .50),
     "Walker": (.29, .27, .65, .095, .53),
     "Runner": (.48, .43, .43, .23, .48),
     "Armored": (.29, .28, .64, .095, .52),
@@ -53,7 +53,11 @@ def foot_target(name, side, phase, ankle, walking=False):
                   + tangent*(2*t3-3*t2+recover))
         pitch = eased_keys(((0, -31 if running else -22), (.23, -42 if running else -25),
                             (.57, -3), (.82, 15), (1, 11)), recover)
-        clearance = lift*eased_keys(((0, 0), (.17, .41), (.40, 1), (.70, .68), (1, 0)), recover)
+        # Fold the trailing knee early, then extend before landing. Late,
+        # symmetrical lift looks like marching rather than a running recovery.
+        keys = ((0,0),(.20,.78),(.38,1),(.69,.48),(1,0)) if running else \
+               ((0,0),(.17,.41),(.40,1),(.70,.68),(1,0))
+        clearance = lift*eased_keys(keys, recover)
 
     if name == "Crawler":
         travel -= .31
@@ -70,6 +74,9 @@ def foot_target(name, side, phase, ankle, walking=False):
     foot = Vector((ankle.x+lateral, ankle.y+travel+pivot_y-rotated_y, .006-rotated_z+clearance))
     toe = Vector((0, .16*math.cos(angle)+.06*math.sin(angle),
                   .16*math.sin(angle)-.06*math.cos(angle)))
+    if human:
+        # A small, consistent toe-out follows the knee instead of parallel skis.
+        toe.x = sign*.009
     bend = eased_keys(((0, .95), (stance*.60, .85), (stance, .10),
                        (stance+(1-stance)*.30, .90), (1, .95)), phase)
     return foot, toe, phase, pitch*bend

@@ -71,7 +71,8 @@ def deform_bone(name):
         if stem.startswith(prefix):
             return bone+side
     if stem.startswith("finger"):
-        return "Finger"+stem[6]+side
+        segment=int(stem.split('-')[1])
+        return "Finger"+stem[6]+('' if segment==1 else 'Middle' if segment==2 else 'Tip')+side
     if stem in ("root", "pelvis"):
         return "Pelvis"
     if stem in ("spine05", "spine04", "spine03"):
@@ -152,6 +153,11 @@ class Body:
         self.source = [p.copy() for p in source]
         macro = data / "targets/macrodetails"
         apply_target(self.source, macro / (morph + ".target"), 1)
+        if name=='Max':
+            # Mature the brother's facial/body landmarks without a separate,
+            # unfitted head. Proxy garments and joints use the same blended base.
+            apply_target(self.source,macro/'caucasian-male-young.target',-.14)
+            apply_target(self.source,macro/'caucasian-male-old.target',.14)
         body_type = morph.split("-", 1)[1]
         apply_target(self.source, macro / f"universal-{body_type}-{build}.target", amount)
         if not character.hero and name != "Armored":
@@ -182,7 +188,7 @@ class Body:
                 axis=wrist-elbow
                 projection=elbow+axis*max(0,min(1,(p-elbow).dot(axis)/axis.length_squared))
                 p+=(p-projection)*weights.get('Forearm'+side,0.)*(.38 if character.name=='Boss' else .24)
-                hand=weights.get('Hand'+side,0.)+sum(weights.get(f'Finger{digit}{side}',0.) for digit in range(1,6))
+                hand=weights.get('Hand'+side,0.)+sum(value for bone,value in weights.items() if bone.startswith('Finger') and bone.endswith(side))
                 p+=(p-wrist)*hand*(.48 if character.name=='Boss' else .24)
 
     def midpoint(self, name):
@@ -326,7 +332,7 @@ class Body:
         x, y, z = p
         height = self.height
         shoulder, elbow = (actor.bones[name+side][0] for name in ("UpperArm", "Forearm"))
-        digits = sum(weights.get(f"Finger{digit}{side}",0.) for digit in range(1, 6))
+        digits = sum(value for bone,value in weights.items() if bone.startswith('Finger') and bone.endswith(side))
         hand = weights.get("Hand"+side,0.)+digits
         upper = weights.get("UpperArm"+side,0.)
         lower = weights.get("Forearm"+side,0.)

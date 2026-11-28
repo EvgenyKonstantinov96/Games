@@ -102,6 +102,7 @@ namespace ZombieSurvivalRun
     {
         public int Magazine = 30;
         public static ZSRWeaponProfile For(WeaponType gun) => new();
+        public static WeaponType RestoreSelection(WeaponType gun,int unlocked,bool owned) => gun;
     }
     class Node { public void SetActive(bool active) {} }
     class HeroModel
@@ -126,6 +127,7 @@ namespace ZombieSurvivalRun
         readonly Node worldRoot = new();
         public readonly HeroModel Hero = new();
         public WeaponType Weapon;
+        public bool WeaponOwned(WeaponType weapon) => true;
         public bool Replaying, HasStoryBeat;
         public ZSRStory.Beat StoryBeat, Briefing;
         public int DialogueIndex;

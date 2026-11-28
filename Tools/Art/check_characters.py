@@ -98,6 +98,8 @@ for path in sorted(ROOT.glob("*.fbx")):
     print(f"LOD {path.stem}: {triangles} triangles, one skeleton and atlas",flush=True)
     names=set(rig.data.bones.keys())
     assert {"Pelvis","Spine","Chest","Head","ForwardMarker","HandL","HandR","ForefootL","ForefootR"} <= names, path
+    assert {f'Finger{digit}{segment}{side}' for digit in range(1,6)
+            for segment in ('','Middle','Tip') for side in ('L','R')} <= names,path
     hero=path.stem in {"Max","Eva"}
     if hero:
         assert {"WeaponGrip","WeaponForward"} <= names, path

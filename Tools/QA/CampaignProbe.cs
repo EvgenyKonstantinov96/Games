@@ -118,6 +118,18 @@ static class CampaignProbe
 
     static void Main()
     {
+        Require(new[]{WeaponType.Pistol,WeaponType.Rifle,WeaponType.Shotgun,WeaponType.Minigun}
+            .Select(w=>ZSRWeaponProfile.For(w).UnlockLevel).SequenceEqual(new[]{1,25,150,500}),
+            "Campaign arsenal milestones");
+        foreach (WeaponType weapon in Enum.GetValues(typeof(WeaponType)))
+        for (int unlocked=1;unlocked<=1000;unlocked++)
+        foreach (bool owned in new[]{false,true})
+        {
+            WeaponType restored=ZSRWeaponProfile.RestoreSelection(weapon,unlocked,owned);
+            Require(restored==(owned && unlocked>=ZSRWeaponProfile.For(weapon).UnlockLevel ? weapon : WeaponType.Pistol),
+                $"Legacy equipped weapon at {unlocked}/{weapon}/{owned}");
+        }
+        Console.WriteLine("ARSENAL PASS: levels 1/25/150/500; 8000 owned/unowned saved selections across the campaign.");
         CheckHeroSteering();
         CheckPickupContact();
         Require(ZSRLevelPlan.RestoreProgress(1, -1) == (1, 0), "New player");
@@ -182,7 +194,8 @@ static class CampaignProbe
             }
             Require(encounters.Add(string.Join(",", signature)), $"Duplicate opening at {level}");
             if (level is 16 or 65 or 250 or 500 or 750 or 999)
-                samples[level] = healthBudget / time / SustainedDamage(WeaponType.Minigun, rank);
+                samples[level] = healthBudget / time / weapons
+                    .Where(w=>ZSRWeaponProfile.For(w).UnlockLevel<=level).Max(w=>SustainedDamage(w,rank));
 
             // Simulate the live depth reservation with the fastest allowed speed.
             // Duplicates model the two obstacles of a split in a single traffic window.
@@ -272,7 +285,7 @@ static class CampaignProbe
         Console.WriteLine($"CAMPAIGN PASS: {encounters.Count} distinct openings, {unitCount} wave units, {sectorNames.Count} sectors and {formations.Count} formations.");
         Console.WriteLine($"STORY PASS: {story.Count} beats, first {story[0]}, final {story[story.Count - 1]}. {bossCount} boss encounters including level 1000.");
         Console.WriteLine($"BALANCE PASS: worst boss budget {worstBossMargin:F2} s at level {worstBoss}. Math model at 57% firing uptime.");
-        Console.WriteLine($"PRESSURE: {string.Join(", ", samples.Select(c => $"{c.Key}={c.Value:F2}×"))} enemy HP/s vs. sustained minigun DPS.");
+        Console.WriteLine($"PRESSURE: {string.Join(", ", samples.Select(c => $"{c.Key}={c.Value:F2}×"))} enemy HP/s vs. best unlocked sustained single-target DPS.");
         Console.WriteLine($"TRAFFIC PASS: {hazardCount} obstacle windows, {slowedTraffic} moves, {trafficMargin:F3} s minimum clearance at sprint speed.");
     }
 }

@@ -59,6 +59,8 @@ static class Program
   Dump(Path.Combine(Output,"home.json"));
   Tap("СМЕНИТЬ");Assert(game.State==ZSRState.Heroes,"Home hero shortcut");Tap("МАКС");Assert(game.SelectedHero==0&&HasText("132 HP"),"Full Max portrait selects Max");Tap("ЕВА");Assert(game.SelectedHero==1&&HasText("112 HP"),"Full Eva portrait selects Eva");Dump(Path.Combine(Output,"heroes.json"));
   Tap("ОТКРЫТЬ АРСЕНАЛ");Assert(game.State==ZSRState.Arsenal,"Hero loadout shortcut");
+  Tap("ПУЛЕМЁТ");Assert(HasText("ОТ УР. 500")&&!Find("ОТКРОЕТСЯ НА УРОВНЕ 500").interactable,"Minigun milestone in arsenal");
+  Dump(Path.Combine(Output,"arsenal-locked.json"));
   var shotgun=Find("ДРОБОВИК");UnityEngine.EventSystems.EventSystem.current.SetSelectedGameObject(shotgun.gameObject);
   Tap("ДРОБОВИК");Assert(ReferenceEquals(UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject,Find("ДРОБОВИК").gameObject),"Inspection retains keyboard focus on new control");
   Assert(HasText(ZSRWeaponProfile.For(WeaponType.Shotgun).Role),"Whole weapon card changes inspection");
@@ -99,7 +101,7 @@ static class Program
   Assert(HasText("ЗДОРОВЬЕ 64")&&Active(host.transform).Any(o=>o.name=="notice contrast panel"),"Damage notice remains readable on its dark panel");
   Dump(Path.Combine(Output,"hud-damage.json"));
   game.CurrentNotice="";game.DamageFlash=0;game.Hero.Health=112;
-  game.SetWeaponRank(WeaponType.Rifle,18);game.Coins=12000;game.State=ZSRState.Defeat;Draw();Dump(Path.Combine(Output,"defeat.json"));
+  game.Weapon=WeaponType.Rifle;game.SetWeaponRank(WeaponType.Rifle,18);game.Coins=12000;game.State=ZSRState.Defeat;Draw();Dump(Path.Combine(Output,"defeat.json"));
   Assert(Active(host.transform).Any(o=>o.GetComponent<Text>()?.text.StartsWith("До улучшения оружия") == true),"Replay tips are based on the current upgrade shortfall");
   Tap("ЗАРАБОТАТЬ МОНЕТЫ  •  УР. 999");
   Assert(game.Level==999&&game.IsRunning,"Defeat shortcut launches prior unlocked replay");
@@ -115,7 +117,7 @@ static class Program
   Assert(!Find("−100").interactable && Find("1").interactable,"First page caps at level 1");
   Tap("К ФРОНТУ");Assert(HasText("Уровни 976–1000"),"Frontier return from page 1");
 
-  game.GoArsenal();game.Coins=24500;game.SetWeaponRank(WeaponType.Rifle,8);Draw();
+  game.Weapon=WeaponType.Rifle;game.GoArsenal();game.Coins=24500;game.SetWeaponRank(WeaponType.Rifle,8);Draw();
   Dump(Path.Combine(Output,"arsenal.json"));
   Assert(HasText("РАНГ 8 / 20")&&Buttons().Any(b=>b.interactable && b.gameObject.name.StartsWith("BUTTON: УЛУЧШИТЬ")),"Rank and upgrade quote");
   game.UnlockedLevel=35;game.SetWeaponRank(WeaponType.Rifle,5);Draw();

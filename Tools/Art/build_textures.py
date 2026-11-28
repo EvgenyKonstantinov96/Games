@@ -203,6 +203,26 @@ with ZipFile(args.skin_pack) as pack:
         else:
             normal = normal_tile(skin_relief(source,.20))
         normals_atlas.paste(normal,origin)
+# Original sewn insignia, held within unused atlas space, no extra material.
+for slot in (46,47,48):
+    badge=Image.new('RGB',(128,128),(32,37,39));draw=ImageDraw.Draw(badge)
+    ink=(218,116,47) if slot==46 else (202,207,196)
+    draw.rounded_rectangle((8,8,119,119),radius=21,outline=ink,width=4)
+    if slot==46:
+        draw.ellipse((45,45,83,83),outline=ink,width=6)
+        for start in (30,150,270):
+            import math
+            cx=64+24*math.cos(math.radians(start));cy=64+24*math.sin(math.radians(start))
+            draw.arc((cx-21,cy-21,cx+21,cy+21),start-10,start+260,fill=ink,width=7)
+    elif slot==47:
+        draw.line((29,86,64,38,99,86),fill=ink,width=9)
+        draw.line((49,86,64,65,79,86),fill=ink,width=6)
+    else:
+        draw.polygon((35,30,93,30,88,80,64,103,40,80),outline=ink,width=5)
+        draw.line((48,62,60,75,82,49),fill=ink,width=7)
+    origin=SLOTS[slot][:2];atlas.paste(badge,origin)
+    normals_atlas.paste(normal_tile(skin_relief(badge,.12)),origin)
+    surface_draw.rectangle(box(slot),fill=(0,0,0,38))
 atlas.save(OUT/"CharacterAtlas.png",optimize=True)
 normals_atlas.save(OUT/"CharacterAtlas_normal.png",optimize=True)
 surface_atlas.save(OUT/"CharacterAtlas_surface.png",optimize=True)

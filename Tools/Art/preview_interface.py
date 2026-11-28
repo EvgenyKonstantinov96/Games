@@ -112,3 +112,6 @@ if (args.layout/'hud.json').exists():
     for i,page in enumerate(pages):sheet.paste(page.resize((415,898),Image.Resampling.LANCZOS),(415*i,0))
     sheet.save(args.layout/'field-kit-hud-layout.jpg',quality=94,optimize=True)
     pages[0].crop((0,pixels(713),pixels(390),pixels(844))).save(args.layout/'field-kit-hud-strip.png',optimize=True)
+
+if (args.layout/'arsenal-locked.json').exists():
+    render('arsenal-locked').save(args.layout/'arsenal-locked-layout.jpg',quality=93,optimize=True)
