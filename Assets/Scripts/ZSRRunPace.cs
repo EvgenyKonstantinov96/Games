@@ -51,6 +51,9 @@ namespace ZombieSurvivalRun
 
     internal static class ZSRHeroGait
     {
+        internal static float SettleCadence(float current,float desired,float dt) =>
+            current+(Math.Clamp(desired,.55f,1.75f)-current)*(1f-MathF.Exp(-Math.Clamp(dt,0f,.05f)*9f));
+
         // The authored clips already have different step lengths. Change their cadence
         // gradually as the road speeds up, with a small allowance for diagonal travel.
         internal static float Cadence(int hero, float roadSpeed, float paceScale, float sideways, bool walking)

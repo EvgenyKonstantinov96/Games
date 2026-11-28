@@ -25,6 +25,7 @@ namespace ZombieSurvivalRun
         float walkBlend, legWeight, steeringHeading;
         Motion motion;
         float age, gaitPhase, blend, blendDuration = .09f, rate = 1f, actionSpeed = 1f, steeringRoll;
+        float desiredRate = 1f;
         bool moving, hero, firing, walking, hasItemClips, hasWalkClips;
         Motion Locomotion => walking ? Motion.Walk : Motion.Move;
         Motion Shooting => walking ? Motion.WalkFire : Motion.Fire;
@@ -37,6 +38,8 @@ namespace ZombieSurvivalRun
         Quaternion socketRest;
         Quaternion sampledSpine, sampledHead;
         bool sampledUpperBody;
+        readonly ZSRUpperBodyAim upperAim = new();
+        float breathPhase;
 
         void RestoreSampledPose()
         {
@@ -139,7 +142,8 @@ namespace ZombieSurvivalRun
                 actor.footLeft = leftAnkle;
                 actor.footRight = rightAnkle;
                 ZSRSecondaryMotion.Attach(root.transform, head,
-                    FindBone(instance.transform,"HairTie"), FindBone(instance.transform,"HairTail"));
+                    FindBone(instance.transform,"HairTie"), FindBone(instance.transform,"HairTail"),
+                    FindBone(instance.transform,"Pack"));
             }
             actor.hasItemClips = hero && take.length >= 7.16f;
             actor.hasWalkClips = hero && take.length >= 9.59f;
@@ -335,6 +339,9 @@ namespace ZombieSurvivalRun
             moving = false;
             recoil = 0f;
             aimTime = 0f;
+            upperAim.Reset();
+            breathPhase = 0f;
+            rate = desiredRate = 1f;
             HideFlash();
         }
 
@@ -343,7 +350,7 @@ namespace ZombieSurvivalRun
             moving = run;
             walking = run && walk && hasWalkClips;
             if (walk && !hasWalkClips) speed *= .59f;
-            rate = Mathf.Clamp(speed, .55f, 1.75f);
+            desiredRate = Mathf.Clamp(speed, .55f, 1.75f);
             if (IsShooting(motion) && run && aimTime > 0f)
                 Change(Shooting);
             else if (motion == Motion.Idle || IsGait(motion))
@@ -365,7 +372,7 @@ namespace ZombieSurvivalRun
             recoil = kick;
             if (barrelRotor != null) barrelSpeed = 1800f;
             aimPoint = target;
-            aimTime = .19f;
+            aimTime = .70f;
             ApplyAim();
             if (muzzleFlash != null) muzzleFlash.gameObject.SetActive(true);
             if (IsGait(motion) || motion == Motion.Idle)
@@ -427,6 +434,7 @@ namespace ZombieSurvivalRun
                 barrelRotor.localRotation = Quaternion.AngleAxis(barrelAngle,Vector3.forward);
             }
             float previousStep = gaitPhase;
+            rate = ZSRHeroGait.SettleCadence(rate,desiredRate,dt);
             bool striding = moving && motion != Motion.Death;
             walkBlend = Mathf.MoveTowards(walkBlend, walking ? 1f : 0f, dt / .14f);
             legWeight = Mathf.MoveTowards(legWeight, striding ? 1f : 0f, dt / .10f);
@@ -457,6 +465,7 @@ namespace ZombieSurvivalRun
                 if (head != null)
                     head.rotation = Quaternion.AngleAxis(-lean * .36f, transform.forward) * head.rotation;
             }
+            ApplyUpperBodyAim(dt);
             if (hero && striding && game != null && game.IsRunning)
             {
                 if (gaitPhase < previousStep && previousStep >= .5f) game.Footstep(footLeft.position);
@@ -473,11 +482,31 @@ namespace ZombieSurvivalRun
             Vector3 toTarget = aimPoint - weaponSocket.position;
             if (aimTime > 0f && toTarget.sqrMagnitude > .01f)
             {
-                var aim = Quaternion.RotateTowards(rest, Quaternion.LookRotation(toTarget, transform.up), 28f);
+                // The shoulders carry the large aiming motion; the mounted gun
+                // only makes a small correction instead of leaving both hands.
+                var aim = Quaternion.RotateTowards(rest, Quaternion.LookRotation(toTarget, transform.up), 4f);
                 weaponSocket.rotation = Quaternion.Slerp(rest, aim, Mathf.Clamp01(aimTime * 19f));
             }
             else weaponSocket.localRotation = socketRest;
-            weaponSocket.localPosition = hand.InverseTransformVector(-weaponSocket.forward * recoil);
+            weaponSocket.localPosition = Vector3.zero;
+        }
+
+        void ApplyUpperBodyAim(float dt)
+        {
+            if (!hero || spine == null || weaponSocket == null || motion == Motion.Death) return;
+            Quaternion reference = weaponSocket.parent.rotation * socketRest;
+            Vector3 relative = Quaternion.Inverse(reference) * (aimPoint-weaponSocket.position);
+            bool active = aimTime>0f && IsShooting(motion);
+            Vector2 angles = upperAim.Tick(relative,active,dt);
+            float kick = active ? ZSRUpperBodyAim.RecoilPitch(recoil) : 0f;
+            breathPhase = Mathf.Repeat(breathPhase+dt*(moving?2.4f:1.43f),Mathf.PI*2f);
+            float breath = Mathf.Sin(breathPhase)*(moving?.10f:.28f);
+            Vector3 right = reference * Vector3.right;
+            spine.rotation = Quaternion.AngleAxis(angles.x,transform.up) *
+                Quaternion.AngleAxis(angles.y+kick+breath,right) * spine.rotation;
+            if (head != null)
+                head.rotation = Quaternion.AngleAxis(-angles.x*.40f,transform.up) *
+                    Quaternion.AngleAxis(-(angles.y+kick)*.60f,right) * head.rotation;
         }
 
         void Sample()

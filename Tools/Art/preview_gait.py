@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 
 import bpy
-from mathutils import Vector
+from mathutils import Vector,Matrix
 
 args = sys.argv[sys.argv.index("--")+1:]
 assets, output = map(lambda x: Path(x).resolve(), args[:2])
@@ -24,14 +24,13 @@ texture.image = bpy.data.images.load(str(assets/"CharacterAtlas.png"))
 shader = nodes.get("Principled BSDF")
 shader.inputs["Roughness"].default_value = .68
 atlas.node_tree.links.new(texture.outputs["Color"], shader.inputs["Base Color"])
-if falling:
-    normals = nodes.new("ShaderNodeTexImage")
-    normals.image = bpy.data.images.load(str(assets/"CharacterAtlas_normal.png"))
-    normals.image.colorspace_settings.name = "Non-Color"
-    normal = nodes.new("ShaderNodeNormalMap")
-    normal.inputs["Strength"].default_value = .35
-    atlas.node_tree.links.new(normals.outputs["Color"], normal.inputs["Color"])
-    atlas.node_tree.links.new(normal.outputs["Normal"], shader.inputs["Normal"])
+normals = nodes.new("ShaderNodeTexImage")
+normals.image = bpy.data.images.load(str(assets/"CharacterAtlas_normal.png"))
+normals.image.colorspace_settings.name = "Non-Color"
+normal = nodes.new("ShaderNodeNormalMap")
+normal.inputs["Strength"].default_value = .35
+atlas.node_tree.links.new(normals.outputs["Color"], normal.inputs["Color"])
+atlas.node_tree.links.new(normal.outputs["Normal"], shader.inputs["Normal"])
 
 cast = (
     ("Eva",(-1.94,0,0),math.pi*.52), ("Max",(-.73,0,0),math.pi*.65),
@@ -58,6 +57,27 @@ for name, position, yaw in cast:
     rig.parent = placement
     placement.location = position
     placement.rotation_euler.z = yaw
+
+    if name in ('Max','Eva'):
+        for suffix,color in (('',(.045,.058,.065)),('_steel',(.19,.23,.25))):
+            path=assets.parent/'Meshes'/('lux_weapon_rifle'+suffix+'.obj')
+            points,faces=[],[]
+            for line in path.read_text().splitlines():
+                if line.startswith('v '):
+                    x,y,z=map(float,line.split()[1:]);points.append((x*.51,z*.51,y*.51+.065))
+                elif line.startswith('f '):faces.append([int(word.split('/')[0])-1 for word in line.split()[1:]])
+            data=bpy.data.meshes.new(name+' rifle'+suffix);data.from_pydata(points,[],faces)
+            gun=bpy.data.objects.new(data.name,data);bpy.context.collection.objects.link(gun);gun.parent=rig
+            mat=bpy.data.materials.new(data.name);mat.diffuse_color=(*color,1);data.materials.append(mat)
+
+            def follow_weapon(scene,depsgraph=None,obj=gun,actor=rig):
+                grip=actor.pose.bones['WeaponGrip'].head
+                forward=(actor.pose.bones['WeaponForward'].head-grip).normalized()
+                right=forward.cross(Vector((0,0,1))).normalized();up=right.cross(forward).normalized()
+                basis=Matrix((right,forward,up)).transposed().to_4x4();basis.translation=grip
+                obj.matrix_local=basis
+            bpy.app.handlers.frame_change_post.append(follow_weapon)
+            follow_weapon(scene)
 
 bpy.ops.mesh.primitive_plane_add(size=200)
 floor = bpy.context.object

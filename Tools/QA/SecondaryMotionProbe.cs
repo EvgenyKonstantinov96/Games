@@ -34,6 +34,9 @@ namespace ZombieSurvivalRun
         Quaternion tieRest = new(), tailRest = new();
         Vector3 previous, previousVelocity;
         Vector2 angle, angularVelocity;
+        readonly Transform pack = new();
+        Quaternion packRest = new();
+        Vector2 packAngle, packVelocity;
 
         public void Check(int hz)
         {
@@ -45,14 +48,19 @@ namespace ZombieSurvivalRun
                 LateUpdate();
                 if(!float.IsFinite(angle.x)||!float.IsFinite(angle.y)||Math.Abs(angle.x)>7.01f||Math.Abs(angle.y)>9.01f)
                     throw new Exception("Ponytail spring outside its anatomical limits");
+                if(!float.IsFinite(packAngle.x)||!float.IsFinite(packAngle.y)||Math.Abs(packAngle.x)>2.201f||Math.Abs(packAngle.y)>2.501f)
+                    throw new Exception("Strapped pack exceeded angular limits");
             }
             var saved=(angle,angularVelocity,tail.localRotation.Angles);
+            var packSaved=(packAngle,packVelocity,pack.localRotation.Angles);
             ZSRGame.Instance.IsRunning=false;
             for(int frame=0;frame<hz*2;frame++)LateUpdate();
             if(saved!=(angle,angularVelocity,tail.localRotation.Angles))throw new Exception("Pause moved the ponytail");
+            if(packSaved!=(packAngle,packVelocity,pack.localRotation.Angles))throw new Exception("Pause moved the pack");
             ZSRGame.Instance.IsRunning=true;
             for(int frame=0;frame<hz*3;frame++)LateUpdate();
             if(angle.magnitude>.001f)throw new Exception("Spring failed to settle");
+            if(packAngle.magnitude>.001f)throw new Exception("Pack failed to settle");
         }
     }
 }
@@ -62,6 +70,6 @@ class SecondaryMotionProbe
     static void Main()
     {
         foreach(int hz in new[]{20,30,60,120})new ZombieSurvivalRun.ZSRSecondaryMotion().Check(hz);
-        Console.WriteLine("HAIR PASS: bounded spring at 20/30/60/120 Hz, frozen pause and neutral recovery after stopping.");
+        Console.WriteLine("SECONDARY PASS: bounded ponytail and pack springs at 20/30/60/120 Hz, frozen pause and neutral recovery after stopping. Scene stand-ins.");
     }
 }

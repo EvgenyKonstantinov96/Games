@@ -93,6 +93,7 @@ def append_field_gear(actor):
         actor.panel((x,front+.012,h*.790),(.043,.016,.052),4,'Chest')
 
     # Backpack side gussets, lid, zip and three real webbing straps.
+    pack_start=len(actor.vertices)
     z=h*.735
     y=surface(0,z,True)-.085
     width=.295 if actor.name=='Max' else .255
@@ -108,6 +109,8 @@ def append_field_gear(actor):
     if actor.name=='Max':
         actor.surface((-.147,y,z+.10),(-.157,y-.008,z+.282),
                       [(0,.009,.009),(.85,.006,.006),(1,.003,.003)],4,'Chest',8)
+    for index in range(pack_start,len(actor.vertices)):
+        actor.weights[index]={'Pack':1.}
 
     # Belt, cargo pockets, leg straps and kneepads are weighted to their actual
     # leg chains; the knee pad blends across the joint rather than floating.
@@ -128,9 +131,31 @@ def append_field_gear(actor):
             actor.panel((x+sign*.032,y+.068,z+.013),(.048,.004,.010),16,'Thigh'+side)
             actor.panel((x+sign*.032,y+.069,z+.013),(.010,.004,.048),16,'Thigh'+side)
         first=len(actor.vertices)
-        y=surface(knee.x,knee.z)+.027
-        actor.panel((knee.x,y,knee.z-.006),(.126,.047,.143),4,'Shin'+side)
-        actor.panel((knee.x,y+.027,knee.z-.004),(.080,.012,.092),8,'Shin'+side)
+        near=sorted(body,key=lambda p:(p.x-knee.x)**2+(p.z-knee.z)**2)[:16]
+        y=sum(sorted(p.y for p in near)[-4:])/4+.006
+        actor.panel((knee.x,y,knee.z-.006),(.129,.015,.149),3,'Shin'+side)
+        # A curved rigid shell over a soft backing, rather than stacked boxes.
+        start=len(actor.vertices);nu,nv=6,6
+        for j in range(nv+1):
+            vz=j/nv*2-1
+            for i in range(nu+1):
+                u=i/nu*2-1
+                x=knee.x+u*.059*math.sqrt(1-.20*vz*vz)
+                z=knee.z-.006+vz*.065
+                dome=.023*math.sqrt(max(0,1-u*u))+.009*(1-vz*vz)
+                actor.vertices.append((x,y+.011+dome,z))
+                actor.weights.append({'KneeGuard'+side:1.})
+        for j in range(nv):
+            for i in range(nu):
+                a=start+j*(nu+1)+i
+                actor.faces.append((a+nu+1,a+nu+2,a+1,a))
+                tile=8 if 1<=i<nu-1 and 1<=j<nv-1 else 4
+                actor.tiles.append((tile,((i/nu,(j+1)/nv),((i+1)/nu,(j+1)/nv),((i+1)/nu,j/nv),(i/nu,j/nv))))
+        shell_end=len(actor.vertices)
+        for z in (knee.z-.050,knee.z+.040):
+            rings=[(Vector((knee.x,knee.y,z+dz)),.078,.077,{'Shin'+side:1.}) for dz in (-.007,.007)]
+            actor.loft(rings,[3],12,0)
         for index in range(first,len(actor.vertices)):
+            if start<=index<shell_end:continue
             t=smooth(knee.z-.065,knee.z+.070,actor.vertices[index][2])*.65
             actor.weights[index]={'Shin'+side:1-t,'Thigh'+side:t}

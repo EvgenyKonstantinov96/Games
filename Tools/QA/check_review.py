@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[2]
 def extract():
     source = (ROOT / "Assets/Scripts/ZSRBundledCharacter.cs").read_text()
     start = source.index("            if (spine != null && motion != Motion.Death &&")
-    end = source.index("            if (hero && striding", start)
+    end = source.index("            ApplyUpperBodyAim(dt);", start)
     pose = [
         block(source, "enum Motion"),
         *[line for line in source.splitlines() if "static readonly int[]" in line],

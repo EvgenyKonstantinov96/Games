@@ -93,6 +93,17 @@ static class CampaignProbe
 
     static void CheckHeroSteering()
     {
+        foreach(int hz in new[]{20,30,60,120})
+        {
+            float rate=1f;
+            for(int step=0;step<hz;step++)
+            {
+                float next=ZSRHeroGait.SettleCadence(rate,1.75f,1f/hz);
+                Require(next>=rate && next<1.75f,"No cadence overshoot");rate=next;
+            }
+            Require(Math.Abs(rate-1.75f)<.001f,"Frame-rate independent cadence settling");
+            Require(ZSRHeroGait.SettleCadence(rate,.55f,0f)==rate,"Pause holds cadence");
+        }
         foreach (int level in new[] { 1, 5, 15, 90, 1000 })
         foreach (int hero in new[] { 0, 1 })
         {

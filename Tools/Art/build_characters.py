@@ -100,6 +100,11 @@ class Character:
                     self.bone(name,joints[i],joints[i+1],parent)
                     parent=name
         if self.hero:
+            for side,_ in SIDES:
+                knee=self.bones['Shin'+side][0]
+                self.bone('KneeGuard'+side,knee,knee+v(0,0,-.12),'Shin'+side)
+            pack=v(0,self.body.back_at(self.h*.735)-.10,self.h*.735)
+            self.bone('Pack',pack,pack+v(0,0,.16),'Chest')
             wrist = self.bones["HandR"][0]
             self.bone("WeaponGrip", wrist, wrist+v(0,.11,0), "HandR")
             self.bone("WeaponForward", wrist+v(0,.32,0), wrist+v(0,.40,0), "HandR")
@@ -229,8 +234,12 @@ class Character:
                               {"Shin"+side:shin,"Foot"+side:1-shin}))
             self.loft(rings,[3]*5,16,.006)
             for stitch in range(4):
-                at=ankle+v(0,.057,.077+stitch*.025)
-                self.panel(at,(.049,.006,.005),8,"Shin"+side)
+                height=.069+stitch*.024
+                front=.071-height*.10
+                for sign in (-1,1):
+                    a=ankle+v(-.024,front,height+(.017 if sign<0 else 0))
+                    b=ankle+v(.024,front-.001,height+(.017 if sign>0 else 0))
+                    self.surface(a,b,[(0,.0022,.0022),(1,.0022,.0022)],8,'Shin'+side,5)
     def fabric_flap(self, top, low, tile, bone):
         """A double-sided irregular fabric edge draped off the skinned cloth."""
         points = tuple(top)+tuple(low)
@@ -492,9 +501,12 @@ class Character:
             right = side == "R"
             active_hand = 0 if right else 1
             wrist = v(.113 if right else -.025, .285 if right else .465,
-                      self.h*.735+rise+.017*sign*swing)
+                      self.h*.735+rise+.012*swing)
+            # Both hands carry one weapon. Opposite vertical wrist phases made
+            # the support palm drift away from the fore-end on every stride.
+            wrist += v(.006*swing,.007*abs(swing),0)
             wrist += v(sign*.15*reload*active_hand,
-                       -fire*.032-hit*.09-reload*.13*active_hand-.20*care*active_hand+.13*toss*active_hand,
+                       -fire*.008-hit*.09-reload*.13*active_hand-.20*care*active_hand+.13*toss*active_hand,
                        death*-.29+hit*.043-reload*.17*active_hand-.19*care*active_hand+.40*toss*active_hand)
             pole = v(sign*.65,-.42,-1+.56*max(0,toss)*active_hand)
             end = self.bend_chain("UpperArm"+side,"Forearm"+side,wrist,pole)
@@ -502,7 +514,7 @@ class Character:
             self.aim_bone("Hand"+side,end,v(-.09 if right else .16,.86,-.35+.33*toss*active_hand),
                           -.17 if right else .40)
         wrist = self.rig.pose.bones["HandR"].head
-        aim = v(.03*hit,1,.095*fire+.32*hit-.49*death).normalized()
+        aim = v(.03*hit,1,.025*fire+.32*hit-.49*death).normalized()
         grip = wrist+v(.001,.037,.022)
         self.aim_bone("WeaponGrip",grip,aim)
         self.aim_bone("WeaponForward",grip+aim*.32,aim)
@@ -587,7 +599,8 @@ class Character:
                         if self.crawler: foot.y-=.32
                     placements[side]=(foot,toe,phase,toe_pitch)
                 pelvis_roll = .068*swing if self.hero else .17*swing
-                self.aim_bone("Pelvis",pelvis,v(pelvis_roll+.037*attack,.047+.47*death,.99),.067*swing)
+                tilt=.014*math.sin(math.tau*(f*2-.12)) if self.hero and moving else 0
+                self.aim_bone("Pelvis",pelvis,v(pelvis_roll+.037*attack,.047+tilt+.47*death,.99),.067*swing)
                 pitch={"Crawler":1.22,"Runner":.31,"Walker":.24,"Brute":.18,
                        "Toxic":.28,"Boss":.13,"Armored":.155}.get(self.name,.11)
                 droop = .14 if self.name in ("Walker","Toxic") else 0
@@ -604,16 +617,21 @@ class Character:
                 if self.hero:
                     # Shoulder girdle yields slightly under the rifle/backpack.
                     # Solve wrists after this adjustment so the weapon stays gripped.
-                    breath=.003*math.sin(math.tau*t)
+                    shoulder_sway=eased_keys(((0,0),(.23,.96),(.50,0),(.73,-.96),(1,0)),(f+.08)%1) if moving else 0
                     for side,s in SIDES:
                         clavicle=self.rig.pose.bones['Clavicle'+side]
                         direction=clavicle.tail-clavicle.head
                         self.aim_bone(clavicle.name,clavicle.head.copy(),
-                                      direction+v(0,-s*.006*swing,breath+s*.004*swing))
+                                      direction+v(0,-s*.006*shoulder_sway,s*.004*shoulder_sway))
                     self.hero_arms(swing * (.55 if walking else 1.),care,swing_throw,reload,fire,rear,death)
                 for side,s in SIDES:
                     foot,toe,phase,toe_pitch=placements[side]
                     self.leg_pose(side,foot,v(s*.08,1,0),toe,toe_pitch)
+                    if self.hero:
+                        thigh=self.rig.pose.bones['Thigh'+side]
+                        shin=self.rig.pose.bones['Shin'+side]
+                        direction=(thigh.tail-thigh.head).normalized().lerp((shin.tail-shin.head).normalized(),.74)
+                        self.aim_bone('KneeGuard'+side,shin.head.copy(),direction)
                     if not self.hero:
                         arm=self.rig.pose.bones["UpperArm"+side]
                         origin=arm.head.copy()
