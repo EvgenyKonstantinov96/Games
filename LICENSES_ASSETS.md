@@ -23,8 +23,10 @@
 | `lux_weapon_rifle.obj`, `lux_weapon_rifle_steel.obj` | Original game meshes authored in `Tools/Art/build_rifle.py`. | Two shared materials, existing grip and muzzle attachments. |
 | `lux_weapon_{pistol,shotgun,minigun}*.obj` | Original beveled meshes authored in `Tools/Art/build_arsenal.py`. | Three distinct weapon models with existing grip and barrel attachment axes. |
 | `track_maintenance.obj`, `track_streetlamp.obj` | Original meshes authored in `Tools/Art/build_street_dressing.py`. | Joined roadside details using the shared track atlas. |
-| `combat_*.obj` | Original drone, rotor, grenade and medkit authored in `Tools/Art/build_combat_props.py`. | Combat props using the shared track atlas. |
+| `combat_*.obj`, `CombatAtlas.png`, `CombatAtlas_normal.png`, `CombatAtlas_surface.png` | Original medical hardcase, fragmentation grenade, white quadcopter, rotors and shared material maps authored in `Tools/Art/build_combat_props.py`. | In-game field kit with its own 512×512 material atlas. |
+| `Assets/Resources/UI/kit_{medkit,grenade,drone}.png` | Blender renders of those original shipped meshes, produced by `Tools/Art/render_fieldkit.py`. | Transparent item illustrations shared by the HUD and upgrades menu. |
 | `Assets/Resources/Audio/*.ogg` | Original synthesized score and effects composed in `Tools/Art/build_audio.py`. | Two looping music cues, six combat sounds and four synthesized bite, claw, acid and spit sounds. The damage sounds are authored in `Tools/Art/build_damage_audio.py`. |
 | `docs/design/*-blender.jpg`, `docs/design/*-blender.gif` | Blender renders of the shipped meshes and textures. | Character, motion, and portrait composition reviews. |
+| `docs/design/field-kit-hud-layout.jpg`, `docs/design/field-kit-hud-strip.png` | Reconstruction of managed UI layout using the game's own artwork, produced by `Tools/Art/preview_interface.py`. | Layout review only; not a Unity screenshot. |
 
 The existing Polyfork license and source notes in the repository continue to apply to their listed external assets.
