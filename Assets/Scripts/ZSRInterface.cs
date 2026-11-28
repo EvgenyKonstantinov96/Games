@@ -50,11 +50,11 @@ namespace ZombieSurvivalRun
         readonly int[] bonusSeconds = new int[5];
         UnityEngine.UI.Button firstButton;
         const float H = 844f;
+        UnityEngine.UI.Image damageLeft, damageRight;
         Text hudAmmo, hudCoins, hudHealth, hudMessage, hudGrenade, hudMed, hudDrone;
         RectTransform hpFill, progressFill, bossFill, bossBackdrop;
-        Text hudBoss, hudRadio, hudRadioSpeaker, hudPace;
-        RectTransform radioCard, paceFill;
-        string lastRadioLine;
+        Text hudBoss, hudPace;
+        RectTransform paceFill;
         ZSRPace lastPace;
         int lastPaceSeconds;
 
@@ -121,7 +121,7 @@ namespace ZombieSurvivalRun
             var g = ZSRGame.Instance; if (g == null || root == null) return;
             if (Keyboard.current?.escapeKey.wasPressedThisFrame == true)
             {
-                if (!IsBattle(g.State) && g.State != ZSRState.Menu) g.GoMenu();
+                if (g.State == ZSRState.Briefing || (!IsBattle(g.State) && g.State != ZSRState.Menu)) g.GoMenu();
             }
             float hh = root.rect.height;
             if (refresh || lastState != g.State || (g.State != ZSRState.Playing && lastCoins != g.Coins) || lastLevel != g.Level || lastHero != g.SelectedHero || lastWeapon != (int)g.Weapon || Mathf.Abs(hh - lastHeight) > 1.5f || Mathf.Abs(root.rect.width - lastWidth) > 1.5f || Screen.safeArea != lastSafeArea)
@@ -329,7 +329,7 @@ namespace ZombieSurvivalRun
             }
         }
 
-        static bool IsBattle(ZSRState state) => state == ZSRState.Playing || state == ZSRState.Paused ||
+        static bool IsBattle(ZSRState state) => state == ZSRState.Briefing || state == ZSRState.Playing || state == ZSRState.Paused ||
             state == ZSRState.Victory || state == ZSRState.Defeat;
 
         static void Retire(RectTransform view)
@@ -403,6 +403,11 @@ namespace ZombieSurvivalRun
 
             hudAmmo = hudCoins = hudHealth = hudMessage = hudGrenade = hudMed = hudDrone = null;
             hpFill = progressFill = bossFill = bossBackdrop = null; hudBoss = null;
+            if (g.State == ZSRState.Briefing)
+            {
+                Dialogue(g);
+                return;
+            }
             if (inBattle)
             {
                 DrawHUD(g);
@@ -733,6 +738,8 @@ namespace ZombieSurvivalRun
 
         void DrawHUD(ZSRGame g)
         {
+            damageLeft = Block("left damage feedback", 0, 112, 7, 605, Color.clear).GetComponent<UnityEngine.UI.Image>();
+            damageRight = Block("right damage feedback", 383, 112, 7, 605, Color.clear).GetComponent<UnityEngine.UI.Image>();
             Block("HUD top", 0, 0, W, 107, new Color(.026f, .041f, .061f, .87f));
             Accent(9, 104, 372, Orange);
             Label("УРОВЕНЬ " + g.Level + " / " + ZSRGame.MaxLevels, 62, 13, 210, 31, 16, Color.white);
@@ -753,14 +760,6 @@ namespace ZombieSurvivalRun
             bossBackdrop = Block("boss hp backdrop", 35, 158, 320, 9, new Color(.24f,.08f,.10f,.85f));
             bossFill = Block("boss health red", 35, 158, 320, 9, new Color(.91f, .12f, .13f, 1));
             hudMessage = Label("", 8, 172, 374, 27, 15, Gold);
-            radioCard = Block("radio scene panel", 16, 201, 358, 106, new Color(.027f, .059f, .087f, .94f));
-            Block("radio accent", 8, 13, 3, 78, Cyan, radioCard);
-            Label(g.HasStoryBeat ? g.StoryBeat.Title.ToUpperInvariant() : "", 22, 8, 212, 23, 13, Color.white,
-                TextAnchor.MiddleLeft, true, radioCard);
-            hudRadioSpeaker = Label("", 224, 8, 118, 23, 11, Cyan, TextAnchor.MiddleRight, true, radioCard);
-            hudRadio = Label("", 22, 36, 318, 62, 15, Color.white, TextAnchor.UpperLeft, false, radioCard);
-            radioCard.gameObject.SetActive(false);
-            lastRadioLine = null;
             lastPaceSeconds = -1;
             float bottom = H - 107;
             Block("HUD bottom", 0, bottom - 15, W, 122, new Color(.026f, .041f, .061f, .85f));
@@ -784,18 +783,14 @@ namespace ZombieSurvivalRun
             hudHealth.text = "ЗДОРОВЬЕ " + g.Hero.Health;
             hudAmmo.text = WeaponNames[(int)g.Weapon] + "   " + g.Ammo + " / " + g.Magazine + (g.IsReloading ? "  •  ПЕРЕЗАРЯДКА" : "");
             hudMessage.text = g.CurrentNotice;
-            var radio = g.Radio;
-            if (radio.line != lastRadioLine)
-            {
-                lastRadioLine = radio.line;
-                radioCard.gameObject.SetActive(radio.line != null);
-                if (radio.line != null)
-                {
-                    hudRadioSpeaker.text = radio.speaker == 0 ? "РАЦИЯ  /  МАКС" : "РАЦИЯ  /  ЕВА";
-                    hudRadioSpeaker.color = radio.speaker == 0 ? Orange : Cyan;
-                    hudRadio.text = radio.line;
-                }
-            }
+            bool acidHit = g.LastDamageKind == ZSRDamageKind.Acid;
+            Color damageColor = acidHit ? new Color(.66f, .9f, .17f) : new Color(1f, .21f, .12f);
+            float intensity = Mathf.Clamp01(g.DamageFlash / .65f);
+            damageColor.a = intensity * .85f;
+            damageLeft.color = g.DamageSourceX <= g.Hero.PositionX ? damageColor : new Color(0, 0, 0, 0);
+            damageRight.color = g.DamageSourceX >= g.Hero.PositionX ? damageColor : new Color(0, 0, 0, 0);
+            hudHealth.color = Color.Lerp(Color.white, damageColor, intensity);
+            hudMessage.color = intensity > 0f ? damageColor : Gold;
             int rechargeSeconds = Mathf.CeilToInt(g.PaceRecharge);
             if (g.Pace != lastPace || rechargeSeconds != lastPaceSeconds)
             {
@@ -846,6 +841,28 @@ namespace ZombieSurvivalRun
             Block("modal panel", 17, top, 356, height, Panel);
             Accent(30, top + 5, 68, Orange);
             return top;
+        }
+
+        void Dialogue(ZSRGame g)
+        {
+            float top = ModalDark(490);
+            Label("УРОВЕНЬ " + g.Level + "  /  " + g.Briefing.Title, 33, top + 20, 324, 54, 19,
+                Color.white, TextAnchor.MiddleLeft);
+            int speaker = g.DialogueIndex;
+            string name = speaker == 0 ? "МАКС" : "ЕВА";
+            Color tint = speaker == 0 ? Orange : Cyan;
+            Image(Resources.Load<Texture2D>("UI/dialogue_face_" + (speaker == 0 ? "max" : "eva")),
+                35, top + 90, 74, 74, false);
+            ButtonCaption(name, 124, top + 98, 224, 32, 22, tint, TextAnchor.MiddleLeft, content);
+            Label("БРАТ И СЕСТРА  •  " + (speaker + 1) + " / 2", 125, top + 131, 218, 23, 11,
+                TextMuted, TextAnchor.MiddleLeft);
+            Label(g.Briefing.Line(speaker), 36, top + 187, 316, 155, 19,
+                Color.white, TextAnchor.UpperLeft, false);
+            Button(speaker == 0 ? "ДАЛЕЕ  ›" : "НАЧАТЬ ЗАБЕГ", 35, top + 353, 320, 60,
+                Orange, g.AdvanceDialogue, 18);
+            Button("В МЕНЮ", 35, top + 424, 320, 46, Cyan, g.GoMenu, 14);
+            if (firstButton != null && EventSystem.current != null)
+                EventSystem.current.SetSelectedGameObject(firstButton.gameObject);
         }
 
         void PauseScreen(ZSRGame g)

@@ -34,6 +34,17 @@ namespace ZombieSurvivalRun
         float flashTime, recoil, aimTime, kick;
         Vector3 aimPoint;
         Quaternion socketRest;
+        Quaternion sampledSpine, sampledHead;
+        bool sampledUpperBody;
+
+        void RestoreSampledPose()
+        {
+            // Constant animation tracks can be omitted by the FBX importer.
+            // Undo the previous frame's steering before evaluating that sparse take.
+            if (!sampledUpperBody) return;
+            spine.localRotation = sampledSpine;
+            head.localRotation = sampledHead;
+        }
 
         public Transform Muzzle { get; private set; }
         public Transform ItemHand { get; private set; }
@@ -429,7 +440,14 @@ namespace ZombieSurvivalRun
                 lowerBody.SetInputWeight(1, walkBlend);
                 heroLayers.SetInputWeight(1, legWeight);
             }
+            RestoreSampledPose();
             graph.Evaluate(0f);
+            if (spine != null && head != null)
+            {
+                sampledSpine = spine.localRotation;
+                sampledHead = head.localRotation;
+                sampledUpperBody = true;
+            }
         }
 
         void HideFlash()
@@ -438,7 +456,7 @@ namespace ZombieSurvivalRun
             if (muzzleFlash != null) muzzleFlash.gameObject.SetActive(false);
         }
 
-        void OnDisable() => HideFlash();
+        void OnDisable() { RestoreSampledPose(); HideFlash(); }
 
         void OnDestroy()
         {

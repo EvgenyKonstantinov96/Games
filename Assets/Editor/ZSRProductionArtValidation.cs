@@ -66,7 +66,10 @@ namespace ZombieSurvivalRun.EditorTools
             foreach (string name in new[] { "max", "eva" })
                 if (Resources.Load<Texture2D>("UI/campaign_cover_" + name) == null)
                     errors.Add(name + ": campaign cover missing");
-            foreach (string name in new[] { "Menu", "Run", "Pistol", "Rifle", "Shotgun", "Minigun", "Drone", "Blast" })
+            foreach (string name in new[] { "max", "eva" })
+                if (Resources.Load<Texture2D>("UI/dialogue_face_" + name) == null)
+                    errors.Add(name + ": dialogue avatar missing");
+            foreach (string name in new[] { "Menu", "Run", "Pistol", "Rifle", "Shotgun", "Minigun", "Drone", "Blast", "Bite", "Claw", "AcidHit", "Spit" })
                 if (Resources.Load<AudioClip>("Audio/" + name) == null)
                     errors.Add(name + ": audio clip missing");
 

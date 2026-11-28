@@ -305,7 +305,8 @@ class Body:
                       "Crawler":.49 if side=="R" else .27, "Boss":.04}[actor.name]
             upper_arm = elbow-shoulder
             limb_position = (p-shoulder).dot(upper_arm)/upper_arm.length_squared
-            if limb_position < sleeve+.035*math.sin(y*53+z*38):
+            hem = 0 if actor.hero else .035*math.sin(y*53+z*38)
+            if limb_position < sleeve+hem:
                 return "shirt"
             return "glove" if actor.name == "Armored" and lower > .60 else "skin"
         if z < height*(.55 if actor.hero else .562):

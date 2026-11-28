@@ -27,8 +27,18 @@ namespace ZombieSurvivalRun
             return -1;
         }
 
-        internal static int SpeakerAt(float elapsed) =>
-            elapsed < 1.4f || elapsed >= 20.4f ? -1 : elapsed < 10.9f ? 0 : 1;
+        internal static bool TryBriefing(int level, out Beat beat)
+        {
+            if (level == 1)
+            {
+                beat = new Beat("Сигнал для двоих",
+                    "Ева, насосная больше не выдержит. Мы неделю одни, а заражённые уже у ограды. Держись рядом.",
+                    "Я взяла папину рацию. На северном шлюзе ещё горят огни. Доберёмся туда вместе.",
+                    "");
+                return true;
+            }
+            return TryGet(level, out beat);
+        }
 
         internal static bool TryGet(int level, out Beat beat)
         {

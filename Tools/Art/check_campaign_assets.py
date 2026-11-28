@@ -104,8 +104,8 @@ def inspect_chapter_textures():
         assert np.abs(alpha[:,0].astype(int)-alpha[:,-1]).mean() < 6
     for name in ('eva','max'):
         with Image.open(RESOURCES/'UI'/f'campaign_cover_{name}.png') as cover:
-            assert cover.size == (700,790) and cover.mode == 'RGBA'
-            assert cover.getpixel((0,0))[3] == 0 and cover.getpixel((350,395))[3] == 255
+            assert cover.size == (720,738) and cover.mode == 'RGBA'
+            assert cover.getpixel((0,0))[3] == 255 and cover.getpixel((350,395))[3] == 255
     print('CAMPAIGN ART PASS: distinct warm/cool skies, low-gloss road and wet patches, two portrait covers.')
 
 

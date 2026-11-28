@@ -6,9 +6,11 @@ namespace ZombieSurvivalRun
     public enum WeaponType { Pistol, Rifle, Shotgun, Minigun }
 
     /// <summary>Art-direction v0.7: actual subdivided OBJ body parts and articulated, soft running motion.</summary>
+    [DefaultExecutionOrder(-70)]
     public sealed class ZSRHero : MonoBehaviour
     {
         public float TargetX;
+        internal float PreviousX { get; private set; }
         public float PositionX => transform.position.x;
         public int MaxHealth { get; private set; } = 132;
         public int Health { get; set; } = 132;
@@ -31,7 +33,7 @@ namespace ZombieSurvivalRun
         public void Build(int selection, WeaponType gun)
         {
             Selection = selection;
-            if (model != null) Destroy(model);
+            if (model != null) { model.SetActive(false); Destroy(model); }
             bool female = selection == 1;
             model = new GameObject(female ? "EVA / skeletal character" : "MAX / skeletal character");
             model.transform.SetParent(transform,false);
@@ -127,7 +129,7 @@ namespace ZombieSurvivalRun
         {
             Build(selection,weaponType);
             MaxHealth=selection==0?132:112;Health=MaxHealth;
-            TargetX=0;transform.position=Vector3.zero;velocityX=0;stride=0;recoil=0;hitT=0;itemTime=0;
+            TargetX=0;PreviousX=0;transform.position=Vector3.zero;velocityX=0;stride=0;recoil=0;hitT=0;itemTime=0;
         }
         public void Fire(Vector3 aim)
         {
@@ -148,6 +150,7 @@ namespace ZombieSurvivalRun
         public void Die() { if (production != null) production.Die(); }
         void Update()
         {
+            PreviousX = PositionX;
             var g=ZSRGame.Instance;
             if (g == null || body == null || g.State == ZSRState.Paused) return;
             float dt=g.FrameStep;
@@ -446,6 +449,7 @@ namespace ZombieSurvivalRun
                     attackTimer = .42f;
                     if (production != null) production.Attack();
                     game.ToxicBurst(AimPoint);
+                    game.Notify("ТОКСИН — СМЕНИ ПОЛОСУ", 1.25f);
                 }
                 else if (attackTelegraphed)
                 {
@@ -471,7 +475,7 @@ namespace ZombieSurvivalRun
                     attackTimer = levelPlan.BossAttackDelay;
                     attackTelegraphed = false;
                     game.BossStrike(p.x, p.z - .72f);
-                    if (Mathf.Abs(p.x - game.Hero.PositionX) < strikeWidth) game.HurtPlayer(levelPlan.Level >= 15 ? 18 : 15);
+                    if (Mathf.Abs(p.x - game.Hero.PositionX) < strikeWidth) game.HurtPlayer(levelPlan.Level >= 15 ? 18 : 15, ZSRDamageKind.Slam, p.x);
                     else game.Notify("УДАР МУТАНТА МИМО", .9f);
                 }
             }
@@ -482,14 +486,23 @@ namespace ZombieSurvivalRun
                 attackTelegraphed = true;
                 if (production != null) production.Attack();
             }
-            // Physical contact requires both depth overlap and a matching lane.
-            // Previously every zombie dealt damage when its Z reached 1, even across the road.
-            if (Kind != ZombieType.Boss && p.z <= 1.0f && p.z >= -.85f && !contacted &&
-                Mathf.Abs(p.x - ZSRGame.Instance.Hero.PositionX) < (Kind == ZombieType.Brute ? 1.23f : .78f))
+            // Test a swept body footprint against the runner's movement in this frame.
+            // Matching the forward reach to the body removes damage from passing in another lane.
+            var player = ZSRGame.Instance.Hero;
+            float halfWidth = Kind == ZombieType.Brute ? 1.02f : .59f;
+            float halfDepth = Kind == ZombieType.Brute ? .86f : .62f;
+            var from = new Vector2((previous.x - player.PreviousX) / halfWidth, previous.z / halfDepth);
+            var to = new Vector2((p.x - player.PositionX) / halfWidth, p.z / halfDepth);
+            Vector2 path = to - from;
+            float nearest = path.sqrMagnitude > .0001f ? Mathf.Clamp01(-Vector2.Dot(from, path) / path.sqrMagnitude) : 0f;
+            if (Kind != ZombieType.Boss && !contacted && (from + path * nearest).sqrMagnitude <= 1f)
             {
                 contacted = true;
-                ZSRGame.Instance.HurtPlayer(Kind == ZombieType.Brute ? 25 : Kind == ZombieType.Armored ? 16 : Kind == ZombieType.Runner ? 12 : 8);
-                Fall();
+                if (!attackTelegraphed && production != null) production.Attack();
+                var kind = Kind == ZombieType.Walker || Kind == ZombieType.Crawler ? ZSRDamageKind.Bite : ZSRDamageKind.Claw;
+                ZSRGame.Instance.HurtPlayer(Kind == ZombieType.Brute ? 25 : Kind == ZombieType.Armored ? 16 :
+                    Kind == ZombieType.Runner ? 12 : 8, kind, p.x);
+                // Let the authored strike finish before the actor leaves the road.
             }
             // Enemies that missed the player must leave the active list and return to the pool.
             // Without this, after a few waves the 44-enemy cap stopped all subsequent spawns.

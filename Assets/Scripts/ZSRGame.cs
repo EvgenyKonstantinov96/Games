@@ -7,7 +7,8 @@ using UnityEngine.Rendering.Universal;
 
 namespace ZombieSurvivalRun
 {
-    public enum ZSRState { Menu, Heroes, Arsenal, Bonuses, Items, Levels, Playing, Paused, Victory, Defeat }
+    public enum ZSRState { Menu, Heroes, Arsenal, Bonuses, Items, Levels, Playing, Paused, Victory, Defeat, Briefing }
+    public enum ZSRDamageKind { Bite, Claw, Acid, Collision, Slam }
     public enum ItemType { Medkit, Grenade, Drone, Armor }
 
     /// <summary>
@@ -52,14 +53,8 @@ namespace ZombieSurvivalRun
         }
         internal ZSRStory.Beat StoryBeat { get; private set; }
         internal bool HasStoryBeat { get; private set; }
-        internal (int speaker, string line) Radio
-        {
-            get
-            {
-                int speaker = HasStoryBeat ? ZSRStory.SpeakerAt(Elapsed) : -1;
-                return speaker < 0 ? (-1, null) : (speaker, StoryBeat.Line(speaker));
-            }
-        }
+        internal int DialogueIndex { get; private set; }
+        internal ZSRStory.Beat Briefing { get; private set; }
         public int SelectedHero { get; private set; }
         public WeaponType Weapon { get; private set; } = WeaponType.Rifle;
         public float RunSpeed => Plan.Speed * pace.Scale;
@@ -79,6 +74,17 @@ namespace ZombieSurvivalRun
         public int Ammo { get; private set; } = 30;
         internal const int GateHealAmount = 45;
         internal const float RapidFireInterval = .62f;
+        internal float DamageFlash { get; private set; }
+        internal float DamageSourceX { get; private set; }
+        internal ZSRDamageKind LastDamageKind { get; private set; }
+        internal static string DamageName(ZSRDamageKind kind) => kind switch
+        {
+            ZSRDamageKind.Bite => "УКУС",
+            ZSRDamageKind.Claw => "УДАР ЗОМБИ",
+            ZSRDamageKind.Acid => "КИСЛОТА",
+            ZSRDamageKind.Collision => "СТОЛКНОВЕНИЕ",
+            _ => "УДАР БОССА"
+        };
         public bool IsShielded => shieldTimer > 0;
         internal float BonusDuration(BonusKind kind) => kind switch
         {
@@ -159,7 +165,7 @@ namespace ZombieSurvivalRun
         ParticleSystem chapterAir;
         Material chapterAirMaterial;
         AudioSource audioSource;
-        AudioClip droneAudio, coinAudio, hitAudio, boomAudio, winAudio;
+        AudioClip droneAudio, coinAudio, hitAudio, boomAudio, winAudio, biteAudio, clawAudio, acidAudio, spitAudio;
         public string MusicLabel => music != null ? music.Label : "МУЗЫКА";
         public void CycleMusic() { if (music != null) music.Cycle(); }
         ZSRZombie boss;
@@ -206,6 +212,10 @@ namespace ZombieSurvivalRun
             music = gameObject.AddComponent<ZSRRunMusic>();
             for (int i = 0; i < weaponAudio.Length; i++)
                 weaponAudio[i] = Resources.Load<AudioClip>("Audio/" + ((WeaponType)i)) ?? Synth("gun", .12f, 130, 63, .32f);
+            biteAudio = Resources.Load<AudioClip>("Audio/Bite");
+            clawAudio = Resources.Load<AudioClip>("Audio/Claw");
+            acidAudio = Resources.Load<AudioClip>("Audio/AcidHit");
+            spitAudio = Resources.Load<AudioClip>("Audio/Spit");
             droneAudio = Resources.Load<AudioClip>("Audio/Drone") ?? weaponAudio[0];
             coinAudio = Synth("coin", .13f, 620, 1050, .33f);
             hitAudio = Synth("hit", .16f, 100, 65, .36f);
@@ -463,6 +473,9 @@ namespace ZombieSurvivalRun
             Replaying = Level <= ClearedLevel;
             HasStoryBeat = ZSRStory.TryGet(Level, out var beat);
             StoryBeat = beat;
+            bool hasBriefing = ZSRStory.TryBriefing(Level, out var briefing);
+            Briefing = briefing;
+            DialogueIndex = 0;
             ClearRun();
             worldRoot.SetActive(true);
             RebuildRoad();
@@ -471,7 +484,8 @@ namespace ZombieSurvivalRun
 
             pace.Reset();
             CancelGesture();
-            State = ZSRState.Playing;
+            State = hasBriefing ? ZSRState.Briefing : ZSRState.Playing;
+            if (hasBriefing && chapterAir != null) chapterAir.Pause();
             Elapsed = 0;
             Earned = Payout = 0;
             waveIndex = coinIndex = gateIndex = obstacleIndex = 0;
@@ -488,7 +502,7 @@ namespace ZombieSurvivalRun
             gateTimer = 8.5f;
             carTimer = 9f;
             bonusTimer = 0;
-            shieldTimer = hitRecovery = 0;
+            shieldTimer = hitRecovery = DamageFlash = 0;
             magnetTimer = 0;
             droneTimer = 0;
             damageMultiplier = 1;
@@ -498,6 +512,16 @@ namespace ZombieSurvivalRun
             shake = 0f;
             Notify(LevelTitle, 2.5f);
             FrameRunCamera(0f);
+        }
+
+        public void AdvanceDialogue()
+        {
+            if (State != ZSRState.Briefing) return;
+            if (DialogueIndex == 0) { DialogueIndex = 1; return; }
+            CancelGesture();
+            State = ZSRState.Playing;
+            if (chapterAir != null) chapterAir.Play();
+            Notify(LevelTitle, 2.5f);
         }
 
         static bool ExpiredRunObject(GameObject obj) => obj == null;
@@ -545,6 +569,7 @@ namespace ZombieSurvivalRun
             bonusTimer = Mathf.Max(0, bonusTimer - dt);
             shieldTimer = Mathf.Max(0, shieldTimer - dt);
             hitRecovery = Mathf.Max(0, hitRecovery - dt);
+            DamageFlash = Mathf.Max(0f, DamageFlash - dt);
             magnetTimer = Mathf.Max(0, magnetTimer - dt);
             droneTimer = Mathf.Max(0, droneTimer - dt);
             noticeTimer = Mathf.Max(0, noticeTimer - dt);
@@ -860,7 +885,11 @@ namespace ZombieSurvivalRun
         }
 
         internal void ToxicBurst(Vector3 at) => combatEffects.ToxicBurst(at);
-        internal void LaunchToxicSpit(Vector3 at, float lane) => combatEffects.LaunchSpit(at, lane, RunSpeed);
+        internal void LaunchToxicSpit(Vector3 at, float lane)
+        {
+            combatEffects.LaunchSpit(at, lane, RunSpeed);
+            if (spitAudio != null) audioSource.PlayOneShot(spitAudio, .6f);
+        }
 
         public void ThrowGrenade()
         {
@@ -963,7 +992,7 @@ namespace ZombieSurvivalRun
             Notify("ДРОН В БОЮ", 1.5f);
         }
 
-        public void HurtPlayer(int amount)
+        public void HurtPlayer(int amount, ZSRDamageKind kind = ZSRDamageKind.Claw, float sourceX = 0f)
         {
             if (!IsRunning || hitRecovery > 0f) return;
             if (IsShielded)
@@ -977,8 +1006,15 @@ namespace ZombieSurvivalRun
             hitRecovery = Level > 15 ? .26f : 0f;
             Hero.Health = Mathf.Max(0, Hero.Health - finalDamage);
             Hero.Hit();
+            DamageFlash = .65f;
+            DamageSourceX = sourceX;
+            LastDamageKind = kind;
+            AudioClip sound = kind == ZSRDamageKind.Bite ? biteAudio :
+                kind == ZSRDamageKind.Acid ? acidAudio : clawAudio;
+            audioSource.PlayOneShot(sound != null ? sound : hitAudio, .86f);
+            combatEffects.PlayerHit(Hero.transform.position, sourceX, kind == ZSRDamageKind.Acid);
             shake = .48f;
-            Notify("-" + finalDamage + " HP", .7f);
+            Notify(DamageName(kind) + "  -" + finalDamage + " HP", 1.1f);
         }
 
         public void SpawnImpact(Vector3 position, bool armor)

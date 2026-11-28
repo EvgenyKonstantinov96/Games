@@ -17,10 +17,11 @@
 | `Assets/Resources/UI/ZSRMenuFont.ttf` | Unmodified DejaVu Sans Condensed. [Font license](docs/design/DejaVu-LICENSE.txt). | Bundled game interface font with Cyrillic coverage. |
 | `Assets/Resources/UI/ZSRButtonFont.ttf` | Subset of DejaVu Sans Condensed Bold, including Cyrillic and UI symbols. [Font license](docs/design/DejaVu-LICENSE.txt). | Bundled button captions. |
 | `Assets/Resources/UI/btn_*.png`, `Assets/Resources/UI/panel.png` | Original rounded surfaces authored in `Tools/Art/build_menu_art.py`. | Nine-slice menu panels and buttons. |
+| `Assets/Resources/UI/dialogue_face_*.png` | Face crops of the existing game portrait artwork, prepared in `Tools/Art/build_campaign_art.py`. | Pre-run dialogue avatars. |
 | `Assets/Resources/UI/menu_symbols.png` | Original field-kit and navigation pictograms drawn in `Tools/Art/build_menu_art.py`. | Shared transparent canvas atlas. |
 | `lux_weapon_rifle.obj`, `lux_weapon_rifle_steel.obj` | Original game meshes authored in `Tools/Art/build_rifle.py`. | Two shared materials, existing grip and muzzle attachments. |
 | `combat_*.obj` | Original drone, rotor, grenade and medkit authored in `Tools/Art/build_combat_props.py`. | Combat props using the shared track atlas. |
-| `Assets/Resources/Audio/*.ogg` | Original synthesized score and effects composed in `Tools/Art/build_audio.py`. | Two looping music cues and six gameplay sounds. |
+| `Assets/Resources/Audio/*.ogg` | Original synthesized score and effects composed in `Tools/Art/build_audio.py`. | Two looping music cues, six combat sounds and four synthesized bite, claw, acid and spit sounds. The damage sounds are authored in `Tools/Art/build_damage_audio.py`. |
 | `docs/design/*-blender.jpg`, `docs/design/*-blender.gif` | Blender renders of the shipped meshes and textures. | Character, motion, and portrait composition reviews. |
 
 The existing Polyfork license and source notes in the repository continue to apply to their listed external assets.

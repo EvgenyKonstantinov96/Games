@@ -41,24 +41,22 @@ def sky(filename, source, mode):
 
 
 def hero_cover(hero):
-    width,height = 700,790
+    # The home card has a fixed 360 x 369 viewport. Keep hair, face and shoulders
+    # in that exact crop so NPOT imports and viewport changes cannot recenter it.
     image = Image.open(ASSETS/'Artwork'/f'{hero}.png').convert('RGB')
-    starting_y = 26 if hero=='eva' else 33
-    image = ImageOps.fit(image.crop((0,starting_y,image.width,image.height-25)), (width,height),
-                         Image.Resampling.LANCZOS, centering=(.47,.28))
-    image = ImageEnhance.Color(image).enhance(1.11)
-    y,x = np.mgrid[:height,:width]
-    light = np.clip((1-((x/width-.51)*1.74)**2)*.98,.39,1.)
-    top_bottom = np.clip(np.minimum(y/125, (height-y)/330),.08,1.)
-    shade = np.asarray(image,dtype=float)*light[...,None]
-    shade = shade * top_bottom[...,None] + (1-top_bottom[...,None]) * np.array([17,23,35])
-    output = Image.fromarray(np.uint8(np.clip(shade,0,255))).convert('RGBA')
-    mask = Image.new('L',output.size)
-    ImageDraw.Draw(mask).rounded_rectangle((0,0,width-1,height-1),radius=31,fill=255)
-    output.putalpha(mask)
+    height = round(image.width * 369 / 360)
+    output = image.crop((0, 0, image.width, height)).convert('RGBA')
+    output = output.resize((720, 738), Image.Resampling.LANCZOS)
     target = ASSETS/'UI'/f'campaign_cover_{hero}.png'
-    output.save(target,optimize=True)
-    texture_meta(target, ASSETS/'UI/menu_wallpaper.png.meta')
+    output.save(target, optimize=True)
+    # Tiny dialogue avatars use a dedicated face crop at native source detail.
+    box = (90, 0, 300, 210) if hero == 'max' else (66, 36, 276, 246)
+    face = image.crop(box).resize((256, 256), Image.Resampling.LANCZOS)
+    avatar = ASSETS/'UI'/f'dialogue_face_{hero}.png'
+    face.save(avatar, optimize=True)
+    if not avatar.with_suffix('.png.meta').exists():
+        texture_meta(avatar, ASSETS/'UI/campaign_cover_max.png.meta')
+
 
 
 if __name__ == '__main__':

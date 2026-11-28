@@ -101,6 +101,19 @@ def inspect_shared_art():
     for source, tag in (('ZSRGame', 'string[] LevelNames'), ('ZSRLevelPlan', 'string[] Districts')):
         names = (SCRIPTS/(source + '.cs')).read_text().split(tag, 1)[1].split('};', 1)[0]
         assert all(title_font.getlength(name.upper()) <= 332 for name in re.findall(r'"([^"]+)"', names))
+    ui_importer = (ROOT/'Assets/Editor/ZSRMenuArtImporter.cs').read_text()
+    assert all(flag in ui_importer for flag in (
+        'TextureImporterNPOTScale.None', 'TextureWrapMode.Clamp',
+        'importer.mipmapEnabled = false', 'TextureImporterCompression.Uncompressed'))
+    for path in (ASSETS/'UI').glob('*.png.meta'):
+        meta = path.read_text()
+        assert 'nPOTScale: 0' in meta and 'enableMipMap: 0' in meta, path
+    for name in ('max', 'eva'):
+        with Image.open(ASSETS/f'UI/dialogue_face_{name}.png') as face:
+            assert face.size == (256, 256)
+        with Image.open(ASSETS/f'UI/campaign_cover_{name}.png') as cover:
+            assert cover.width * 369 == cover.height * 360
+    print('UI IMPORT PASS: original proportions, no mipmaps, clamp and uncompressed desktop art; native face crops.')
     print('MENU PASS: 13 distinct antialiased atlas symbols with clear gutters; all 55 level/district titles fit the home mission card.')
     silhouettes = [(ASSETS/f'Artwork/Weapons/{weapon}.png').read_bytes()
                    for weapon in ('pistol','rifle','shotgun','minigun')]

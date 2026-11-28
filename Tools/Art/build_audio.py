@@ -120,11 +120,12 @@ def burst(name, duration, body, tail, amount):
     ogg(name,sound)
 
 
-loop("Menu", 75, False)
-loop("Run", 100, True)
-burst("Pistol", .19, 111, .068, 1.14)
-burst("Rifle", .24, 84, .081, 1.48)
-burst("Shotgun", .36, 65, .098, 1.62)
-burst("Minigun", .11, 148, .044, .92)
-burst("Drone", .13, 219, .042, .69)
-burst("Blast", .62, 38, .104, 1.53)
+if __name__ == "__main__":
+    loop("Menu", 75, False)
+    loop("Run", 100, True)
+    burst("Pistol", .19, 111, .068, 1.14)
+    burst("Rifle", .24, 84, .081, 1.48)
+    burst("Shotgun", .36, 65, .098, 1.62)
+    burst("Minigun", .11, 148, .044, .92)
+    burst("Drone", .13, 219, .042, .69)
+    burst("Blast", .62, 38, .104, 1.53)

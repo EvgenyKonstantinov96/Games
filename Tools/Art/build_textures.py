@@ -64,9 +64,18 @@ for i, rgb in enumerate(PAL):
         dust=np.maximum(0,np.sin(u*7.1-v*3.9)*np.cos(v*8.8+u*2.6))
         height=.017*stitch+.030*rumple
         panels+=((stitch*2.1+rumple*4.7+dust*4.6)[:,:,None])
+        # Raised twin seams and directional wrinkles remain legible on the mobile atlas.
+        seam = np.exp(-((abs(u)-.75)*48)**2)
+        thread = (np.sin(v*104) > -.18) * seam
+        crease = np.exp(-((u+.30*np.sin(v*2.3))*15)**2)
+        height += .035*thread - .027*crease
+        panels += (thread*14 - crease*7)[:,:,None]
         if i in (6,7):
             soil=(np.sin(u*5.4+v*8.8)*np.cos(v*7.3-u*3.4)+.21*dust)
             panels-=np.maximum(0,soil-.22)[:,:,None]*np.array([36,32,31])
+            wear = np.maximum(0, np.sin(u*11.7+v*5.8)*np.cos(v*14.3-u*2.9)-.35)
+            panels -= wear[:,:,None]*np.array([25,21,18])
+            height -= wear*.036
             if i==7:
                 faded_print=(abs(v+.30)<.069)&(soil<.52)&(abs(u)<.69)
                 panels[faded_print] += np.array([32,30,23])

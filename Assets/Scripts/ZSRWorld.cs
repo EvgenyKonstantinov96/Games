@@ -373,7 +373,7 @@ namespace ZombieSurvivalRun
             if (!damaged && depth < 1.65f && depth > -1.65f && inPath)
             {
                 damaged = true;
-                game.HurtPlayer(20);
+                game.HurtPlayer(20, ZSRDamageKind.Collision, transform.position.x);
                 game.SpawnImpact(transform.position + Vector3.up, true);
             }
             if (depth < -7f) Destroy(gameObject);

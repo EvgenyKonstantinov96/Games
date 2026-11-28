@@ -308,8 +308,18 @@ namespace ZombieSurvivalRun
                 ToxicBurst(shot.Head);
                 var game = ZSRGame.Instance;
                 Vector3 offset = shot.Head - game.Hero.transform.position;
-                if (Mathf.Abs(offset.x) <= .83f && Mathf.Abs(offset.z) <= .95f) game.HurtPlayer(8);
+                if (Mathf.Abs(offset.x) <= .83f && Mathf.Abs(offset.z) <= .95f) game.HurtPlayer(8, ZSRDamageKind.Acid, shot.Head.x);
             }
+        }
+
+        public void PlayerHit(Vector3 feet, float sourceX, bool acid)
+        {
+            Color color = acid ? new Color(.67f, .91f, .21f, .8f) : new Color(.88f, .18f, .10f, .76f);
+            float side = sourceX < feet.x ? -1f : 1f;
+            Vector3 shoulder = feet + new Vector3(side * .3f, 1.4f, .16f);
+            Burst(shoulder, color, acid ? 10 : 5, .06f, 1.5f, .33f);
+            if (!acid) Streak(shoulder + new Vector3(side * .25f, .12f, .12f),
+                shoulder + new Vector3(-side * .16f, -.14f, -.04f), color, .045f);
         }
 
         public void ToxicBurst(Vector3 at)

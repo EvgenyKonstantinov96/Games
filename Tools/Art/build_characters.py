@@ -245,6 +245,17 @@ class Character:
             self.panel((width,front+.008,height),(.060,.011,.080),3,"Chest",s*.35)
             self.panel((width,front+.015,height+.012),(.025,.004,.029),self.trim,"Chest",s*.35)
 
+        # Small fitted details follow their own limb instead of stretching with the torso.
+        for side, sign in SIDES:
+            shoulder = self.bones["UpperArm"+side][0]
+            elbow = self.bones["Forearm"+side][0]
+            cuff = shoulder.lerp(elbow, .86 if self.name == "Eva" else .73)
+            self.surface(cuff, cuff+(elbow-shoulder).normalized()*.018,
+                         [(0,.066,.065),(1,.065,.064)],3,"UpperArm"+side,8)
+            # Cloth pocket flap, worn knee pad and inset stitching on the trousers.
+            knee = self.bones["Shin"+side][0]
+            self.panel(knee+v(0,.055,.025),(.093,.027,.112),3,"Shin"+side)
+
     def fabric_flap(self, top, low, tile, bone):
         """A double-sided irregular fabric edge draped off the skinned cloth."""
         points = tuple(top)+tuple(low)
@@ -323,6 +334,12 @@ class Character:
                 self.fabric_flap((v(left,y,h*.625),v(left+.1,y,h*.639)),
                                  (v(left+.086,y+.013,h*(.574+i*.013)),
                                   v(left-.036,y+.028,h*(.535+.028*(i%2)))),self.cloth,"Chest")
+            if self.name in ("Walker", "Runner"):
+                for j in range(4):
+                    z = h*(.65+j*.034)
+                    front = self.body.chest_surface(.018,z)
+                    self.panel((.018,front+.009,z),(.023,.009,.010),3,"Chest")
+                    self.volume((.018,front+.017,z),(.006,.004,.006),16,"Chest",6)
             if self.name=="Walker":
                 self.fabric_flap((v(-.23,.042,h*.798),v(-.134,.128,h*.807)),
                                  (v(-.18,.133,h*.687),v(-.273,.061,h*.742)),6,"Chest")
@@ -561,7 +578,7 @@ class Character:
                 fire=eased_keys([(0,1),(.12,.57),(.32,.12),(.45,0),(1,0)],t) if state in ("Fire","WalkFire") else 0
                 rear=impact if state=="Hit" else 0
                 # The boss windup is 0.49 seconds for an 18-frame attack take.
-                key={"Toxic":.42,"Boss":.81,"Brute":.63}.get(self.name,.54)
+                key={"Toxic":.70,"Boss":.81,"Brute":.63}.get(self.name,.54)
                 attack=eased_keys([(0,0),(.25,-.48),(key,1),(1,0)],t) if state=="Attack" else 0
                 boss_strike = self.name == "Boss" and state == "Attack"
                 reload=eased_keys([(0,0),(.24,1),(.67,1),(1,0)],t) if state=="Reload" else 0
