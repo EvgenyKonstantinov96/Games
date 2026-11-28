@@ -98,7 +98,7 @@ for i,name in enumerate(cast):
         bpy.app.handlers.frame_change_post.append(follow);follow(scene)
 
 bpy.ops.mesh.primitive_plane_add(size=200)
-floor=bpy.context.object;floor.location.z=-.025
+floor=bpy.context.object;floor.location.z=0 # same contact plane used by the authored poses/checks
 mat=bpy.data.materials.new('Matte stage');mat.diffuse_color=(.048,.065,.083,1);floor.data.materials.append(mat)
 for point,color,power,size in [((-3,-4,6),(1,.84,.69),950,5),((4,-2,5),(.65,.80,1),800,4),((0,4,5),(.54,.73,1),1100,4)]:
     bpy.ops.object.light_add(type='AREA',location=point);lamp=bpy.context.object

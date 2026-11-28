@@ -1,0 +1,281 @@
+Contact and gait rework — 2026-11-28
+Base: d21bde0398499b5239fe1dbeb90ca8c349e3fa54
+Game/assets/QA: a13cd4c95744c3f15ddcc66ce8178fa10aa796dc
+Not native Unity or Android acceptance. API compiler warnings suppressed.
+
+=== BASELINE MEASURE ONLY — no PASS claimed ===
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Armored: peak adjacent rotation 11.51 deg, loop 0.82 mm / 0.079 deg, knee flexion 43.1..80.8 deg.
+MEASURE ONLY Armored — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Boss: peak adjacent rotation 12.27 deg, loop 0.87 mm / 0.125 deg, knee flexion 40.6..81.1 deg.
+MEASURE ONLY Boss — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Brute: peak adjacent rotation 12.48 deg, loop 0.84 mm / 0.056 deg, knee flexion 41.3..82.2 deg.
+MEASURE ONLY Brute — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Crawler: peak adjacent rotation 15.23 deg, loop 0.58 mm / 0.056 deg, knee flexion 76.0..125.8 deg.
+CRAWLER L: skin floor -13.37 mm, lowest hand 105.85 mm, recovery 213.81 mm; 0/24 frames within 35 mm of contact plane.
+CRAWLER R: skin floor -13.37 mm, lowest hand 106.10 mm, recovery 215.52 mm; 0/24 frames within 35 mm of contact plane.
+MEASURE ONLY Crawler — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Eva: peak adjacent rotation 19.01 deg, loop 0.07 mm / 0.000 deg, knee flexion 39.8..117.8 deg.
+CONTACT Eva: peak knee height 0.661 m, foot separation 0.291 m; maximum palm-pad/fore-end distance 9.41 mm, minimum upward palm normal -0.864, minimum finger middle-joint bend 14.8 deg.
+MEASURE ONLY Eva — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Max: peak adjacent rotation 18.27 deg, loop 0.63 mm / 0.112 deg, knee flexion 37.0..116.0 deg.
+CONTACT Max: peak knee height 0.724 m, foot separation 0.346 m; maximum palm-pad/fore-end distance 18.65 mm, minimum upward palm normal -0.856, minimum finger middle-joint bend 14.3 deg.
+MEASURE ONLY Max — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Runner: peak adjacent rotation 17.61 deg, loop 0.81 mm / 0.069 deg, knee flexion 27.5..107.3 deg.
+MEASURE ONLY Runner — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Toxic: peak adjacent rotation 11.58 deg, loop 1.95 mm / 0.148 deg, knee flexion 46.0..84.6 deg.
+MEASURE ONLY Toxic — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Walker: peak adjacent rotation 11.96 deg, loop 0.53 mm / 0.040 deg, knee flexion 45.1..82.1 deg.
+MEASURE ONLY Walker — Blender FBX, not Unity.
+Blender 4.3.2
+
+Blender quit
+
+=== Final FBX continuity, palm shape and crawler contact in Blender ===
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Armored: peak adjacent rotation 11.51 deg, loop 5.24 mm / 0.345 deg, knee flexion 42.6..79.9 deg.
+CONTACT/CONTINUITY PASS Armored — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Boss: peak adjacent rotation 12.27 deg, loop 0.87 mm / 0.056 deg, knee flexion 39.8..81.2 deg.
+CONTACT/CONTINUITY PASS Boss — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Brute: peak adjacent rotation 12.48 deg, loop 0.85 mm / 0.056 deg, knee flexion 40.6..81.4 deg.
+CONTACT/CONTINUITY PASS Brute — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Crawler: peak adjacent rotation 21.11 deg, loop 0.11 mm / 0.097 deg, knee flexion 84.5..135.0 deg.
+CRAWLER L: skin floor -1.21 mm, lowest hand -1.18 mm, recovery 98.95 mm; 19/24 frames within 35 mm of contact plane.
+CRAWLER R: skin floor -1.21 mm, lowest hand -1.21 mm, recovery 97.26 mm; 20/24 frames within 35 mm of contact plane.
+CONTACT/CONTINUITY PASS Crawler — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Eva: peak adjacent rotation 14.52 deg, loop 0.07 mm / 0.000 deg, knee flexion 28.1..97.3 deg.
+CONTACT Eva: peak knee height 0.586 m, foot separation 0.200 m; maximum palm-pad/fore-end distance 11.87 mm, minimum upward palm normal 0.992, minimum finger middle-joint bend 62.1 deg.
+CONTACT/CONTINUITY PASS Eva — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Max: peak adjacent rotation 15.37 deg, loop 0.81 mm / 0.112 deg, knee flexion 27.6..96.9 deg.
+CONTACT Max: peak knee height 0.647 m, foot separation 0.224 m; maximum palm-pad/fore-end distance 16.25 mm, minimum upward palm normal 0.991, minimum finger middle-joint bend 61.4 deg.
+CONTACT/CONTINUITY PASS Max — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Runner: peak adjacent rotation 15.30 deg, loop 0.89 mm / 0.069 deg, knee flexion 27.1..102.2 deg.
+CONTACT/CONTINUITY PASS Runner — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Toxic: peak adjacent rotation 11.34 deg, loop 0.51 mm / 0.040 deg, knee flexion 46.0..83.6 deg.
+CONTACT/CONTINUITY PASS Toxic — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Walker: peak adjacent rotation 11.96 deg, loop 0.76 mm / 0.040 deg, knee flexion 44.5..82.1 deg.
+CONTACT/CONTINUITY PASS Walker — Blender FBX, not Unity.
+Blender 4.3.2
+
+Blender quit
+
+=== Clean reimport — nine models, 27 LOD, deformation and falls ===
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Armored: [12878, 6181, 2941] triangles, one skeleton and atlas
+ANATOMY Armored 4495 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.36x, forefoot flexion 20.0/13.4 degrees
+FALL Armored: 22 poses, pavement error 0.000 m, head 1.66 to 0.36 m
+PASS Armored 51 bones, 6834 verts, 12878 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Boss: [13436, 6448, 3090] triangles, one skeleton and atlas
+ANATOMY Boss    3971 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.53x, forefoot flexion 20.2/15.0 degrees
+FALL Boss: 22 poses, pavement error 0.000 m, head 1.82 to 0.72 m
+BOSS attack reach L/R 0.769/0.769 m, ankle drift L/R 0.000/0.000 m
+PASS Boss    51 bones, 9433 verts, 13436 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Brute: [13239, 6354, 3039] triangles, one skeleton and atlas
+ANATOMY Brute   3858 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.46x, forefoot flexion 20.3/13.9 degrees
+FALL Brute: 22 poses, pavement error 0.000 m, head 1.78 to 0.47 m
+PASS Brute   51 bones, 9153 verts, 13239 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Crawler: [14854, 7128, 3416] triangles, one skeleton and atlas
+ANATOMY Crawler 1619 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.32x, forefoot flexion 14.4/12.1 degrees
+FALL Crawler: 22 poses, pavement error 0.000 m, head 0.57 to 0.26 m
+PASS Crawler 51 bones, 9644 verts, 14854 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Eva: [19000, 9119, 4318] triangles, one skeleton and atlas
+ANATOMY Eva     2263 vertices in continuous body, 71 poses, worst 99th-percentile edge stretch 1.38x, forefoot flexion 28.4/20.0 degrees
+GAIT Eva     L ankle-roll 56.4 degrees, support 0.006..0.006 m, rearward travel 0.531 m, loop error 0.0000 m
+WALK Eva     L reach 0.426 m vs 0.655 m running, 27/34 frames near the ground, match with firing variant
+GAIT Eva     R ankle-roll 56.4 degrees, support 0.006..0.006 m, rearward travel 0.531 m, loop error 0.0000 m
+WALK Eva     R reach 0.426 m vs 0.655 m running, 27/34 frames near the ground, match with firing variant
+PASS Eva     58 bones, 11668 verts, 19000 triangles, 1–289 frames, smooth custom normals, medkit, throw, walk and walk-fire poses
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Max: [23099, 11086, 5259] triangles, one skeleton and atlas
+ANATOMY Max     3881 vertices in continuous body, 71 poses, worst 99th-percentile edge stretch 1.58x, forefoot flexion 28.2/18.1 degrees
+GAIT Max     L ankle-roll 56.3 degrees, support 0.006..0.006 m, rearward travel 0.588 m, loop error 0.0000 m
+WALK Max     L reach 0.426 m vs 0.717 m running, 27/34 frames near the ground, match with firing variant
+GAIT Max     R ankle-roll 56.3 degrees, support 0.006..0.006 m, rearward travel 0.588 m, loop error 0.0000 m
+WALK Max     R reach 0.426 m vs 0.717 m running, 27/34 frames near the ground, match with firing variant
+PASS Max     56 bones, 15531 verts, 23099 triangles, 1–289 frames, smooth custom normals, medkit, throw, walk and walk-fire poses
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Runner: [11808, 5667, 2707] triangles, one skeleton and atlas
+ANATOMY Runner  1721 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.27x, forefoot flexion 20.3/16.7 degrees
+FALL Runner: 22 poses, pavement error 0.000 m, head 1.55 to 0.32 m
+GAIT Runner  ankle travel L/R 0.882/0.892 m, ankle lift L/R 0.253/0.258 m
+PASS Runner  51 bones, 6656 verts, 11808 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Toxic: [13133, 6303, 3020] triangles, one skeleton and atlas
+ANATOMY Toxic   1862 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.34x, forefoot flexion 20.3/15.3 degrees
+FALL Toxic: 22 poses, pavement error 0.000 m, head 1.54 to 0.32 m
+GAIT Toxic   ankle travel L/R 0.528/0.409 m, ankle lift L/R 0.140/0.086 m
+PASS Toxic   51 bones, 7465 verts, 13133 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Walker: [12814, 6149, 2943] triangles, one skeleton and atlas
+ANATOMY Walker  1872 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.27x, forefoot flexion 19.4/13.1 degrees
+FALL Walker: 22 poses, pavement error 0.000 m, head 1.59 to 0.29 m
+GAIT Walker  ankle travel L/R 0.510/0.387 m, ankle lift L/R 0.131/0.083 m
+PASS Walker  51 bones, 8426 verts, 12814 triangles, 1–168 frames, smooth custom normals
+Blender 4.3.2
+
+Blender quit
+
+=== Authored weapon cycles — before runtime IK ===
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+WEAPON Max/run: angular travel 4.49 deg, vertical travel 54.34 mm, support-hand span 1.58 mm; deforming wrist mount
+WEAPON Max/fire: angular travel 2.92 deg, vertical travel 47.51 mm, support-hand span 2.20 mm; deforming wrist mount
+WEAPON Max/walk: angular travel 3.04 deg, vertical travel 27.11 mm, support-hand span 3.55 mm; deforming wrist mount
+WEAPON Max/walk-fire: angular travel 1.90 deg, vertical travel 21.86 mm, support-hand span 2.14 mm; deforming wrist mount
+WEAPON MOTION PASS Max: all four carry cycles, angular motion, support hand and loop seams. Blender, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+WEAPON Eva/run: angular travel 4.52 deg, vertical travel 54.87 mm, support-hand span 0.37 mm; deforming wrist mount
+WEAPON Eva/fire: angular travel 2.96 deg, vertical travel 48.08 mm, support-hand span 0.33 mm; deforming wrist mount
+WEAPON Eva/walk: angular travel 2.93 deg, vertical travel 27.09 mm, support-hand span 1.37 mm; deforming wrist mount
+WEAPON Eva/walk-fire: angular travel 2.20 deg, vertical travel 24.11 mm, support-hand span 7.22 mm; deforming wrist mount
+WEAPON MOTION PASS Eva: all four carry cycles, angular motion, support hand and loop seams. Blender, not Unity.
+Blender 4.3.2
+
+Blender quit
+
+=== Action/gait layering and reference weapon geometry ===
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+WEAPONS Max: maximum right-palm-to-grip distances {'pistol': 0.020525421838946616, 'rifle': 0.03162730834130465, 'shotgun': 0.04571942029735087, 'minigun': 0.055392939872450905}; all four muzzle rings centered on authored axis.
+HERO MASK Max: 96 action/gait samples, prior maximum foot mismatch 0.742 m, layered error 0.000000 m. Hand pose relative to spine preserved.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+WEAPONS Eva: maximum right-palm-to-grip distances {'pistol': 0.021161141297269957, 'rifle': 0.036870483552089814, 'shotgun': 0.05126249202587824, 'minigun': 0.058936231539256666}; all four muzzle rings centered on authored axis.
+HERO MASK Eva: 96 action/gait samples, prior maximum foot mismatch 0.680 m, layered error 0.000000 m. Hand pose relative to spine preserved.
+Blender 4.3.2
+
+Blender quit
+
+=== Pack, closed guards and helper-marker carry checks ===
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+PACK Max/Max_LOD2: 131 vertices rigidly bound to Pack below Chest.
+PACK Max/Max_LOD0: 360 vertices rigidly bound to Pack below Chest.
+GUARDS Max: closed LOD0 shells with sidewalls/back caps after UV seam welding.
+PACK Max/Max_LOD1: 247 vertices rigidly bound to Pack below Chest.
+CARRY ProductionArt/Max/run: support-hand span 5.96 mm in weapon frame.
+CARRY ProductionArt/Max/fire: support-hand span 8.73 mm in weapon frame.
+CARRY ProductionArt/Max/walk: support-hand span 6.05 mm in weapon frame.
+CARRY ProductionArt/Max/walk-fire: support-hand span 8.99 mm in weapon frame.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+PACK Eva/Eva_LOD2: 116 vertices rigidly bound to Pack below Chest.
+PACK Eva/Eva_LOD1: 232 vertices rigidly bound to Pack below Chest.
+PACK Eva/Eva_LOD0: 336 vertices rigidly bound to Pack below Chest.
+GUARDS Eva: closed LOD0 shells with sidewalls/back caps after UV seam welding.
+CARRY ProductionArt/Eva/run: support-hand span 4.84 mm in weapon frame.
+CARRY ProductionArt/Eva/fire: support-hand span 8.56 mm in weapon frame.
+CARRY ProductionArt/Eva/walk: support-hand span 4.03 mm in weapon frame.
+CARRY ProductionArt/Eva/walk-fire: support-hand span 9.19 mm in weapon frame.
+Blender 4.3.2
+
+Blender quit
+
+=== Production arm reach math / extracted runtime methods, explicit scene/rotation stand-ins ===
+ARM REACH PASS: 4000 moving/reachable/unreachable targets, fixed segment lengths, sampled elbow side and degenerate arm guard. Actual production vector math.
+UPPER AIM PASS 20 Hz: 20 s rapid targets, limits, turn speed, convergence, pause, passed enemy, stalled frame, neutral and restart.
+UPPER AIM PASS 30 Hz: 20 s rapid targets, limits, turn speed, convergence, pause, passed enemy, stalled frame, neutral and restart.
+UPPER AIM PASS 60 Hz: 20 s rapid targets, limits, turn speed, convergence, pause, passed enemy, stalled frame, neutral and restart.
+UPPER AIM PASS 120 Hz: 20 s rapid targets, limits, turn speed, convergence, pause, passed enemy, stalled frame, neutral and restart.
+UPPER RIG PASS 20 Hz: 60 s combined lane banking/heading/rapid aim/recoil, restored sparse tracks, bounded neck/shoulders, neutral recovery and untouched death. Scene/rotation stand-ins.
+WEAPON SOCKET PASS 20 Hz: real ApplyAim preserves running roll, wrist mount offset, no-target motion and at most one degree of fine correction. Scene/rotation stand-ins.
+SUPPORT GRIP PASS 20 Hz: real ApplySupportGrip, four targets, wrist following, fixed lengths, restored pose, item release and immediate death release. Scene/rotation stand-ins, unit scale.
+UPPER RIG PASS 30 Hz: 60 s combined lane banking/heading/rapid aim/recoil, restored sparse tracks, bounded neck/shoulders, neutral recovery and untouched death. Scene/rotation stand-ins.
+WEAPON SOCKET PASS 30 Hz: real ApplyAim preserves running roll, wrist mount offset, no-target motion and at most one degree of fine correction. Scene/rotation stand-ins.
+SUPPORT GRIP PASS 30 Hz: real ApplySupportGrip, four targets, wrist following, fixed lengths, restored pose, item release and immediate death release. Scene/rotation stand-ins, unit scale.
+UPPER RIG PASS 60 Hz: 60 s combined lane banking/heading/rapid aim/recoil, restored sparse tracks, bounded neck/shoulders, neutral recovery and untouched death. Scene/rotation stand-ins.
+WEAPON SOCKET PASS 60 Hz: real ApplyAim preserves running roll, wrist mount offset, no-target motion and at most one degree of fine correction. Scene/rotation stand-ins.
+SUPPORT GRIP PASS 60 Hz: real ApplySupportGrip, four targets, wrist following, fixed lengths, restored pose, item release and immediate death release. Scene/rotation stand-ins, unit scale.
+UPPER RIG PASS 120 Hz: 60 s combined lane banking/heading/rapid aim/recoil, restored sparse tracks, bounded neck/shoulders, neutral recovery and untouched death. Scene/rotation stand-ins.
+WEAPON SOCKET PASS 120 Hz: real ApplyAim preserves running roll, wrist mount offset, no-target motion and at most one degree of fine correction. Scene/rotation stand-ins.
+SUPPORT GRIP PASS 120 Hz: real ApplySupportGrip, four targets, wrist following, fixed lengths, restored pose, item release and immediate death release. Scene/rotation stand-ins, unit scale.
+
+=== Head and manual briefing regressions, scene stand-ins ===
+POSE PASS: 24000 frames, keyed and omitted head tracks, bounded steering and neutral recovery.
+BRIEFING PASS: 1000 level entries, manual speakers, blocked run clock, cancellation and clean final start. Managed scene stand-ins.
+
+=== API compile — actual Unity and package DLLs ===
+Game C# content digest 760d67c2773a99c9b9d197879838fffe6dc8f2beb39535f8b62c5508f9c7db43
+Assembly-CSharp 28 PASS
+Assembly-CSharp 28 PASS
+Assembly-CSharp-Editor 18 PASS
+URP post-processing references, setup restoration at both entry points, and camera FXAA verified in source 41439944d30ece34e96484bdb6645b55
+
+=== Final integrity checks ===
+PYTHON PASS: 10 changed/new scripts parse.
+PRESERVED PASS: four accepted weapon images, weapon profile and level plan byte-identical to base.
+METADATA PASS: 271 unique GUIDs; all Assets files/folders have metadata.
+API DIGEST PASS: 760d67c2773a99c9b9d197879838fffe6dc8f2beb39535f8b62c5508f9c7db43
+COMPARISON PASS: 1920 x 786, same camera/pose frame 39 and Cycles, old/new actual FBX.
+Git diff --check: exit 0.
+
+=== Native editor attempts — BLOCKED ===
+Sandbox launch: exit 1, Licensing initialization failed / Failed to connect to LicenseClient-agent channel.
+Retry with IPC access: exit 198, No valid Unity Editor license found. Please activate your license.
+No native import, PlayMode, Game View, APK, sound, FPS or memory pass is claimed.
+
+=== Failures corrected during this iteration ===
+- First support-hand/rig probe: extraction of expression-bodied IsGait incorrectly captured following declarations; fixed line extraction and rerun.
+- Arm probe bend-side assertion initially compared whole vectors instead of projections onto bend plane; fixed assertion and rerun 4000 targets.
+- Continuity probe initially interpreted equivalent quaternion signs as a 358-degree turn; fixed shortest-arc comparison and rerun all nine.
+- Previous head probe required the real new support-restore method and its fields after Sample changed; added dependencies and rerun.
+- Legacy hero rearward-reach >65 cm assertion encoded the previous long high-knee run; replaced with bounded loaded-run reach, retaining floor/roll/loop checks and adding knee/stance-shape checks.
+- Crawler visual review: hands could not reach the ground; changed pelvis/spine/chest posture and support targets.
+- Crawler skin check: thumb penetrated the floor by 43 mm; authored open contact thumb, final worst floor error 1.21 mm.
+- Crawler changed low start posture exposed a death-pose assertion (head 0.60 to 0.31 m); adjusted side fall, final 0.57 to 0.26 m, pass.
+- Blender Cycles denoising unsupported by this build; disabled it and rendered again. Eevee renders use their own antialiasing; no Unity frame is implied.
+
+=== Final preview output, matching contact plane ===
+PREVIEW PASS heroes: 12 frames, (720, 540), 800 ms loop, 653778 bytes; Blender, contact plane 0, not Unity.
+PREVIEW PASS infected: 12 frames, (1080, 600), 800 ms loop, 976520 bytes; Blender, contact plane 0, not Unity.
+PREVIEW PASS heavy: 12 frames, (1080, 600), 800 ms loop, 1200396 bytes; Blender, contact plane 0, not Unity.
+PREVIEW PASS crawler: 12 frames, (720, 540), 800 ms loop, 220966 bytes; Blender, contact plane 0, not Unity.
+Full cycles rendered to completion with Eevee at 12 AA samples; global GIF palette, all 12 poses retained. Full-body views reviewed. Runtime C# not executed by renderer.
