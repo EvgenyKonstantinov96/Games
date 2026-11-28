@@ -239,6 +239,13 @@ namespace ZombieSurvivalRun
                 {
                     paintedMetal = ZSRVisuals.MatWithTexture(Color.white, "ProductionArt/TrackPropAtlas", .31f,
                         missingTextureColor: new Color(.24f, .27f, .3f));
+                    var finish = Resources.Load<Texture2D>("ProductionArt/TrackPropAtlas_surface");
+                    if (finish != null && paintedMetal.HasProperty("_MetallicGlossMap"))
+                    {
+                        paintedMetal.SetTexture("_MetallicGlossMap",finish);
+                        paintedMetal.SetFloat("_Smoothness",1f);
+                        paintedMetal.EnableKeyword("_METALLICSPECGLOSSMAP");
+                    }
                     paintedMetal.name = "Track prop surface / shared";
                 }
                 return paintedMetal;

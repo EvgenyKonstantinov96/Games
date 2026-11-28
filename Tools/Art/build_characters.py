@@ -14,7 +14,7 @@ from mathutils import Matrix, Quaternion, Vector
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from gait import eased_keys, foot_target, carry_pose
 from makehuman_body import Body, SIDES
-from character_atlas import uv as atlas_uv
+from character_atlas import uv as atlas_uv, SIZE, SLOTS
 
 OUT = Path(sys.argv[sys.argv.index("--") + 1]).resolve()
 OUT.mkdir(parents=True, exist_ok=True)
@@ -253,120 +253,9 @@ class Character:
             self.tiles.append((tile,tuple(uv[i%4] for i in face)))
 
     def infection(self):
-        h,w=self.h,self.shoulder
-        if self.name=="Armored":
-            from infected_detail import append_fitted_helmet
-            append_fitted_helmet(self)
-            from infected_detail import fitted_bib
-            fitted_bib(self,.195,.655,.815,4)
-            for row in range(3):
-                z=h*(.69+row*.032)
-                for sign in (-1,1):
-                    x=sign*.093
-                    front=self.body.chest_surface(x,z)+.042
-                    self.panel((x,front,z),(.14,.012,.015),3,'Chest')
-            for s in (-1,1):
-                side='L' if s<0 else 'R'
-                shoulder=self.bones['UpperArm'+side][0];elbow=self.bones['Forearm'+side][0]
-                # Rounded shoulder shell follows the upper arm, not a block on the torso.
-                self.surface(shoulder,shoulder.lerp(elbow,.38),
-                    [(0,.074,.068),(.15,.097,.090),(.72,.091,.082),(1,.079,.070)],4,'UpperArm'+side,14)
-                z=h*.79;x=s*.10
-                self.surface(v(x,self.body.chest_surface(x,z)+.030,z),v(x,-.10,h*.836),
-                    [(0,.020,.010),(.5,.023,.011),(1,.020,.009)],3,'Chest',8)
-        elif self.tank:
-            for side,sign in SIDES:
-                for digit in range(1,6):
-                    key=f'Finger{digit}Tip{side}'
-                    a,b,_=self.bones[key]
-                    direction=(b-a).normalized()
-                    reach=.052 if self.name=='Boss' else .028
-                    self.surface(b-direction*.007,b+direction*reach+v(0,.008,-.006),
-                                 [(0,.009,.007),(.28,.008,.006),(.76,.004,.003),(1,.001,.001)],
-                                 19,key,8)
-            if self.name == "Boss":
-                for side, sign in SIDES:
-                    shoulder = self.bones["UpperArm"+side][0]
-                    for i in range(3):
-                        start=shoulder+v(sign*(.015+.060*i),-.07+.085*i,.004)
-                        rings=[]
-                        for t,rx,ry in ((0,.047,.040),(.22,.044,.035),(.55,.029,.026),(.82,.014,.012),(1,.001,.001)):
-                            point=start+v(sign*(.14+.020*i)*t*t,.026*t,.14*t-.030*t*t)
-                            rings.append((point,rx,ry,{'Chest':1.}))
-                        self.loft(rings,[14,15,19,19],10,.025)
-                core_z = h*.733
-                core_front = self.body.chest_surface(0,core_z)
-                # Fitted branching fissures replace the floating round chest badge.
-                for sign in (-1,1):
-                    last=v(0,core_front+.009,core_z)
-                    for i,(x,dz) in enumerate(((.036,.016),(.078,.049),(.108,.040),(.151,.078))):
-                        x*=sign;z=core_z+dz
-                        point=v(x,self.body.chest_surface(x,z)+.009,z)
-                        self.surface(last,point,[(0,.010-i*.002,.003),(1,.007-i*.001,.002)],22,'Chest',7)
-                        last=point
-                    last=v(sign*.017,self.body.chest_surface(sign*.017,core_z)+.009,core_z)
-                    for x,dz in ((.035,-.043),(.018,-.086),(.055,-.125)):
-                        x*=sign;z=core_z+dz;point=v(x,self.body.chest_surface(x,z)+.009,z)
-                        self.surface(last,point,[(0,.006,.003),(1,.004,.002)],22,'Chest',6);last=point
-            else:
-                from infected_detail import tank_harness
-                tank_harness(self)
-                region = self.bones["Chest"][0] + v(-.167,.106,.205)
-                for i in range(3):
-                    self.volume(region+v(-i*.021,i*.006,-i*.041),(.045,.035,.047),14,"Chest",9)
-                self.fabric_flap((v(-.19,.130,h*.604),v(.01,.149,h*.605)),
-                                 (v(.10,.160,h*.552),v(-.21,.158,h*.55)),20,"Chest")
-        elif self.name=="Toxic":
-            neck = self.bones["Head"][0]
-            for i in range(3):
-                start = neck + v(-.048+.019*i,-.071,.011)
-                end = start + v(-.034,-.020,-.071-.018*i)
-                self.surface(start,end,[(0,.010,.008),(.54,.012,.007),(1,.002,.001)],
-                             21,"Chest",6)
-            for i in range(8):
-                ang=2.4*i
-                p=(math.cos(ang)*w*.38,-.106+math.sin(ang)*.083,h*(.664+.023*i))
-                r=.036+self.random.random()*.040
-                self.volume(p,(r,r*.96,r*1.17),21,"Chest")
-            self.volume((w*.40,.010,h*.785),(.094,.106,.073),12,"Chest",10)
-            for i in range(3):
-                self.volume((w*(.41+i*.08),.068+i*.026,h*(.784-i*.018)),
-                            (.026,.022,.024),21,"Chest",8)
-        else:
-            # Open, irregular hems and contrasting undersides read as civilian
-            # fabric at portrait distance, where narrow surface marks disappear.
-            for i in range(3):
-                left=-.17+i*.106
-                y=.119+(.02 if i==1 else 0)
-                self.fabric_flap((v(left,y,h*.625),v(left+.1,y,h*.639)),
-                                 (v(left+.086,y+.013,h*(.574+i*.013)),
-                                  v(left-.036,y+.028,h*(.535+.028*(i%2)))),self.cloth,"Chest")
-            if self.name in ("Walker", "Runner"):
-                for j in range(4):
-                    z = h*(.65+j*.034)
-                    front = self.body.chest_surface(.018,z)
-                    self.panel((.018,front+.009,z),(.023,.009,.010),3,"Chest")
-                    self.volume((.018,front+.017,z),(.006,.004,.006),16,"Chest",6)
-            if self.name=="Walker":
-                self.fabric_flap((v(-.23,.042,h*.798),v(-.134,.128,h*.807)),
-                                 (v(-.18,.133,h*.687),v(-.273,.061,h*.742)),6,"Chest")
-                # Rolled, mismatched sleeve and dangling work-shirt seam.
-                origin = self.bones["UpperArmR"][0]
-                self.surface(origin+v(.013,-.010,-.059),origin+v(.019,-.008,-.102),
-                             [(0,.076,.074),(.38,.079,.074),(1,.072,.066)],9,"UpperArmR",10)
-                self.fabric_flap((v(.048,.145,h*.721),v(.068,.140,h*.719)),
-                                 (v(.094,.142,h*.593),v(.074,.162,h*.604)),9,"Chest")
-            if self.crawler:
-                for i in range(6):
-                    self.volume((0,-.125,h*(.57+.043*i)),(.053,.033,.044),19,"Chest",8)
-            if self.name=="Runner":
-                self.surface(v(-.125,-.050,h*.841),v(.103,-.104,h*.754),
-                             [(0,.026,.017),(.17,.052,.052),(.58,.058,.049),(1,.02,.018)],7,"Chest",12)
-                self.fabric_flap((v(.14,.13,h*.806),v(.24,.049,h*.808)),
-                                 (v(.252,.088,h*.707),v(.17,.146,h*.745)),7,"Chest")
-                for x in (-.048,.043):
-                    self.surface(v(x,.112,h*.813),v(x*1.72,.140,h*.695),
-                                 [(0,.007,.007),(.52,.006,.007),(1,.004,.004)],18,"Chest",5)
+        from infected_detail import append_infection
+        append_infection(self)
+
     def skin_mesh(self):
         data=bpy.data.meshes.new(self.name+" skin")
         data.from_pydata(self.vertices,[],self.faces)
@@ -771,6 +660,16 @@ class Character:
             proxy.name = self.name+"_LOD"+str(index)
             bpy.context.collection.objects.link(proxy)
             proxy.modifiers.clear()
+            # Decimate may extrapolate a UV beyond a seam-split patch. Keep
+            # the authored island as a discrete face label through reduction,
+            # then constrain UVs to that region, never a guessed nearest tile.
+            atlas_material=proxy.data.materials[0]
+            slots=sorted(SLOTS)
+            slot_index={slot:i for i,slot in enumerate(slots)}
+            proxy.data.materials.clear()
+            for _ in slots:proxy.data.materials.append(atlas_material)
+            for polygon,(tile,_) in zip(proxy.data.polygons,self.tiles):
+                polygon.material_index=slot_index[tile]
             # The shared material has multiple atlas islands. Split UV seams
             # before collapse so distant meshes cannot interpolate skin pixels
             # through another garment or the unrelated opposite atlas corner.
@@ -796,6 +695,19 @@ class Character:
             proxy.modifiers.clear()
             proxy.data = reduced
             bpy.data.meshes.remove(old)
+            uv=reduced.uv_layers.active
+            for polygon in reduced.polygons:
+                tile=slots[polygon.material_index]
+                x,y,width,height=SLOTS[tile];pad=2 if tile<24 else 3
+                low_u,high_u=(x+pad)/SIZE,(x+width-pad)/SIZE
+                low_v,high_v=1-(y+height-pad)/SIZE,1-(y+pad)/SIZE
+                for index in polygon.loop_indices:
+                    point=uv.data[index].uv
+                    point.x=max(low_u,min(high_u,point.x))
+                    point.y=max(low_v,min(high_v,point.y))
+                polygon.material_index=0
+            reduced.materials.clear()
+            reduced.materials.append(atlas_material)
             for vertex in reduced.vertices:
                 entries = sorted(((g.group,g.weight) for g in vertex.groups),
                                  key=lambda item:item[1],reverse=True)

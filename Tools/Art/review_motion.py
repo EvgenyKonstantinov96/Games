@@ -30,6 +30,20 @@ tex=nodes.new('ShaderNodeTexImage');tex.image=bpy.data.images.load(str(args.asse
 tex.image.colorspace_settings.name='Non-Color'
 normal=nodes.new('ShaderNodeNormalMap');normal.inputs['Strength'].default_value=.35
 links.new(tex.outputs['Color'],normal.inputs['Color']);links.new(normal.outputs['Normal'],shader.inputs['Normal'])
+surface=args.assets/'CharacterAtlas_surface.png'
+if surface.exists():
+    tex=nodes.new('ShaderNodeTexImage');tex.image=bpy.data.images.load(str(surface))
+    tex.image.colorspace_settings.name='Non-Color'
+    split=nodes.new('ShaderNodeSeparateColor');links.new(tex.outputs['Color'],split.inputs['Color'])
+    links.new(split.outputs['Red'],shader.inputs['Metallic'])
+    inverse=nodes.new('ShaderNodeMath');inverse.operation='SUBTRACT';inverse.inputs[0].default_value=1
+    links.new(tex.outputs['Alpha'],inverse.inputs[1]);links.new(inverse.outputs[0],shader.inputs['Roughness'])
+emission=args.assets/'CharacterAtlas_emission.png'
+if emission.exists():
+    tex=nodes.new('ShaderNodeTexImage');tex.image=bpy.data.images.load(str(emission))
+    tint=nodes.new('ShaderNodeVectorMath');tint.operation='MULTIPLY';tint.inputs[1].default_value=(1.25,.54,.28)
+    links.new(tex.outputs['Color'],tint.inputs[0]);links.new(tint.outputs['Vector'],shader.inputs['Emission Color'])
+    shader.inputs['Emission Strength'].default_value=1
 
 cast=args.cast.split(',');spacing=1.8
 yaw={'front':math.pi,'side':math.pi*.52,'back':0,'threequarter':math.pi*.74}[args.view]

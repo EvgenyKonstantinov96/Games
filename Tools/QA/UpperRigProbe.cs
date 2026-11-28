@@ -3,6 +3,10 @@ global using Vector2=engine::UnityEngine.Vector2;
 global using Vector3=engine::UnityEngine.Vector3;
 global using Mathf=engine::UnityEngine.Mathf;
 using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text.Json;
 using N=System.Numerics;
 using UnityEngine;
 
@@ -32,17 +36,25 @@ namespace UnityEngine
         public static Quaternion FromToRotation(Vector3 from,Vector3 to)
         {
             var a=from.normalized;var b=to.normalized;float dot=Vector3.Dot(a,b);
-            if(dot>.999999f)return identity;
             if(dot<-.999999f){var axis=Vector3.Cross(a,Vector3.up);if(axis.sqrMagnitude<.001f)axis=Vector3.Cross(a,Vector3.right);return AngleAxis(180,axis.normalized);}
             var cross=Vector3.Cross(a,b);return new(){V=N.Quaternion.Normalize(new N.Quaternion(cross.x,cross.y,cross.z,1+dot))};
         }
     }
     public sealed class Transform
     {
-        public Transform parent;
+        Transform parentValue;
+        readonly List<Transform> children=new();
+        public string name;
+        public Transform parent
+        {
+            get=>parentValue;
+            set { parentValue?.children.Remove(this);parentValue=value;parentValue?.children.Add(this); }
+        }
         public Quaternion localRotation=Quaternion.identity;
         public Vector3 localPosition;
-        public Vector3 position=>parent==null?localPosition:parent.position+parent.rotation*localPosition;
+        public Vector3 localScale=Vector3.one;
+        public Vector3 lossyScale=>parent==null?localScale:Vector3.Scale(parent.lossyScale,localScale);
+        public Vector3 position=>parent==null?localPosition:parent.TransformPoint(localPosition);
         public Quaternion rotation
         {
             get=>parent==null?localRotation:parent.rotation*localRotation;
@@ -50,14 +62,26 @@ namespace UnityEngine
         }
         public Vector3 up=>rotation*Vector3.up;
         public Vector3 forward=>rotation*Vector3.forward;
-        public Vector3 TransformPoint(Vector3 p)=>position+rotation*p;
+        public Vector3 TransformPoint(Vector3 p)=>position+rotation*Vector3.Scale(lossyScale,p);
+        public Vector3 InverseTransformPoint(Vector3 p)
+        {var v=Quaternion.Inverse(rotation)*(p-position);var s=lossyScale;return new(v.x/s.x,v.y/s.y,v.z/s.z);}
+        public void SetParent(Transform value,bool worldPositionStays)=>parent=value;
+        public T[] GetComponentsInChildren<T>(bool includeInactive) where T:class=>
+            new[]{(T)(object)this}.Concat(children.SelectMany(child=>child.GetComponentsInChildren<T>(includeInactive))).ToArray();
+    }
+    public sealed class GameObject
+    {
+        public readonly Transform transform;
+        public GameObject(string name)=>transform=new(){name=name};
     }
 }
 namespace ZombieSurvivalRun
 {
+    enum WeaponType { Pistol,Rifle,Shotgun,Minigun }
     partial class AimRig
     {
-        readonly Transform transform=new(),spine=new(),head=new(),weaponSocket=new();
+        readonly Transform transform=new(),spine=new(),head=new();
+        Transform weaponSocket=new();
         readonly ZSRUpperBodyAim upperAim=new();
         bool hero=true,sampledUpperBody=true,moving=true,walking;
         Motion motion=Motion.Fire;
@@ -163,9 +187,90 @@ namespace ZombieSurvivalRun
             }
             Console.WriteLine($"SUPPORT GRIP PASS {hz} Hz: real ApplySupportGrip, four targets, wrist following, fixed lengths, restored pose, item release and immediate death release. Scene/rotation stand-ins, unit scale.");
         }
+
+        static Vector3 ReadVector(JsonElement value)=>new(value[0].GetSingle(),value[1].GetSingle(),value[2].GetSingle());
+        static Quaternion ReadRotation(JsonElement value)=>new(){V=new(value[0].GetSingle(),value[1].GetSingle(),value[2].GetSingle(),value[3].GetSingle())};
+        void LoadPose(JsonElement pose,Dictionary<string,Transform> bones,float unitScale)
+        {
+            foreach(var bone in pose.GetProperty("bones").EnumerateArray())
+            {
+                var node=bones[bone.GetProperty("name").GetString()];
+                node.localPosition=ReadVector(bone.GetProperty("position"))/unitScale;
+                node.localRotation=ReadRotation(bone.GetProperty("rotation"));
+                node.localScale=ReadVector(bone.GetProperty("scale"));
+            }
+        }
+        public static void CheckFbx(string path)
+        {
+            using var document=JsonDocument.Parse(File.ReadAllText(path));
+            foreach(var model in document.RootElement.GetProperty("models").EnumerateArray())
+            {
+                int samples=0;float worst=0f;
+                var poses=model.GetProperty("poses").EnumerateArray().ToArray();
+                foreach(var weapon in Enum.GetValues<WeaponType>())
+                foreach(float actorScale in new[]{.1f,1f,3f})
+                foreach(float unitScale in new[]{.01f,1f,100f})
+                {
+                    var rig=new AimRig();
+                    rig.transform.localPosition=new(8,2,-4);
+                    rig.transform.localRotation=Quaternion.AngleAxis(37,Vector3.up);
+                    rig.transform.localScale=Vector3.one*actorScale;
+                    var instance=new Transform{parent=rig.transform,localScale=Vector3.one*unitScale};
+                    var bones=poses[0].GetProperty("bones").EnumerateArray().ToDictionary(
+                        bone=>bone.GetProperty("name").GetString(),bone=>new Transform{name=bone.GetProperty("name").GetString()});
+                    foreach(var bone in poses[0].GetProperty("bones").EnumerateArray())
+                    {
+                        var parent=bone.GetProperty("parent");
+                        bones[bone.GetProperty("name").GetString()].parent=parent.ValueKind==JsonValueKind.Null?instance:bones[parent.GetString()];
+                    }
+                    rig.LoadPose(poses[0],bones,unitScale);
+                    var grip=bones["WeaponGrip"];var barrel=bones["WeaponForward"];var hand=bones["HandR"];
+                    rig.AttachWeapon(grip,barrel,hand,weapon);
+                    Need((rig.weaponSocket.position-grip.position).magnitude/actorScale<.0001f,"First authored pose calibrates wrist mount at marker");
+                    Need(Vector3.Dot(rig.weaponSocket.forward,(barrel.position-grip.position).normalized)>.99999f,"First-pose barrel direction preserved");
+                    Need((rig.weaponSocket.lossyScale-Vector3.one*actorScale).magnitude/actorScale<.0001f,"Imported FBX units cancelled by socket scale");
+                    var mount=rig.socketPosition;
+                    foreach(var pose in poses)
+                    {
+                        rig.RestoreSupportPose();rig.LoadPose(pose,bones,unitScale);
+                        rig.sampledSupportUpper=rig.supportUpper.localRotation;
+                        rig.sampledSupportLower=rig.supportLower.localRotation;
+                        rig.sampledSupportHand=rig.supportHand.localRotation;rig.sampledSupport=true;
+                        float upper=(rig.supportLower.position-rig.supportUpper.position).magnitude;
+                        float lower=(rig.supportHand.position-rig.supportLower.position).magnitude;
+                        rig.aimTime=0;rig.ApplyAim();
+                        Need((rig.weaponSocket.localPosition-mount).magnitude<.0001f,"Authored wrist mount does not drift between samples");
+                        Need(Quaternion.Angle(rig.weaponSocket.localRotation,rig.socketRest)<.08f,"Socket follows sampled hand orientation");
+                        rig.motion=Motion.Fire;rig.supportWeight=1;
+                        var target=rig.weaponSocket.TransformPoint(rig.supportPoint);
+                        var shoulder=rig.supportUpper.position;
+                        bool reachable=(target-shoulder).magnitude<upper+lower-Math.Min(upper,lower)*.0201f&&
+                            (target-shoulder).magnitude>Math.Abs(upper-lower)+Math.Min(upper,lower)*.0201f;
+                        rig.ApplySupportGrip(1f/60);
+                        float error=(rig.supportHand.position-target).magnitude/actorScale;
+                        Need(Math.Abs((rig.supportLower.position-shoulder).magnitude-upper)/actorScale<.0001f&&
+                            Math.Abs((rig.supportHand.position-rig.supportLower.position).magnitude-lower)/actorScale<.0001f,"FBX arm segment lengths preserved under imported/actor scales");
+                        if(reachable){Need(error<.0003f,$"Reachable FBX support target reached: {model.GetProperty("name").GetString()} {weapon} frame {pose.GetProperty("frame").GetInt32()}, actor {actorScale}, units {unitScale}, error {error}, upper/lower {upper}/{lower}");worst=Math.Max(worst,error);}
+                        rig.motion=Motion.Death;rig.RestoreSupportPose();rig.ApplySupportGrip(1f/60);
+                        Need(rig.supportWeight==0&&Quaternion.Angle(rig.supportUpper.localRotation,rig.sampledSupportUpper)<.08f,"FBX sampled arm restored and released on death");
+                        int frame=pose.GetProperty("frame").GetInt32();
+                        Motion action=frame>=199&&frame<=216?Motion.Throw:frame>=171&&frame<=194?Motion.Medkit:
+                            frame>=85&&frame<=114?Motion.Reload:Motion.Fire;
+                        if(action!=Motion.Fire)
+                        {
+                            rig.motion=action;rig.supportWeight=1f;
+                            for(int tick=0;tick<8;tick++){rig.RestoreSupportPose();rig.ApplySupportGrip(1f/60);}
+                            Need(rig.supportWeight==0&&Quaternion.Angle(rig.supportHand.localRotation,rig.sampledSupportHand)<.08f,"FBX item/reload hand returns to authored sample after grip release");
+                        }
+                        samples++;
+                    }
+                }
+                Console.WriteLine($"FBX GRIP PASS {model.GetProperty("name").GetString()}: {samples} pose/weapon/actor/import-unit cases; first-pose marker and barrel calibration, wrist following, fixed segments, reachable target error <= {worst*1000:F3} mm, item/reload/death restore. SHA256 {model.GetProperty("sha256").GetString()}. Blender FBX poses with scene/rotation stand-ins; no native Unity import/Animator/render validation.");
+            }
+        }
     }
 }
 static class UpperRigProbe
 {
-    static void Main(){foreach(int hz in new[]{20,30,60,120}){new ZombieSurvivalRun.AimRig().Check(hz);new ZombieSurvivalRun.AimRig().CheckSocket(hz);new ZombieSurvivalRun.AimRig().CheckSupport(hz);}}
+    static void Main(string[] args){foreach(int hz in new[]{20,30,60,120}){new ZombieSurvivalRun.AimRig().Check(hz);new ZombieSurvivalRun.AimRig().CheckSocket(hz);new ZombieSurvivalRun.AimRig().CheckSupport(hz);}if(args.Length>0)ZombieSurvivalRun.AimRig.CheckFbx(args[0]);}
 }

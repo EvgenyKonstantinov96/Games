@@ -66,6 +66,15 @@ def paint(name, color, path=None, rough=.62, emissive=False):
             unpack.inputs["Strength"].default_value=.35
             links.new(normal.outputs["Color"],unpack.inputs["Color"])
             links.new(unpack.outputs[0],shader.inputs["Normal"])
+        surface_path=path.with_stem(path.stem+"_surface")
+        if not emissive and surface_path.exists():
+            surface=nodes.new('ShaderNodeTexImage')
+            surface.image=bpy.data.images.load(str(surface_path),check_existing=True)
+            surface.image.colorspace_settings.name='Non-Color'
+            split=nodes.new('ShaderNodeSeparateColor');links.new(surface.outputs['Color'],split.inputs['Color'])
+            links.new(split.outputs['Red'],shader.inputs['Metallic'])
+            inverse=nodes.new('ShaderNodeMath');inverse.operation='SUBTRACT';inverse.inputs[0].default_value=1
+            links.new(surface.outputs['Alpha'],inverse.inputs[1]);links.new(inverse.outputs[0],shader.inputs['Roughness'])
     elif emissive:
         shader.inputs["Emission Color"].default_value = (*color,1)
         shader.inputs["Emission Strength"].default_value = 2
@@ -231,7 +240,7 @@ for depth in (24., 99.):
 
 def character(name, pos, yaw, scale=1):
     old=set(bpy.data.objects)
-    bpy.ops.import_scene.fbx(filepath=str(ART/(name+".fbx")))
+    bpy.ops.import_scene.fbx(filepath=str(ART/(name+".fbx")),anim_offset=0)
     parts=set(bpy.data.objects)-old
     rig,=[o for o in parts if o.type=="ARMATURE"]
     skins=[o for o in parts if o.type=="MESH"]
@@ -447,7 +456,7 @@ background=scene.world.node_tree.nodes.get("Background")
 background.inputs[0].default_value=(*sky_color,1)
 background.inputs[1].default_value=.60
 scene.render.engine="CYCLES"
-scene.cycles.samples = 64
+scene.cycles.samples = int(sys.argv[sys.argv.index('--samples')+1]) if '--samples' in sys.argv else 64
 scene.cycles.use_denoising = False
 scene.render.filepath=str(OUT)
 bpy.ops.render.render(write_still=True)

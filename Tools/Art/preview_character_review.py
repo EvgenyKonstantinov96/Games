@@ -16,15 +16,18 @@ parser.add_argument('--out',type=Path,required=True)
 parser.add_argument('--names',default='Max,Eva,Max,Eva')
 parser.add_argument('--back',default='2,3',help='Comma-separated slot indices shown from behind')
 parser.add_argument('--frame',type=int,default=1)
+parser.add_argument('--samples',type=int,default=32)
+parser.add_argument('--width',type=int,default=1280)
+parser.add_argument('--height',type=int,default=800)
 args=parser.parse_args(sys.argv[sys.argv.index('--')+1:])
 names=args.names.split(',')
 backs={int(x) for x in args.back.split(',') if x}
 bpy.ops.wm.read_factory_settings(use_empty=True)
 scene=bpy.context.scene
 scene.render.engine='CYCLES'
-scene.cycles.samples=32
+scene.cycles.samples=args.samples
 scene.cycles.use_denoising=False
-scene.render.resolution_x,scene.render.resolution_y=1280,800
+scene.render.resolution_x,scene.render.resolution_y=args.width,args.height
 scene.render.resolution_percentage=100
 scene.view_settings.view_transform='AgX'
 
@@ -102,7 +105,7 @@ for index,name in enumerate(names):
     bpy.context.view_layer.update()
     if name in ('Max','Eva'):gun(rig,placement)
 
-bpy.ops.mesh.primitive_plane_add(size=200,location=(0,0,-.015))
+bpy.ops.mesh.primitive_plane_add(size=200,location=(0,0,0))
 bpy.context.object.data.materials.append(material('Slate stage',(.055,.071,.095)))
 scene.world=bpy.data.worlds.new('Neutral ambient');scene.world.use_nodes=True
 bg=scene.world.node_tree.nodes.get('Background')

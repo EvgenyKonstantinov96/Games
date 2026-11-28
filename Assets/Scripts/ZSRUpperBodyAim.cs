@@ -9,18 +9,32 @@ namespace ZombieSurvivalRun
             out Vector3 joint, out Vector3 end)
         {
             joint = elbow; end = wrist;
-            float upper = (elbow-shoulder).magnitude, lower = (wrist-elbow).magnitude;
+            Vector3 upperOffset = elbow-shoulder, lowerOffset = wrist-elbow;
+            float upper = upperOffset.magnitude, lower = lowerOffset.magnitude;
+            if (!(upper > 0f && lower > 0f) || float.IsInfinity(upper+lower)) return false;
+            // Keep a slight bend without imposing world-unit margins on scaled rigs.
+            float clearance = Mathf.Min(upper,lower)*.02f;
+            float nearest = Mathf.Abs(upper-lower)+clearance, farthest = upper+lower-clearance;
+            if (!(nearest > 0f && nearest < farthest)) return false;
             Vector3 offset = target-shoulder;
-            if (upper < .001f || lower < .001f || offset.sqrMagnitude < .000001f) return false;
-            Vector3 direction = offset.normalized;
-            float distance = Mathf.Clamp(offset.magnitude, Mathf.Abs(upper-lower)+.008f, upper+lower-.005f);
-            Vector3 pole = Vector3.ProjectOnPlane(elbow-shoulder,direction);
-            if (pole.sqrMagnitude < .000001f)
+            float targetDistance = offset.magnitude;
+            if (float.IsNaN(targetDistance) || float.IsInfinity(targetDistance)) return false;
+            if (targetDistance <= (upper+lower)*.000001f)
+            {
+                offset = wrist-shoulder;
+                if (offset.magnitude <= (upper+lower)*.000001f) offset = upperOffset;
+            }
+            Vector3 direction = offset/offset.magnitude;
+            float distance = Mathf.Clamp(targetDistance,nearest,farthest);
+            Vector3 pole = Vector3.ProjectOnPlane(upperOffset/upper,direction);
+            if (pole.sqrMagnitude < .00000001f)
+                pole = Vector3.ProjectOnPlane(lowerOffset/lower,direction);
+            if (pole.sqrMagnitude < .00000001f)
                 pole = Vector3.ProjectOnPlane(Vector3.down,direction);
-            if (pole.sqrMagnitude < .000001f)
+            if (pole.sqrMagnitude < .00000001f)
                 pole = Vector3.ProjectOnPlane(Vector3.right,direction);
             float along = (upper*upper + distance*distance - lower*lower)/(2f*distance);
-            joint = shoulder + direction*along + pole.normalized*Mathf.Sqrt(Mathf.Max(0f,upper*upper-along*along));
+            joint = shoulder + direction*along + pole/pole.magnitude*Mathf.Sqrt(Mathf.Max(0f,upper*upper-along*along));
             end = shoulder + direction*distance;
             return true;
         }

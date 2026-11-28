@@ -126,11 +126,12 @@ def append_reduced(character, name, points, faces, tiles, weights, ratio):
     names = [group.name for group in source.vertex_groups]
     for vertex in reduced.vertices:
         entries = [(names[group.group], group.weight) for group in vertex.groups]
-        entries = sorted(entries, key=lambda entry: entry[1], reverse=True)[:4]
+        entries = [entry for entry in sorted(entries, key=lambda entry: entry[1], reverse=True)[:4]
+                   if entry[1] > .00001]
         total = sum(amount for _, amount in entries)
         assert total > 0, (character.name, name, vertex.index)
         character.vertices.append(tuple(vertex.co))
-        character.weights.append({key:amount/total for key, amount in entries if amount > .00001})
+        character.weights.append({key:amount/total for key, amount in entries})
     layer = reduced.uv_layers.active
     first_face = len(character.faces)
     for polygon in reduced.polygons:
@@ -370,20 +371,43 @@ class Body:
         height = self.height
         scalp = {}
         end = len(actor.faces)
+        def hairline(point):
+            x,y,_=point
+            front=smooth(-.030,.108,y)
+            temple=smooth(.042,.088,abs(x))
+            # Coverage belongs beneath the native groom, above the forehead.
+            # A low, symmetric edge reads as blunt bangs even when every hair
+            # card is correctly textured. Preserve the scout's high side part.
+            ear_clearance=.010*smooth(.086,.116,abs(x))*(1-.3*front)
+            if actor.name=='Eva':
+                part=.004*math.exp(-((x-.028)/.022)**2)*front
+                sweep=.004*smooth(0,.075,-x)*front
+                return height*(.923+.051*front-.013*front*temple+part-sweep+ear_clearance)
+            return height*(.923+.046*front-.008*front*temple+ear_clearance)
         for face in actor.faces[first_face:end]:
-            if not all(i >= base and actor.vertices[i][2] > height*(.949+.028*math.tanh((actor.vertices[i][1]-.088)*22))
-                       for i in face):
+            if not all(i>=base for i in face):
+                continue
+            center=sum((Vector(actor.vertices[i]) for i in face),Vector((0,0,0)))/len(face)
+            if center.z<hairline(center) or center.z<height*.92:
                 continue
             for i in face:
                 if i not in scalp:
                     p = Vector(actor.vertices[i])
+                    p.z=max(p.z,hairline(p))
                     center = Vector((0,.035,height*.946))
                     scalp[i] = len(actor.vertices)
-                    actor.vertices.append(tuple(p+(p-center).normalized()*.0048))
+                    actor.vertices.append(tuple(p+(p-center).normalized()*.0055))
                     actor.weights.append({"Head":1.})
             actor.faces.append(tuple(scalp[i] for i in face))
-            actor.tiles.append((17, tuple((.5+actor.vertices[i][0]*4., .5+(actor.vertices[i][2]-height*.97)*5.)
-                                          for i in face)))
+            if actor.name=='Eva':
+                # Sample one uninterrupted native chestnut strand island;
+                # the scalp stays continuous without sharing Max's dark tile.
+                coords=tuple((.24+actor.vertices[i][0]*.9,
+                              .68+(actor.vertices[i][2]-height*.97)*1.4) for i in face)
+                actor.tiles.append((35,coords))
+            else:
+                actor.tiles.append((17,tuple((.5+actor.vertices[i][0]*4.,
+                                             .5+(actor.vertices[i][2]-height*.97)*5.) for i in face)))
 
     def append_shoes(self, pack):
         actor = self.actor

@@ -72,12 +72,30 @@ def glazing(draw, emission, rng, box, active, fractured):
         emission.rectangle((left + 1, top + 1, right - 1, bottom - 1), glow)
         if bottom - top > 8:
             emission.line((left + 1, top + 1, right - 1, top + 1), shade(glow, 18))
+        # Light comes from an interior, with an unlit sill and partially drawn
+        # blinds, rather than a uniformly emissive rectangle on the facade.
+        if right-left>10 and rng.random()<.62:
+            blind_bottom=top+max(3,(bottom-top)//3)
+            for y in range(top+2,blind_bottom,3):
+                draw.line((left+1,y,right-1,y),(61,58,51))
+                emission.line((left+1,y,right-1,y),(19,13,8))
+        if right-left>12 and rng.random()<.38:
+            edge=left+max(3,(right-left)//4)
+            draw.rectangle((left+1,top+1,edge,bottom-1),(51,48,43))
+            emission.rectangle((left+1,top+1,edge,bottom-1),(13,8,5))
+        draw.line((left+1,bottom-1,right-1,bottom-1),shade(glass,-32))
+        emission.line((left+1,bottom-1,right-1,bottom-1),(0,0,0))
     elif fractured:
         # Glazed splinters stay against the frame, while the recess reads as a dark hole.
         draw.polygon(((left + 2, top + 1), (right - 1, top + 1), (right - 1, bottom - 2),
                       (right - 5, (top + bottom) // 2)), (31, 38, 46))
         draw.line((left + 3, top + 2, left + 6, (top + bottom) // 2, right - 2, bottom - 3),
                   (82, 100, 115))
+        if right-left>12 and bottom-top>10 and rng.random()<.42:
+            # A few boarded openings distinguish abandoned floors without
+            # changing the building's geometry or hiding the street silhouette.
+            draw.line((left+2,bottom-3,right-2,top+3),(71,62,51),width=3)
+            draw.line((left+3,bottom-4,right-3,top+2),(102,87,68))
     else:
         draw.line((left + 2, top + 2, right - 2, top + 2), shade(glass, 19))
     if right - left > 17:
@@ -112,6 +130,18 @@ def facade_tile(rng, color, columns, floors, kind):
             glazing(draw, emit, rng, pane, active, rng.random() < .24)
             if kind in ("brick", "concrete"):
                 draw.line((pane[0] - 2, sill + 2, pane[2] + 2, sill + 2), shade(color, 18), width=2)
+                # Recessed reveal and a small runoff shadow stay attached to
+                # each window, so the aging follows the architecture.
+                draw.line((pane[0]-2,head,pane[0]-2,sill+1),shade(color,-36))
+                for x in (pane[0],pane[2]):
+                    draw.line((x,sill+4,x,min(bottom-1,sill+8)),shade(color,-13))
+
+    if kind in ('office','glass'):
+        for col in range(1,columns):
+            x=8+col*(SURFACE-16)//columns
+            draw.line((x-1,top_trim,x-1,SURFACE-top_trim),shade(color,-24))
+            draw.line((x+1,top_trim,x+1,SURFACE-top_trim),shade(color,10))
+            emit.line((x-1,top_trim,x-1,SURFACE-top_trim),(0,0,0),width=2)
 
     draw.rectangle((0, 0, SURFACE - 1, top_trim - 2), shade(color, -7))
     draw.line((0, 2, SURFACE - 1, 2), shade(color, 16), width=2)

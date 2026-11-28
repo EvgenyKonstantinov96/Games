@@ -134,6 +134,7 @@ def append_garment(actor, pack):
         ranked = sorted(mixed.items(), key=lambda item: item[1], reverse=True)[:4]
         total = sum(weight for _, weight in ranked)
         weights.append({bone: weight/total for bone, weight in ranked if weight > .00001})
+    shirt=set()
     # Shirt and trousers are separate connected surfaces in the CC0 proxies.
     # Shorten only the torso hem; never lift trousers or the sleeve vertices.
     if actor.hero:
@@ -151,6 +152,7 @@ def append_garment(actor, pack):
         for entries in components.values():
             if sum(positions[i].z for i in entries)/len(entries)<actor.h*.60:
                 continue
+            shirt.update(entries)
             hem=min(positions[i].z for i in entries)
             desired=actor.h*(.584 if actor.name=="Eva" else .568)
             if hem>=desired:continue
@@ -165,6 +167,29 @@ def append_garment(actor, pack):
                 # long pointed tails. Preserve the upper torso and sleeves.
                 if p.z<desired+.025:
                     p.z=max(p.z,desired+.008+.003*math.cos(p.x*14))
+        # Remove the source casual shirt's bloused belly and flared rear hem.
+        # Sample the same anatomical body used to fit the proxy. Leave sleeve
+        # volume, joint positions and the open scout jacket's front intact.
+        trunk=[point for index,point in body.geometry.items()
+               if sum(body.bind_weights[index].get(bone,0.)
+                      for bone in ('Pelvis','Spine','Chest'))>.72]
+        for i in shirt:
+            p=positions[i]
+            side='L' if p.x<0 else 'R'
+            if sum(weights[i].get(part+side,0.) for part in ('UpperArm','Forearm','Hand'))>.30:
+                continue
+            waist=math.exp(-((p.z/actor.h-.649)/.080)**2)
+            samples=sorted(trunk,key=lambda q:abs(q.z-p.z))[:36]
+            half_width=max(abs(q.x) for q in samples)+.020
+            # Compress only excess ease, with a smooth transition into the
+            # chest and hem; cloth retains clearance over the torso.
+            if abs(p.x)>half_width:
+                p.x+=(math.copysign(half_width,p.x)-p.x)*waist*.80
+            near=sorted(samples,key=lambda q:abs(q.x-p.x))[:12]
+            edge=(max(q.y for q in near)+.023 if p.y>.035
+                  else min(q.y for q in near)-.020)
+            if (p.y-edge)*(1 if p.y>.035 else -1)>0:
+                p.y+=(edge-p.y)*waist*.76
     # Add restrained cloth volume and compression folds around real joints.
     # This deforms the fitted garment, never the anatomy or joint anchors.
     for p,entries in zip(positions,weights):
@@ -242,10 +267,59 @@ def append_garment(actor, pack):
         accepted.append((tuple(i for i, _ in face), tuple(uv[j] for _, j in face)))
     append_reduced(actor, actor.name+" fitted garment", positions, accepted,
                    [slot]*len(accepted), weights, .62 if actor.hero else .43)
+    if actor.hero:
+        append_tailoring(actor)
+
+
+def append_tailoring(actor):
+    """Rolled cuffs and shaped jacket facings, on the existing garment/rig."""
+    from mathutils import Vector
+    h=actor.h
+    cloth=0 if actor.name=='Max' else 1
+    # A continuous cuff with a shallow compression crease has a much softer
+    # silhouette than another solid plate attached to the upper arm.
+    for side in ('L','R'):
+        shoulder=actor.bones['UpperArm'+side][0]
+        elbow=actor.bones['Forearm'+side][0]
+        axis=(elbow-shoulder).normalized()
+        center=shoulder.lerp(elbow,.675 if actor.name=='Max' else 1.075)
+        samples=[]
+        for point,weights in zip(actor.vertices,actor.weights):
+            if sum(weights.get(part+side,0.) for part in ('UpperArm','Forearm'))<.65:
+                continue
+            offset=Vector(point)-center
+            if abs(offset.dot(axis))<.025:
+                samples.append((offset-axis*offset.dot(axis)).length)
+        radius=sorted(samples)[int(len(samples)*.82)] if samples else .060
+        radius=min(.084,max(.047,radius))
+        rings=[]
+        for distance,scale in ((-.013,.98),(0,1.035),(.012,.99)):
+            point=center+axis*distance
+            bone='UpperArm'+side if actor.name=='Max' else 'Forearm'+side
+            rings.append((point,radius*scale,radius*.88*scale,{bone:1.}))
+        actor.loft(rings,[cloth,cloth],12,0,Vector((0,1,0)))
+    # Front collar/facing edges frame the neck; the scout's open red jacket
+    # remains separate from her pale undershirt. Surface sampling prevents
+    # the facings from floating over a generic fixed-depth chest.
+    for sign in (-1,1):
+        outline=((.045,.746),(.088,.770),(.101,.827),(.068,.848),(.042,.815))
+        if actor.name=='Max':
+            outline=((.050,.805),(.081,.814),(.095,.845),(.062,.857),(.045,.835))
+        first=len(actor.vertices)
+        for x,z in outline:
+            x*=sign;z*=h
+            y=actor.body.chest_surface(x,z)+.024
+            actor.vertices.append((x,y,z))
+            actor.weights.append({'Chest':1.})
+        face=tuple(first+i for i in range(len(outline)))
+        # Outline is counter-clockwise in XZ on the right side, hence -Y.
+        actor.faces.append(face[::-1] if sign>0 else face)
+        coords=tuple((x/.12,(z-.74)/.12) for x,z in outline)
+        actor.tiles.append((cloth,coords[::-1] if sign>0 else coords))
 
 def append_hair(actor, pack):
     from mathutils import Vector
-    from makehuman_body import read_obj, append_reduced
+    from makehuman_body import read_obj, append_reduced, smooth
     name = "short01" if actor.name in ("Max","Walker") else "ponytail01"
     mapping, axes, _ = read_proxy(pack,name,"hair")
     _, uv, faces, _ = read_obj(pack.read(f"hair/{name}/{name}.obj").decode().splitlines())
@@ -257,7 +331,26 @@ def append_hair(actor, pack):
     for indices,amounts,offset in mapping:
         point=sum((body.source[i]*weight for i,weight in zip(indices,amounts)),Vector((0,0,0)))
         point += Vector(tuple(offset[i]*scale[i] for i in range(3)))
-        points.append(body.shape(point))
+        fitted=body.shape(point)
+        if actor.name=='Max':
+            # Sculpt the existing groom instead of stacking tubular locks on
+            # top of it. Its original cards supply the fine broken silhouette.
+            crown=smooth(actor.h*.962,actor.h*.997,fitted.z)
+            fitted.x-=.018*crown
+            fitted.y+=.010*crown
+            fitted.z+=.007*crown*(1-smooth(-.045,.065,fitted.x)*.45)
+        elif actor.name=='Eva' and fitted.z>actor.h*.945:
+            crown=smooth(actor.h*.945,actor.h*.994,fitted.z)
+            fitted.x-=.008*crown
+            front=smooth(.065,.122,fitted.y)*(1-smooth(.035,.082,abs(fitted.x)))
+            fitted.z+=.009*front*(1-crown)
+        if actor.name=='Eva' and fitted.y<-.105 and fitted.z<actor.h*.955:
+            t=min(1,max(0,(actor.h*.950-fitted.z)/(actor.h*.16)))
+            # Gather into the tie, then let the ponytail arc away from the
+            # neck. The original animated HairTie/HairTail weights remain.
+            fitted.x+=.019*math.sin(math.pi*t)
+            fitted.y-=.018*math.sin(math.pi*t)
+        points.append(fitted)
     geometry=[(tuple(i for i,_ in face),tuple(uv[j] for _,j in face)) for face in faces]
     if not actor.hero:
         # Sparse, irregular remaining locks rather than the survivor's groomed cap.
@@ -271,6 +364,28 @@ def append_hair(actor, pack):
             weights.append({"Head":1.0})
     tile=34 if name=="short01" else 35
     append_reduced(actor,actor.name+" swept hair",points,geometry,[tile]*len(geometry),weights,.58)
+    if actor.name=='Eva':
+        append_groomed_locks(actor)
+
+
+def append_groomed_locks(actor):
+    """One flat side-swept forelock, tucked into the native ponytail groom."""
+    h=actor.h
+    path=((.055,.981,.003),(.021,.977,.008),(-.025,.966,.009),
+          (-.062,.951,.006),(-.080,.936,.0008))
+    first=len(actor.vertices)
+    for i,(x,z,width) in enumerate(path):
+        for sign in (-1,1):
+            height=z*h+sign*width
+            y=actor.body.chest_surface(x,height)+.010
+            actor.vertices.append((x,y,height))
+            actor.weights.append({'Head':1.})
+    for i in range(len(path)-1):
+        a=first+i*2
+        actor.faces.append((a+2,a+3,a+1,a))
+        # Follow the same warm directional strand island as the scalp.
+        u=.15+i*.035;next_u=u+.035
+        actor.tiles.append((35,((next_u,.62),(next_u,.73),(u,.73),(u,.62))))
 
 
 def append_fitted_head_part(actor,pack,family,name,tile,ratio):

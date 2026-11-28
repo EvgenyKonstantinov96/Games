@@ -5,6 +5,55 @@ using ZombieSurvivalRun;
 static class UpperAimProbe
 {
     static void Need(bool ok,string text){if(!ok)throw new Exception(text);}
+    static Vector3 Rotate(Vector3 value)
+    {
+        // Rodrigues rotation avoids native Quaternion calls in this managed runner.
+        var axis=new Vector3(.3f,.7f,-.4f).normalized;
+        const float angle=1.173f;
+        return value*MathF.Cos(angle)+Vector3.Cross(axis,value)*MathF.Sin(angle)+axis*Vector3.Dot(axis,value)*(1-MathF.Cos(angle));
+    }
+    static void CheckReach(Vector3 shoulder,Vector3 elbow,Vector3 wrist,Vector3 target,out Vector3 joint,out Vector3 end)
+    {
+        Need(ZSRArmReach.Solve(shoulder,elbow,wrist,target,out joint,out end),"Arm solves finite nonzero segments");
+        float upper=(elbow-shoulder).magnitude,lower=(wrist-elbow).magnitude;
+        float tolerance=MathF.Max(upper,lower)*.0005f;
+        Need(float.IsFinite(joint.x)&&float.IsFinite(joint.y)&&float.IsFinite(joint.z)&&float.IsFinite(end.x)&&float.IsFinite(end.y)&&float.IsFinite(end.z),"Finite solved arm");
+        Need(Math.Abs((joint-shoulder).magnitude-upper)<tolerance&&Math.Abs((end-joint).magnitude-lower)<tolerance,"Scaled arm segment lengths preserved");
+        float clearance=MathF.Min(upper,lower)*.02f;
+        float expected=Math.Clamp((target-shoulder).magnitude,Math.Abs(upper-lower)+clearance,upper+lower-clearance);
+        Need(Math.Abs((end-shoulder).magnitude-expected)<tolerance,"Scale-relative near/far reach limits");
+        if((target-shoulder).magnitude>Math.Abs(upper-lower)+clearance&&(target-shoulder).magnitude<upper+lower-clearance)
+            Need((end-target).magnitude<tolerance,"Scaled reachable grip reached");
+    }
+    static void CheckScaledArms()
+    {
+        int cases=0;
+        foreach(var segments in new[]{new Vector2(.28f,.26f),new Vector2(.002f,.002f),new Vector2(.002f,.0012f)})
+        {
+            var elbow=new Vector3(.6f,-.8f,0)*segments.x;
+            var wrist=elbow+new Vector3(-.36f,.48f,.8f)*segments.y;
+            float reach=segments.x+segments.y;
+            foreach(var target in new[]{new Vector3(.04f,-.02f,.30f)*reach,new Vector3(-.4f,.8f,1.2f)*reach,new Vector3(0,0,.75f)*reach,new Vector3(.001f,0,.002f)*reach,Vector3.zero})
+            {
+                CheckReach(Vector3.zero,elbow,wrist,target,out var baseJoint,out var baseEnd);
+                foreach(float scale in new[]{.01f,.1f,1f,10f})
+                {
+                    var translation=new Vector3(.7f,-1.3f,2.1f)*reach*scale;
+                    CheckReach(translation,translation+Rotate(elbow)*scale,translation+Rotate(wrist)*scale,translation+Rotate(target)*scale,out var joint,out var end);
+                    float tolerance=MathF.Max(segments.x,segments.y)*scale*.001f;
+                    Need((joint-(translation+Rotate(baseJoint)*scale)).magnitude<tolerance,$"Elbow invariant: segments {segments}, target {target}, scale {scale}, error {(joint-(translation+Rotate(baseJoint)*scale)).magnitude}, tolerance {tolerance}");
+                    Need((end-(translation+Rotate(baseEnd)*scale)).magnitude<tolerance,$"Grip invariant: segments {segments}, target {target}, scale {scale}");
+                    cases++;
+                }
+            }
+        }
+        // A fully straight/folded sample has no unique bend plane, but still needs finite fixed lengths.
+        CheckReach(Vector3.zero,new Vector3(0,.002f,0),new Vector3(0,.004f,0),new Vector3(0,1,0),out _,out _);
+        CheckReach(Vector3.zero,new Vector3(0,.002f,0),Vector3.zero,Vector3.zero,out _,out _);
+        Need(!ZSRArmReach.Solve(Vector3.zero,new Vector3(float.NaN,0,0),Vector3.one,Vector3.forward,out _,out _),"Reject nonfinite segments");
+        Need(!ZSRArmReach.Solve(Vector3.zero,Vector3.right,new Vector3(1,.00000001f,0),Vector3.forward,out _,out _),"Reject numerically collapsed reach interval");
+        Console.WriteLine($"ARM SCALE PASS: {cases} transformed solves at .01–10x, 2 mm equal/unequal segments, reachable/overreaching/near-shoulder targets, full fold, straight sample, finite lengths and invalid guards. Actual production vector math.");
+    }
     static void Main()
     {
         for(int i=0;i<4000;i++)
@@ -19,11 +68,13 @@ static class UpperAimProbe
             Need(Math.Abs((joint-shoulder).magnitude-upper)<.0001f&&Math.Abs((end-joint).magnitude-lower)<.0001f,"Arm segment lengths preserved");
             var direction=(end-shoulder).normalized;
             Need(Vector3.Dot(Vector3.ProjectOnPlane(joint-shoulder,direction),Vector3.ProjectOnPlane(elbow-shoulder,direction))>-.0001f,"Elbow remains on sampled bend side");
-            if((target-shoulder).magnitude<upper+lower-.0051f&&(target-shoulder).magnitude>Math.Abs(upper-lower)+.0081f)
+            float clearance=MathF.Min(upper,lower)*.02f;
+            if((target-shoulder).magnitude<upper+lower-clearance&&(target-shoulder).magnitude>Math.Abs(upper-lower)+clearance)
                 Need((end-target).magnitude<.0001f,"Reachable grip target reached");
         }
         Need(!ZSRArmReach.Solve(Vector3.zero,Vector3.zero,Vector3.zero,Vector3.one,out _,out _),"Reject zero-length arm");
         Console.WriteLine("ARM REACH PASS: 4000 moving/reachable/unreachable targets, fixed segment lengths, sampled elbow side and degenerate arm guard. Actual production vector math.");
+        CheckScaledArms();
         foreach(int hz in new[]{20,30,60,120})
         {
             var aim=new ZSRUpperBodyAim();float dt=1f/hz;

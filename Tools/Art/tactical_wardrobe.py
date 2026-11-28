@@ -20,7 +20,7 @@ def append_field_gear(actor):
 
     def patch(x0,x1,z0,z1,tile,back=False,offset=.017):
         first=len(actor.vertices)
-        nu,nv=8,7
+        nu,nv=6,6
         for j in range(nv+1):
             t=j/nv
             z=z0+(z1-z0)*t
@@ -43,14 +43,63 @@ def append_field_gear(actor):
                 actor.tiles.append((tile,uv if back else uv[::-1]))
 
     def pouch(center,size,tile,bone):
-        actor.panel(center,size,tile,bone)
+        """A sewn, filled pocket with a soft front and tapered gussets.
+
+        Share the silhouette rings instead of stacking several beveled solids.
+        The bowed front and folded flap are visible from the running camera,
+        while the flatter rear sits against the carrier or backpack.
+        """
         x,y,z=center
         direction=1 if y>0 else -1
-        # Sewn flap, fastener and raised piping read at gameplay distance.
-        actor.panel((x,y+direction*(size[1]*.5+.005),z+size[2]*.29),
-                    (size[0]*.86,.012,size[2]*.22),3,bone)
-        actor.panel((x,y+direction*(size[1]*.5+.013),z+size[2]*.13),
-                    (.024,.009,.038),4,bone)
+        width,depth,height=[value*.5 for value in size]
+        corners=3 if size[0]>.20 else 2
+        radius=min(width,height)*.35
+        outline=[]
+        for sx,sz,angle in ((1,-1,-90),(1,1,0),(-1,1,90),(-1,-1,180)):
+            for i in range(corners):
+                turn=math.radians(angle+90*i/(corners-1))
+                a=sx*(width-radius)+radius*math.cos(turn)
+                b=sz*(height-radius)+radius*math.sin(turn)
+                # Full lower corners and a narrower top give fabric pockets
+                # a tailored silhouette without a spherical/boxy appearance.
+                outline.append((a*(1-.09*max(0,b/height)),b))
+        first=len(actor.vertices);count=len(outline)
+        for offset,scale in ((-depth,.94),(depth*.72,1),(depth,.86)):
+            for a,b in outline:
+                actor.vertices.append((x+a*scale,y+direction*offset,z+b*scale))
+                actor.weights.append({bone:1.})
+        front=len(actor.vertices)
+        actor.vertices.append((x,y+direction*(depth+.004),z-.008))
+        actor.weights.append({bone:1.})
+        uv=lambda a,b:(.5+a/(width*2)*.94,.5+b/(height*2)*.94)
+        def face(ids,coords,slot):
+            actor.faces.append(tuple(ids) if direction<0 else tuple(reversed(ids)))
+            actor.tiles.append((slot,tuple(coords) if direction<0 else tuple(reversed(coords))))
+        face([first+i for i in reversed(range(count))],
+             [uv(*outline[i]) for i in reversed(range(count))],tile)
+        for ring in range(2):
+            for i,(a,b) in enumerate(outline):
+                n=(i+1)%count;c,d=outline[n]
+                ids=(first+ring*count+i,first+ring*count+n,
+                     first+(ring+1)*count+n,first+(ring+1)*count+i)
+                face(ids,((i/count,ring*.5),(n/count,ring*.5),
+                          (n/count,(ring+1)*.5),(i/count,(ring+1)*.5)),tile)
+        for i,(a,b) in enumerate(outline):
+            n=(i+1)%count;c,d=outline[n]
+            face((first+2*count+i,first+2*count+n,front),
+                 (uv(a,b),uv(c,d),(.5,.46)),tile)
+        # The flap is a stitched fold in the same fabric, with a softened point.
+        flap=len(actor.vertices)
+        points=((-width*.86,height*.77),(width*.86,height*.77),
+                (width*.80,height*.34),(width*.25,height*.22),
+                (-width*.25,height*.22),(-width*.80,height*.34))
+        for a,b in points:
+            actor.vertices.append((x+a,y+direction*(depth+.008+.003*(1-abs(a)/width)),z+b))
+            actor.weights.append({bone:1.})
+        face([flap+i for i in reversed(range(6))],
+             [uv(*points[i]) for i in reversed(range(6))],tile)
+        actor.panel((x,y+direction*(depth+.013),z+height*.27),
+                    (min(.024,size[0]*.23),.006,min(.035,size[2]*.20)),4,bone)
 
     if actor.name=='Max':
         patch(-.175,.175,h*.646,h*.827,0)
@@ -89,8 +138,9 @@ def append_field_gear(actor):
         points=[Vector((x,front,h*.705)),Vector((x,front,h*.790)),
                 Vector((x,front*.42,h*.844)),Vector((x,rear*.42,h*.844)),
                 Vector((x,rear,h*.792)),Vector((x,rear,h*.707))]
-        for a,b in zip(points,points[1:]):
-            actor.surface(a,b,[(0,.021,.009),(.5,.022,.009),(1,.021,.009)],3,'Chest',8)
+        actor.loft([(p,.021 if i in (0,len(points)-1) else .022,.008,{'Chest':1.})
+                    for i,p in enumerate(points)],[3]*(len(points)-1),8,0,
+                   Vector((1,0,0)))
         actor.panel((x,front+.012,h*.790),(.043,.016,.052),4,'Chest')
 
     # Backpack side gussets, lid, zip and three real webbing straps.

@@ -3,6 +3,7 @@
 Run from the project with Python, NumPy, Pillow and DejaVuSansCondensed-Bold.
 """
 from pathlib import Path
+from argparse import ArgumentParser
 import uuid
 
 import numpy as np
@@ -11,6 +12,8 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT = Path(__file__).resolve().parents[2]
 MESHES = ROOT / "Assets/Resources/Meshes"
 ART = ROOT / "Assets/Resources/ProductionArt"
+SOURCE_MESHES = MESHES
+SOURCE_ART = ART
 ATLAS_TILE = 128
 ATLAS_COLUMNS = 4
 PALETTE = (
@@ -25,11 +28,17 @@ def build_atlas():
     rng = np.random.default_rng(1309)
     y, x = np.mgrid[:ATLAS_TILE, :ATLAS_TILE].astype(float) / (ATLAS_TILE - 1)
     material_atlas = Image.new("RGB", (512, 512))
+    normal_atlas = Image.new("RGB", (512, 512), (128,128,255))
+    surface_atlas = Image.new("RGBA", (512, 512), (0,0,0,40))
     for index, base in enumerate(PALETTE):
         low = np.cos(8 * x + 7 * y) + np.sin(16 * (x - .17 * y)) * .52
         grit = rng.normal(0, 5, x.shape)
         grains = rng.random(x.shape)
         layer = np.broadcast_to(np.array(base, dtype=float), x.shape + (3,)).copy()
+        relief = .0018*grit + .008*low
+        metal,gloss = ((0,.15),(0,.24),(.36,.27),(.80,.58),(.12,.22),(0,.80),
+                       (0,.14),(.76,.54),(.40,.25),(0,.24),(.04,.55),(.30,.34),(.78,.47))[index]
+        metallic=np.full(x.shape,metal);smooth=np.full(x.shape,gloss)
         if index == BARRIER:
             # Big red and off-white diagonals on a central weathered paint band.
             mask = (y > .18) & (y < .70) & (x > .055) & (x < .945)
@@ -37,6 +46,8 @@ def build_atlas():
             paint = np.where(red[..., None], (163, 54, 47), (181, 179, 160))
             mask &= (grains > .06) & (low > -.93)
             layer[mask] = paint[mask]
+            relief += mask*.018
+            smooth[mask] = .30
         elif index == CHEVRON:
             mask = (((x - y*.60) * 8).astype(int) % 2 != 0) & (grains > .065)
             layer[:] = (45, 49, 49)
@@ -45,6 +56,8 @@ def build_atlas():
             rust = np.sin(26*x+5*y)*np.cos(43*y-9*x) + low*.14
             burnt = (rust > .66) | ((y > .88) & (rust > -.25))
             layer[burnt] = (119, 76, 53)
+            metallic[burnt]=.015;smooth[burnt]=.12
+            relief -= burnt*.022
             grit += 9*np.maximum(0, np.cos(2*np.pi*(y-.23))*-.8)
         elif index == GLASS:
             glint = abs(x - y * .65 - .1)
@@ -59,6 +72,8 @@ def build_atlas():
             grit += drips * (3 + 9*(1-y))
             corrosion = (y < .22) & (drips > .74) & (low > -.4)
             layer[corrosion] = (121, 83, 62)
+            metallic[corrosion]=.06;smooth[corrosion]=.16
+            relief += zinc*.006-corrosion*.018
         elif index == TAILLIGHT:
             layer += (12*np.sin(y*70))[..., None]
         elif index in (SPIKE, RIM):
@@ -66,11 +81,28 @@ def build_atlas():
         elif index in (BED, PYLON, REBAR):
             scratched = (abs(x + y*.16 - .3) < .009) | (abs(x + y*.15 - .65) < .006)
             layer[scratched & (grains > .33)] += 33
+            relief -= scratched*.014
+        if index in (CONCRETE,BARRIER):
+            # Cast panel pores and chipped paint stay matte, unlike the zinc beam.
+            pits=grains<.045
+            relief-=pits*.028
+            smooth[pits]=.10
+        smooth=np.clip(smooth+low*.025+grit*.001, .08,.84)
         layer += (7 * low + grit)[..., None]
         layer[grains < .012] *= .58
         cell = Image.fromarray(np.uint8(np.clip(layer, 0, 255)), "RGB")
-        material_atlas.paste(cell, (index % ATLAS_COLUMNS * ATLAS_TILE, index // ATLAS_COLUMNS * ATLAS_TILE))
+        origin=(index % ATLAS_COLUMNS * ATLAS_TILE, index // ATLAS_COLUMNS * ATLAS_TILE)
+        material_atlas.paste(cell, origin)
+        dy,dx=np.gradient(relief)
+        vectors=np.stack((-dx*5,dy*5,np.ones_like(dx)),axis=-1)
+        vectors/=np.linalg.norm(vectors,axis=-1,keepdims=True)
+        normal_atlas.paste(Image.fromarray(np.uint8(np.clip(vectors*127.5+127.5,0,255))),origin)
+        surface=np.zeros((*x.shape,4),dtype=np.uint8)
+        surface[:,:,0]=np.uint8(metallic*255);surface[:,:,3]=np.uint8(smooth*255)
+        surface_atlas.paste(Image.fromarray(surface),origin)
     material_atlas.save(ART / "TrackPropAtlas.png", optimize=True)
+    normal_atlas.save(ART / "TrackPropAtlas_normal.png", optimize=True)
+    surface_atlas.save(ART / "TrackPropAtlas_surface.png", optimize=True)
 
 
 def build_gate_labels():
@@ -148,7 +180,7 @@ class Prop:
 
     def existing(self, name, tile, scale=(1., 1., 1.)):
         points, faces = [], []
-        for line in (MESHES / f"{name}.obj").read_text().splitlines():
+        for line in (SOURCE_MESHES / f"{name}.obj").read_text().splitlines():
             if line.startswith("v "):
                 points.append([float(x) for x in line.split()[1:4]])
             if line.startswith("f "):
@@ -173,13 +205,17 @@ class Prop:
 
     def rod(self, a, b, radius, tile):
         a, b = np.array(a), np.array(b)
-        normal = (b-a) / np.linalg.norm(b-a)
-        u = np.cross(normal, np.array([0., 1., 0.]))
+        length=np.linalg.norm(b-a)
+        if length<.000001:raise ValueError("Rod needs distinct endpoints")
+        normal = (b-a) / length
+        reference=np.array([1.,0.,0.]) if abs(normal[1])>.95 else np.array([0.,1.,0.])
+        u = np.cross(normal, reference)
         u /= np.linalg.norm(u)
         v = np.cross(normal, u)
         angles = np.arange(6) * np.pi / 3
         offsets = radius * (np.cos(angles[:, None])*u + np.sin(angles[:, None])*v)
         faces = [[i, (i+1)%6, (i+1)%6+6, i+6] for i in range(6)]
+        faces += [list(reversed(range(6))),list(range(6,12))]
         self.add(np.concatenate([a+offsets,b+offsets]), faces, tile)
 
     def save(self, name):
@@ -225,6 +261,11 @@ def prop_assets():
     barrier = Prop()
     barrier.octagon([(0,1.27,.58,.09,0,0),(.18,1.38,.63,.10,0,0),(.46,1.19,.57,.10,0,0),
                      (1.47,.91,.40,.09,0,0),(1.60,.80,.34,.075,0,0)], CONCRETE, BARRIER)
+    for side in (-1,1):
+        for x in (-.64,.64):
+            # Anchor washers and recessed bolt heads on the sloping painted face.
+            barrier.rod((x,1.10,side*.452),(x,1.10,side*.469),.032,RIM)
+            barrier.rod((x,.33,side*.581),(x,.33,side*.598),.029,REBAR)
     barrier.save("track_barrier")
 
     trap = Prop()
@@ -251,6 +292,9 @@ def prop_assets():
                    (2.35,.15,.165,.032,0,0),(2.47,.19,.199,.035,0,0),(2.57,.145,.157,.033,0,0)], PYLON)
     pylon.octagon([(.47,.175,.055,.026,0,-.137),(.61,.175,.055,.026,0,-.137)], RIM)
     pylon.octagon([(2.25,.165,.048,.023,0,-.142),(2.33,.165,.048,.023,0,-.142)], RIM)
+    for x in (-.16,.16):
+        for z in (-.16,.16):
+            pylon.rod((x,.16,z),(x,.18,z),.026,RIM)
     pylon.save("track_gate_pylon")
 
     rail = Prop()
@@ -272,12 +316,20 @@ def prop_assets():
 
 
 def write_metas():
-    targets = [(path, MESHES/"lux_wreck_body.obj.meta") for path in MESHES.glob("track_*.obj")]
-    targets += [(ART/"TrackPropAtlas.png", ART/"Highway.png.meta"),
-                (ART/"TrackGateLabels.png", ART/"ParticleSoft.png.meta")]
+    names=('track_wreck','track_barrier','track_spikes','track_rubble','track_gate_pylon','track_guardrail')
+    targets = [(MESHES/(name+'.obj'), SOURCE_MESHES/"lux_wreck_body.obj.meta") for name in names]
+    targets += [(ART/"TrackPropAtlas.png", SOURCE_ART/"Highway.png.meta"),
+                (ART/"TrackPropAtlas_normal.png", SOURCE_ART/"Highway_normal.png.meta"),
+                (ART/"TrackPropAtlas_surface.png", SOURCE_ART/"Highway_surface.png.meta"),
+                (ART/"TrackGateLabels.png", SOURCE_ART/"ParticleSoft.png.meta")]
     for path, template in targets:
         meta = path.with_suffix(path.suffix + ".meta")
-        guid = uuid.uuid5(uuid.NAMESPACE_URL, path.relative_to(ROOT).as_posix()).hex
+        relative='Assets/Resources/'+('Meshes/' if path.suffix=='.obj' else 'ProductionArt/')+path.name
+        existing=ROOT/(relative+'.meta')
+        if existing.is_file():
+            meta.write_text(existing.read_text())
+            continue
+        guid = uuid.uuid5(uuid.NAMESPACE_URL, relative).hex
         lines = [line.rstrip() for line in template.read_text().splitlines()]
         lines[1] = "guid: " + guid
         content = "\n".join(lines) + "\n"
@@ -287,6 +339,12 @@ def write_metas():
 
 
 if __name__ == "__main__":
+    parser=ArgumentParser(description=__doc__)
+    parser.add_argument('--output-dir',type=Path,help='Alternate Resources directory for isolated generation')
+    args=parser.parse_args()
+    if args.output_dir:
+        MESHES=args.output_dir/'Meshes';ART=args.output_dir/'ProductionArt'
+    MESHES.mkdir(parents=True,exist_ok=True);ART.mkdir(parents=True,exist_ok=True)
     build_atlas()
     build_gate_labels()
     prop_assets()

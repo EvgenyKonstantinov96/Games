@@ -84,6 +84,7 @@ for path in sorted(ROOT.glob("*.fbx")):
     skin=skins[0]
     triangles=[]
     for index,lod in enumerate(skins):
+        assert len(lod.data.materials)==1,(path,index,'temporary atlas labels leaked into runtime material slots')
         lod.data.calc_loop_triangles()
         triangles.append(len(lod.data.loop_triangles))
         assert all(1<=len(v.groups)<=4 and abs(sum(g.weight for g in v.groups)-1)<.001
