@@ -54,6 +54,8 @@ namespace UnityEngine
         public void Pause() => isPaused = true;
         public void Play() => isPaused = false;
     }
+    public class AudioClip {}
+    public class AudioSource { public void PlayOneShot(AudioClip sound, float gain) {} }
     public static class Time
     {
         public static int frameCount;
@@ -76,6 +78,7 @@ namespace ZombieSurvivalRun
     sealed class ZSRHero : MonoBehaviour
     {
         public int Health = 200;
+        public float PreviousX => PositionX;
         public float PositionX => transform.position.x;
         public Vector3 ItemOrigin => transform.position;
         public void Hit() {}
@@ -127,6 +130,7 @@ namespace ZombieSurvivalRun
             return new LineRenderer();
         }
         public void ToxicBurst(Vector3 at) {}
+        public void PlayerHit(Vector3 at, float sourceX, bool acid) {}
         public void ShieldImpact(Vector3 at) {}
     }
     sealed partial class ZSRGame
@@ -144,6 +148,10 @@ namespace ZombieSurvivalRun
         public readonly ZSRLevelPlan Plan;
         ZSRZombie boss;
         bool bossSpawned;
+        public float DamageFlash, DamageSourceX;
+        public ZSRDamageKind LastDamageKind;
+        readonly AudioSource audioSource = new();
+        readonly AudioClip biteAudio = new(), clawAudio = new(), acidAudio = new(), hitAudio = new(), spitAudio = new();
         float hitRecovery, shake, shieldTimer = 0f;
         public ZSRGame(int level)
         {
@@ -275,6 +283,30 @@ static class ToxicSpitProbe
         Require(hidden.Active == 0 && hidden.Allocated == 0, "Rendering unavailable: no invisible projectile");
     }
 
+    static void Melee(int hz)
+    {
+        foreach (var type in new[] { ZombieType.Walker, ZombieType.Runner, ZombieType.Brute })
+        foreach (float offset in new[] { 0f, 2f })
+        {
+            var game = new ZSRGame(4);
+            game.Hero.transform.position = Vector3.right * offset;
+            game.Spawn(type, 3.7f);
+            var enemy = game.First;
+            for (int step = 0; step < hz*2; step++)
+            {
+                game.BeginFrame(1f/hz);
+                if (enemy.gameObject.active) enemy.Step();
+                game.EndFrame();
+            }
+            int contactDamage = type == ZombieType.Brute ? 25 : type == ZombieType.Runner ? 12 : 8;
+            Require(game.Hero.Health == (offset == 0 ? 200 - contactDamage : 200),
+                "Swept melee contact in the occupied lane only");
+            if (offset == 0)
+                Require(game.LastDamageKind == (type == ZombieType.Walker ? ZSRDamageKind.Bite : ZSRDamageKind.Claw),
+                    "Visible damage cause");
+        }
+    }
+
     static void Main()
     {
         foreach (int hz in new[] { 20, 30, 60, 120 })
@@ -285,6 +317,8 @@ static class ToxicSpitProbe
             Attack(hz, 1000, true, false);
             Attack(hz, 1000, false, true);
             CheckPools(hz);
+            Melee(hz);
+            Console.WriteLine($"MELEE PASS {hz} Hz: three enemy types, one physical contact per attack, no adjacent-lane damage, distinct bite/claw cause.");
             float dt = 1f / hz;
             Require(new[] { first.windup, late.windup }.All(t => t >= .42f - .0001f && t <= .42f + dt + .0001f),
                 "Bounded wind-up duration");

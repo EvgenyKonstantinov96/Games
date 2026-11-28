@@ -43,6 +43,7 @@ def extract():
         block(actor, "public enum ZombieType"),
         block(game, "public enum ZSRState"),
         block(game, "public enum ItemType"),
+        block(game, "public enum ZSRDamageKind"),
         "public sealed partial class ZSRZombie : MonoBehaviour {",
         zombie[zombie.index("public ZombieType Kind"):zombie.index("public void Construct")],
         *[block(zombie, member) for member in (
@@ -55,7 +56,8 @@ def extract():
         "sealed partial class ZSRGame {",
         *[expression(game, member) for member in (
             "public bool IsRunning", "public int Level =>", "public float RunSpeed", "public float FrameStep",
-            "public bool IsBossLevel", "public bool IsShielded", "internal void ToxicBurst(", "internal void LaunchToxicSpit(")],
+            "public bool IsBossLevel", "public bool IsShielded", "internal void ToxicBurst(", "internal static string DamageName(")],
+        block(game, "internal void LaunchToxicSpit("),
         prefix, late,
         *[block(game, member) for member in ("void SpawnEnemy(", "public void RecycleZombie(", "public void TogglePause(", "public void HurtPlayer(")],
         "}",

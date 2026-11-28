@@ -243,8 +243,11 @@ static class CampaignProbe
             }
         }
 
-        Require(ZSRStory.SpeakerAt(1f) == -1 && ZSRStory.SpeakerAt(2f) == 0 &&
-            ZSRStory.SpeakerAt(12f) == 1 && ZSRStory.SpeakerAt(21f) == -1, "Radio timing and order");
+        Require(ZSRStory.TryBriefing(1, out var intro) && intro.Line(0).Contains("Ева") &&
+            intro.Line(1).Contains("рацию"), "Prologue");
+        for (int level = 2; level <= ZSRLevelPlan.Count; level++)
+            Require(ZSRStory.TryBriefing(level, out _) == (ZSRStory.IndexForLevel(level) >= 0),
+                "Briefing cadence at " + level);
         Require(story.SequenceEqual(ExpectedStory()) && story.Count == 45 && !ZSRStory.TryGet(1001, out _), "Precisely 45 story levels");
         Require(sectorNames.Count == 40 && formations.Count == 6 && bossCount == 46, "Sector and encounter coverage");
         Require(trafficMargin >= 1.299f && slowedTraffic > 1000, $"Traffic clearance {trafficMargin:F3} s");
