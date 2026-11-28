@@ -76,10 +76,11 @@ namespace ZombieSurvivalRun.EditorTools
             Check(5,"Animation module",manifest.Contains("com.unity.modules.animation"));
             Check(6,"Particle System module",manifest.Contains("com.unity.modules.particlesystem"));
             Check(7,"glTFast GLB import",manifest.Contains("com.unity.cloud.gltfast"));
-            Check(8,"Game mechanics source",SourceContains("Assets/Scripts/ZSRGame.cs","MaxLevels = 15"));
+            Check(8,"Game mechanics source",SourceContains("Assets/Scripts/ZSRLevelPlan.cs","internal const int Count = 1000") &&
+                SourceContains("Assets/Scripts/ZSRGame.cs","MaxLevels = ZSRLevelPlan.Count"));
             Check(9,"Automatic aiming and firing",SourceContains("Assets/Scripts/ZSRGame.cs","Shoot()"));
             Check(10,"Seven infected types",SourceContains("Assets/Scripts/ZSRActors.cs","Crawler, Boss"));
-            Check(11,"Mixed waves",SourceContains("Assets/Scripts/ZSRGame.cs","Small mixed formations"));
+            Check(11,"Mixed waves",SourceContains("Assets/Scripts/ZSRLevelPlan.cs","WaveUnit"));
             Check(12,"Independent 0.06x parallax",SourceContains("Assets/Scripts/ZSRParallaxCity.cs",".06f"));
             Check(13,"Parallax scene integration",SourceContains("Assets/Scripts/ZSRGame.cs","ZSRParallaxCity.Create"));
             Check(14,"No old circular bonus gate",SourceContains("Assets/Scripts/ZSRWorld.cs","ZSRVeilGateView.Build"));

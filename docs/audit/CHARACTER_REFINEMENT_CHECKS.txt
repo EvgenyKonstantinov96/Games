@@ -1,0 +1,156 @@
+CHARACTER REFINEMENT — 2026-11-28
+Baseline 62678d6f0503bb056e43d451886900611fc8cb40
+Art/tools commit 73ab4399c739971fb2a9c5cfa86403aea623be68
+Main verified a24787217afc7ef72893e52d2fba753ca382c031
+
+=== Blender 4.3.2: 9 FBX / 27 LOD; weights, UV islands, deformation and falling ===
+FBX version: 7400
+LOD Armored: [12630, 6061, 2900] triangles, one skeleton and atlas
+ANATOMY Armored 4495 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.42x, forefoot flexion 20.0/13.4 degrees
+FALL Armored: 22 poses, pavement error 0.000 m, head 1.64 to 0.40 m
+PASS Armored 31 bones, 6668 verts, 12630 triangles, 1–168 frames, smooth custom normals
+FBX version: 7400
+LOD Boss: [13319, 6392, 3063] triangles, one skeleton and atlas
+ANATOMY Boss    3971 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.49x, forefoot flexion 20.2/15.0 degrees
+FALL Boss: 22 poses, pavement error 0.000 m, head 1.80 to 0.66 m
+BOSS attack reach L/R 0.769/0.769 m, ankle drift L/R 0.000/0.000 m
+PASS Boss    31 bones, 9302 verts, 13319 triangles, 1–168 frames, smooth custom normals
+FBX version: 7400
+LOD Brute: [12631, 6061, 2904] triangles, one skeleton and atlas
+ANATOMY Brute   3858 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.38x, forefoot flexion 20.3/13.9 degrees
+FALL Brute: 22 poses, pavement error 0.000 m, head 1.76 to 0.52 m
+PASS Brute   31 bones, 8803 verts, 12631 triangles, 1–168 frames, smooth custom normals
+FBX version: 7400
+LOD Crawler: [14855, 7130, 3416] triangles, one skeleton and atlas
+ANATOMY Crawler 1619 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.22x, forefoot flexion 14.4/12.1 degrees
+FALL Crawler: 22 poses, pavement error 0.000 m, head 0.86 to 0.21 m
+PASS Crawler 31 bones, 9644 verts, 14855 triangles, 1–168 frames, smooth custom normals
+FBX version: 7400
+LOD Eva: [18783, 8998, 4272] triangles, one skeleton and atlas
+ANATOMY Eva     2263 vertices in continuous body, 71 poses, worst 99th-percentile edge stretch 1.32x, forefoot flexion 27.7/23.4 degrees
+GAIT Eva     L ankle-roll 55.9 degrees, support 0.006..0.007 m, rearward travel 0.684 m, loop error 0.0023 m
+WALK Eva     L reach 0.429 m vs 0.854 m running, 27/34 frames near the ground, match with firing variant
+GAIT Eva     R ankle-roll 55.7 degrees, support 0.006..0.006 m, rearward travel 0.682 m, loop error 0.0022 m
+WALK Eva     R reach 0.429 m vs 0.853 m running, 27/34 frames near the ground, match with firing variant
+PASS Eva     35 bones, 11444 verts, 18783 triangles, 1–289 frames, smooth custom normals, medkit, throw, walk and walk-fire poses
+FBX version: 7400
+LOD Max: [22892, 10971, 5213] triangles, one skeleton and atlas
+ANATOMY Max     3882 vertices in continuous body, 71 poses, worst 99th-percentile edge stretch 1.57x, forefoot flexion 28.2/24.8 degrees
+GAIT Max     L ankle-roll 55.9 degrees, support 0.006..0.007 m, rearward travel 0.741 m, loop error 0.0024 m
+WALK Max     L reach 0.429 m vs 0.942 m running, 27/34 frames near the ground, match with firing variant
+GAIT Max     R ankle-roll 55.9 degrees, support 0.006..0.006 m, rearward travel 0.739 m, loop error 0.0023 m
+WALK Max     R reach 0.429 m vs 0.941 m running, 27/34 frames near the ground, match with firing variant
+PASS Max     33 bones, 15309 verts, 22892 triangles, 1–289 frames, smooth custom normals, medkit, throw, walk and walk-fire poses
+FBX version: 7400
+LOD Runner: [11807, 5667, 2707] triangles, one skeleton and atlas
+ANATOMY Runner  1721 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.34x, forefoot flexion 19.7/17.8 degrees
+FALL Runner: 22 poses, pavement error 0.000 m, head 1.53 to 0.32 m
+GAIT Runner  ankle travel L/R 0.959/0.961 m, ankle lift L/R 0.262/0.269 m
+PASS Runner  31 bones, 6658 verts, 11807 triangles, 1–168 frames, smooth custom normals
+FBX version: 7400
+LOD Toxic: [13133, 6303, 3020] triangles, one skeleton and atlas
+ANATOMY Toxic   1862 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.30x, forefoot flexion 20.3/15.3 degrees
+FALL Toxic: 22 poses, pavement error 0.000 m, head 1.52 to 0.29 m
+GAIT Toxic   ankle travel L/R 0.527/0.409 m, ankle lift L/R 0.140/0.086 m
+PASS Toxic   31 bones, 7467 verts, 13133 triangles, 1–168 frames, smooth custom normals
+FBX version: 7400
+LOD Walker: [12815, 6150, 2943] triangles, one skeleton and atlas
+ANATOMY Walker  1872 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.26x, forefoot flexion 19.4/13.1 degrees
+FALL Walker: 22 poses, pavement error 0.000 m, head 1.57 to 0.27 m
+GAIT Walker  ankle travel L/R 0.509/0.385 m, ankle lift L/R 0.131/0.083 m
+PASS Walker  31 bones, 8428 verts, 12815 triangles, 1–168 frames, smooth custom normals
+Blender 4.3.2
+
+Blender quit
+
+=== Blender hero layers / four grip and muzzle axes ===
+FBX version: 7400
+WEAPONS Max: maximum right-palm-to-grip distances {'pistol': 0.04132119749800047, 'rifle': 0.03787678593037213, 'shotgun': 0.033319856666692585, 'minigun': 0.040805416349494694}; all four muzzle rings centered on authored axis.
+HERO MASK Max: 96 action/gait samples, prior maximum foot mismatch 0.948 m, layered error 0.000000 m. Hand pose relative to spine preserved.
+FBX version: 7400
+WEAPONS Eva: maximum right-palm-to-grip distances {'pistol': 0.033781210751600586, 'rifle': 0.03316276741251177, 'shotgun': 0.03076917812377054, 'minigun': 0.039343703071747435}; all four muzzle rings centered on authored axis.
+HERO MASK Eva: 96 action/gait samples, prior maximum foot mismatch 0.871 m, layered error 0.000000 m. Hand pose relative to spine preserved.
+Blender 4.3.2
+
+Blender quit
+
+=== Managed head recovery and briefing, scene stand-ins ===
+POSE PASS: 24000 frames, keyed and omitted head tracks, bounded steering and neutral recovery.
+BRIEFING PASS: 1000 level entries, manual speakers, blocked run clock, cancellation and clean final start. Managed scene stand-ins.
+
+=== Managed bounded hair spring, scene stand-ins ===
+HAIR PASS: bounded spring at 20/30/60/120 Hz, frozen pause and neutral recovery after stopping.
+
+=== Actual interface class with UI/scene/game-state stand-ins ===
+Tools/QA/InterfaceProbeShims.cs(85,70): warning CS0649: Field 'ZSRGame.Pace' is never assigned to, and will always have its default value
+DIALOGUE UI PASS: 92 speaker pages with matching face and complete line.
+UI PASS: 27 portrait layouts and 44×44 minimum design-space inputs, all 40 pages with 25 entries, level 1000, rank locks, bold button font, manual dialogue with face portraits and replay callback.
+
+=== Atlas, fonts and import data ===
+BRIDGE PASS: 1600 loop steps, at least 6.29 m deck overlap, 1492 guardrail triangles.
+ATLAS PASS: nonoverlapping 2048 islands; 768² hero skins, nine times previous skin pixels, one shared material.
+UI IMPORT PASS: original proportions, no mipmaps, clamp and uncompressed desktop art; native face crops.
+MENU PASS: 13 distinct antialiased atlas symbols with clear gutters; all 55 level/district titles fit the home mission card.
+ASSETS PASS: Cyrillic and symbols in both fonts, 700-weight button captions, rounded button alpha, isolated boss emission, four unique arsenal icons.
+
+=== Asset metadata and unchanged source/UI ===
+INTEGRITY PASS: 263 unique GUIDs; 247 asset files with metadata.
+Runtime/editor C# and every UI asset byte-identical to 62678d6.
+C# SHA256: bb87550bbbe2a7eb58985ef66a42207869e70361ace63a82d30df6df4279c08b
+No new C# compilation claimed for this asset-only change.
+
+=== Real exported mesh projections in Blender ===
+FRAME CHECK Eva 390x844 x=-4.3: silhouette x=0.094..0.293 y=0.171..0.425, rails at 20m=0.193..0.930.
+FRAME CHECK Eva 390x844 x=+0.0: silhouette x=0.404..0.599 y=0.177..0.427, rails at 16m=0.058..0.942.
+FRAME CHECK Eva 390x844 x=+4.3: silhouette x=0.708..0.908 y=0.171..0.425, rails at 20m=0.070..0.807.
+FRAME CHECK Eva 1080x2400 x=-4.3: silhouette x=0.084..0.288 y=0.171..0.425, rails at 20m=0.184..0.942.
+FRAME CHECK Eva 1080x2400 x=+0.0: silhouette x=0.401..0.601 y=0.177..0.427, rails at 16m=0.046..0.954.
+FRAME CHECK Eva 1080x2400 x=+4.3: silhouette x=0.714..0.919 y=0.171..0.425, rails at 20m=0.058..0.816.
+FRAME CHECK Eva 1080x2640 x=-4.3: silhouette x=0.084..0.288 y=0.201..0.432, rails at 20m=0.184..0.942.
+FRAME CHECK Eva 1080x2640 x=+0.0: silhouette x=0.401..0.601 y=0.206..0.434, rails at 16m=0.046..0.954.
+FRAME CHECK Eva 1080x2640 x=+4.3: silhouette x=0.714..0.919 y=0.201..0.432, rails at 20m=0.058..0.816.
+FRAME CHECK Max 390x844 x=-4.3: silhouette x=0.088..0.295 y=0.166..0.445, rails at 20m=0.193..0.930.
+FRAME CHECK Max 390x844 x=+0.0: silhouette x=0.398..0.601 y=0.173..0.447, rails at 16m=0.058..0.942.
+FRAME CHECK Max 390x844 x=+4.3: silhouette x=0.704..0.911 y=0.166..0.445, rails at 20m=0.070..0.807.
+FRAME CHECK Max 1080x2400 x=-4.3: silhouette x=0.077..0.289 y=0.166..0.445, rails at 20m=0.184..0.942.
+FRAME CHECK Max 1080x2400 x=+0.0: silhouette x=0.396..0.603 y=0.173..0.447, rails at 16m=0.046..0.954.
+FRAME CHECK Max 1080x2400 x=+4.3: silhouette x=0.710..0.922 y=0.166..0.445, rails at 20m=0.058..0.816.
+FRAME CHECK Max 1080x2640 x=-4.3: silhouette x=0.077..0.289 y=0.196..0.450, rails at 20m=0.184..0.942.
+FRAME CHECK Max 1080x2640 x=+0.0: silhouette x=0.396..0.603 y=0.202..0.452, rails at 16m=0.046..0.954.
+FRAME CHECK Max 1080x2640 x=+4.3: silhouette x=0.710..0.922 y=0.196..0.450, rails at 20m=0.058..0.816.
+
+=== Fixed failed checks / review observations ===
+First detailed Max mesh: observed 16,097 vertices exceeded the retained 16,000 cap. Reduced hidden/body topology; final Max 15,309 vertices and 22,892 triangles.
+UV migration check initially failed Crawler LOD1 polygon 6601. Explicitly split UV seams before distance collapse; all final polygon/island checks passed for all 27 meshes.
+Studio review caught opaque hair-card background pixels, circular raised wounds and poorly seated helmet. Hair maps composited; wounds moved onto body surface; helmet fitted from scalp geometry.
+Renderer was retried after disabling unavailable OpenImageDenoise and handling duplicate Blender import suffixes. These were preview-tool issues, not Unity test results.
+
+=== Unity batchmode ===
+Command: Unity -batchmode -nographics -quit -projectPath /workspace/Games -logFile /tmp/zsr-refinement-unity.log
+Exit code 198
+No valid Unity Editor license found. Please activate your license.
+No project import, PlayMode, Unity render, APK/device execution or FPS measurement.
+
+=== Shipped asset SHA256 ===
+28e9aa806b07c610a4742a196c6a773604d1f2508dfda34af4b3061e4132a15d  Assets/Resources/ProductionArt/Armored.fbx
+894cc1bba706b3073e79661b644b697d51b8801c8ddbfa1614009392459ea04d  Assets/Resources/ProductionArt/Boss.fbx
+9edf812d132eaaeefce4680d6fd16936075e590b966e8339b3a4950b9748e1b2  Assets/Resources/ProductionArt/Brute.fbx
+602d74ecffaa177831acfcca0080c3ec87a45ba22b190f8c2a715bf3576119b8  Assets/Resources/ProductionArt/CharacterAtlas.png
+05ddb60b67b8226fd912684187777799bdca923e752caaaf64a38f4366601cd2  Assets/Resources/ProductionArt/CharacterAtlas_emission.png
+c54c621d8dc6d76ab02b7414fae22c20ccf0d70608a57dd0be972c90c7929655  Assets/Resources/ProductionArt/CharacterAtlas_normal.png
+9fbabd5ff8d2a43dba210f9d81bc21a52a29523deae3c9e4edb014b14108f118  Assets/Resources/ProductionArt/CharacterAtlas_surface.png
+503a24266bd3e42e9c2f5298b58824115964d85d7ef807f3d2b32a077a6fc099  Assets/Resources/ProductionArt/Crawler.fbx
+368ed4006f388170f483108e9cffe4cd9e4bebb9edcd9af32a02dad5f9eb86d6  Assets/Resources/ProductionArt/Eva.fbx
+8f2a8e2db3380020652f7fe4990a414abcbc9e71d8e5da0156e87b173694299a  Assets/Resources/ProductionArt/Max.fbx
+c61ce40d3054e53a56618767334041abb82f72d63c3a6276ee22df2dfd15a000  Assets/Resources/ProductionArt/Runner.fbx
+f0b4bb5ad75ade0fa5bd21531ed3b4c5d6692097d24e0085925bea7b7df4aef4  Assets/Resources/ProductionArt/Toxic.fbx
+ba1c5f700c6d5bece051f80b2137df1572c5c8e8d4145ae43b74b39173a43d2c  Assets/Resources/ProductionArt/Walker.fbx
+
+git diff --check: exit 0.
+Blender emitted a non-fatal read-only extension-cache warning; checks completed.
+
+=== Completed asset renders (not Unity) ===
+baseline: Saved: '/tmp/zsr-refinement-before.png'
+heroes: Saved: '/tmp/zsr-refinement-heroes-final.png'
+infected: Saved: '/tmp/zsr-refinement-infected-final.png'
+mutants: Saved: '/tmp/zsr-refinement-monsters-final.png'

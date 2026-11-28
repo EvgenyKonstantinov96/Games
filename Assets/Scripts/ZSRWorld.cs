@@ -7,171 +7,61 @@ namespace ZombieSurvivalRun
     public sealed class ZSRRoadChunk : MonoBehaviour
     {
         const float Length = 46f;
+        const float DeckWidth = 9.7f;
+        const float RailX = 4.98f;
         int level, chapter;
 
         public void Build(int index, int sourceLevel)
         {
             level = sourceLevel;
-            chapter = Mathf.Clamp((sourceLevel - 1) / 5, 0, 2);
-            transform.position = new Vector3(0, 0, -23 + Length * index);
-            ZSRVisuals.Box("dark asphalt road", transform, new Vector3(0, -.25f, 0), new Vector3(11f, .45f, Length + .1f), ZSRVisuals.AsphaltDeluxe);
-            ZSRVisuals.Box("road shoulder left", transform, new Vector3(-4.8f, -.18f, 0), new Vector3(.45f, .15f, Length), ZSRVisuals.ConcreteDark);
-            ZSRVisuals.Box("road shoulder right", transform, new Vector3(4.8f, -.18f, 0), new Vector3(.45f, .15f, Length), ZSRVisuals.ConcreteDark);
+            var plan = new ZSRLevelPlan(sourceLevel);
+            chapter = plan.Environment;
+            transform.position = new Vector3(0, 0, Length * (index - .5f));
+            ZSRTrackArt.PlaceRoadDeck(transform, DeckWidth, Length);
+            ZSRTrackArt.PlaceShoulderGlows(transform, Length, RailX, ZSRCampaignStyle.For(chapter).Accent);
             for (int side = -1; side <= 1; side += 2)
             {
-                ZSRVisuals.Box("road edge stripe", transform, new Vector3(side * 4.95f, -.010f, 0), new Vector3(.09f, .012f, Length), ZSRVisuals.White);
-                ZSRVisuals.Box("sidewalk", transform, new Vector3(side * 6.55f, -.24f, 0), new Vector3(2.4f, .48f, Length), ZSRVisuals.ConcreteDeluxe);
-                ZSRVisuals.Box("steel guardrail", transform, new Vector3(side * 5.57f, .70f, 0), new Vector3(.13f, .17f, Length), ZSRVisuals.Steel);
-                ZSRVisuals.Box("guardrail lower", transform, new Vector3(side * 5.56f, .22f, 0), new Vector3(.12f, .12f, Length), ZSRVisuals.Armor);
+                ZSRVisuals.Box("sidewalk", transform, new Vector3(side * 6.04f, -.23f, 0),
+                    new Vector3(2.23f, .46f, Length), ZSRVisuals.ConcreteDeluxe);
+                ZSRVisuals.Box("cast concrete curb", transform, new Vector3(side * RailX, .055f, 0),
+                    new Vector3(.27f, .11f, Length), ZSRVisuals.Concrete);
+                ZSRVisuals.MeshPart("track_guardrail", "Weathered double bridge rail", transform,
+                    new Vector3(side * RailX, 0, 0), Vector3.one, ZSRTrackArt.Surface);
                 for (int k = 0; k < 11; k++)
-                    ZSRVisuals.Box("rail mounting", transform, new Vector3(side * 5.57f, .35f, -22f + k * 4.3f), new Vector3(.14f, 1.3f, .18f), ZSRVisuals.Steel);
-                for (int b = 0; b < 2; b++) BuildBuilding(side, b * 2 + (index % 2));
-                for (int lamp = 0; lamp < 2; lamp++) BuildLamp(side, -12f + lamp * 24f);
-            }
-
-            for (int i = 0; i < 13; i++)
-            {
-                float z = -Length * .5f + 2 + i * 3.65f;
-                foreach (float x in new[] { -1.8f, 1.8f })
-                    ZSRVisuals.Box("reflective lane marking", transform, new Vector3(x, -.015f, z), new Vector3(.085f, .016f, 1.65f), ZSRVisuals.White);
+                {
+                    float z = Length * ((k + .5f) / 11f - .5f);
+                    if (k % 2 == 0)
+                        ZSRVisuals.Box("recessed amber guide", transform, new Vector3(side * (RailX - .105f), .695f, z - .69f),
+                            new Vector3(.019f, .041f, .32f), ZSRTrackArt.GuideLight(chapter));
+                }
+                for (int b = 0; b < 2; b++) BuildBuilding(side, index, b);
+                BuildLamp(side, side < 0 ? -10f : 12f);
             }
 
             // Distant skyline is authored once as a separately scrolling parallax layer.
-            BuildDecor();
             BuildSurfaceDetails();
             BuildStreetSetDressing();
-            BuildUrbanStory(index);
+            ZSRTrackArt.PlaceChapterLandmark(transform, chapter, index, plan.IsBoss);
         }
 
-        void BuildSkyline()
+        void BuildBuilding(int side, int segment, int row)
         {
-            Material distant = chapter == 0 ? ZSRVisuals.SkylineAsh : chapter == 1 ? ZSRVisuals.SkylineRust : ZSRVisuals.SkylineBlue;
-            Material mist = chapter == 0 ? ZSRVisuals.HazeAsh : chapter == 1 ? ZSRVisuals.HazeBurn : ZSRVisuals.HazeBlue;
-            for (int side = -1; side <= 1; side += 2)
+            int variant = segment * 2 + row;
+            int profile = (variant + chapter + (side > 0 ? 2 : 0)) % 4;
+            float h = (row == 0 ? 11f : 15.5f) + (variant % 3) * 2.3f + chapter * 1.6f;
+            float width = (row == 0 ? 5.8f : 7.4f) + (variant % 2) * .65f;
+            float depth = row == 0 ? 5.75f : 6.85f;
+            float x = side * (row == 0 ? 9.9f : 13.35f);
+            float z = (row == 0 ? -12.5f : 12.6f) + side * 2.45f;
+            var root = ZSRVisuals.Pivot("Street-facing city block", transform, new Vector3(x, 0, z));
+            if (ZSRPolyforkWorld.TryBuilding(root, variant, width, h))
             {
-                for (int i = 0; i < 4; i++)
-                {
-                    float x = side * (14f + i * 2.6f);
-                    float h = 6f + i * 2.8f + chapter * 2f;
-                    float z = -21f + i * 13.5f;
-                    ZSRVisuals.Box("skyline silhouette", transform, new Vector3(x, h * .5f + .2f, z), new Vector3(4.5f, h, 2.8f), distant);
-                    ZSRVisuals.Box("mist strip", transform, new Vector3(x, 2.1f, z), new Vector3(4.9f, .12f, 3.0f), mist);
-                }
-            }
-            // World horizon now comes from a full-size distant panorama.
-            // The previous opaque horizon slab obscured the skyline and broke the composition.
-        }
-
-        void BuildDecor()
-        {
-            if (chapter >= 1)
-            {
-                for (int i = 0; i < 2; i++)
-                {
-                    int side = i == 0 ? -1 : 1;
-                    ZSRVisuals.Sphere("rooftop fire glow", transform, new Vector3(side * 10f, 7.5f, -13f + i * 17f), new Vector3(.68f, .52f, .61f), ZSRVisuals.Fire);
-                }
-            }
-            if (chapter == 2)
-            {
-                ZSRVisuals.Box("evacuation banner", transform, new Vector3(0, 5.5f, 12f), new Vector3(5.6f, .28f, .12f), ZSRVisuals.BlueGlow);
-                var text = ZSRVisuals.WorldText("SAFE ZONE", transform, new Vector3(0, 5.8f, 11.8f), .58f, Color.white);
-                text.transform.localRotation = Quaternion.Euler(0, 180, 0);
-            }
-            if (level % 5 == 0)
-            {
-                ZSRVisuals.Box("boss warning sign", transform, new Vector3(0, 3.8f, 16f), new Vector3(5.2f, .24f, .14f), ZSRVisuals.RedGlow);
-                var text = ZSRVisuals.WorldText("BOSS", transform, new Vector3(0, 4.05f, 15.85f), .70f, Color.white);
-                text.transform.localRotation = Quaternion.Euler(0, 180, 0);
-            }
-        }
-
-        void BuildBuilding(int side, int index)
-        {
-            float h = Random.Range(10f, 25f) + (chapter == 2 ? 8 : chapter == 1 ? 4 : 0);
-            float depth = Random.Range(5f, 8f);
-            float width = Random.Range(4.5f, 7.2f);
-            float x = side * (10.0f + index * 2.75f + Random.Range(-.5f, .5f));
-            float z = -20 + index * 13f + Random.Range(-2f, 2f);
-            var root = ZSRVisuals.Pivot("abandoned building", transform, new Vector3(x, 0, z));
-            if (ZSRPolyforkWorld.TryBuilding(root, index, width, h))
-            {
-                DecorateImportedBuilding(root, side, index);
+                DecorateImportedBuilding(root, side, variant);
                 return;
             }
-            Material facade = index % 2 == 0 ? ZSRVisuals.ConcreteDark : ZSRVisuals.ConcreteDeluxe;
-            if (chapter == 1 && index % 2 == 1) facade = ZSRVisuals.Blood;
-            if (chapter == 2 && index % 2 == 0) facade = ZSRVisuals.WindowDark;
-            // Two original architectural OBJ silhouettes are bundled in this full game.
-            // A plain cube must not be the primary visual when external GLBs are unavailable.
-            bool towerA = (index + (side > 0 ? 1 : 0)) % 2 == 0;
-            // OBJ meshes have unit footprint but different normalized roof heights.
-            // Compensate that source size so roof trims, windows and billboard remain aligned.
-            float nativeHeight = towerA ? 1.22f : 1.32f;
-            ZSRVisuals.MeshPart(towerA ? "lux_urban_tower_a" : "lux_urban_tower_b",
-                "authored damaged building silhouette", root, Vector3.zero,
-                new Vector3(width, h / nativeHeight, depth), facade);
-            ZSRVisuals.Box("facade column",root,new Vector3(-width*.5f+.25f,h*.5f,-depth*.5f-.06f),
-                new Vector3(.23f,h,.14f),ZSRVisuals.ConcreteDark);
-            ZSRVisuals.Box("facade column",root,new Vector3(width*.5f-.25f,h*.5f,-depth*.5f-.06f),
-                new Vector3(.23f,h,.14f),ZSRVisuals.ConcreteDark);
-            for(int f=1;f<Mathf.FloorToInt(h/3.3f);f++)
-                ZSRVisuals.Box("weathered floor stripe",root,new Vector3(0,f*3.2f,-depth*.5f-.05f),
-                    new Vector3(width,.11f,.09f),ZSRVisuals.ConcreteDark);
-            ZSRVisuals.Box("roof lip", root, new Vector3(0, h + .11f, 0), new Vector3(width + .30f, .26f, depth + .25f), ZSRVisuals.Steel);
-            int floors = Mathf.FloorToInt(h / 2.7f);
-            for (int f = 1; f < floors; f++)
-            {
-                for (int j = -1; j <= 1; j++)
-                {
-                    bool lit = Random.value < .18f + chapter * .04f;
-                    Material window = lit ? ZSRVisuals.Window : ZSRVisuals.WindowDark;
-                    ZSRVisuals.Box("front window", root, new Vector3(j * width * .29f, f * 2.62f, -depth * .5f - .01f), new Vector3(width * .16f, 1.28f, .045f), window);
-                    ZSRVisuals.Box("back window", root, new Vector3(j * width * .29f, f * 2.62f, depth * .5f + .012f), new Vector3(width * .16f, 1.26f, .05f), window);
-                }
-            }
-            if (Random.value > .50f)
-            {
-                ZSRVisuals.Box("lit rooftop advertisement", root,
-                    new Vector3(0,h+2.0f,0),new Vector3(width*.75f,.55f,.12f),
-                    chapter==2?ZSRVisuals.BlueGlow:ZSRVisuals.OrangeGlow);
-                ZSRVisuals.Box("billboard metal frame",root,new Vector3(0,h+1.67f,0),
-                    new Vector3(width*.86f,.08f,.15f),ZSRVisuals.Gunmetal);
-            }
-            // Architectural layers: practical ledges, exposed metal and damaged facades.
-            if (index % 2 == 0)
-            {
-                int balconyFloor = Mathf.Clamp(floors / 2, 1, Mathf.Max(1, floors - 1));
-                float by = balconyFloor * 2.62f - .73f;
-                ZSRVisuals.Box("rusted service balcony", root,
-                    new Vector3(0, by, -depth * .5f - .52f),
-                    new Vector3(width * .62f, .14f, .92f), ZSRVisuals.MetalWorn);
-                ZSRVisuals.Box("balcony safety rail", root,
-                    new Vector3(0, by + .64f, -depth * .5f - 1f),
-                    new Vector3(width * .58f, .06f, .07f), ZSRVisuals.Steel);
-                for (int j = -1; j <= 1; j++)
-                    ZSRVisuals.Cylinder("balcony vertical railing", root,
-                        new Vector3(j * width * .25f, by + .32f, -depth * .5f - 1f),
-                        new Vector3(.04f, .32f, .04f), ZSRVisuals.Steel);
-            }
-            if (index % 3 == 0)
-            {
-                ZSRVisuals.Box("rooftop damaged HVAC", root, new Vector3(width * .17f, h + .46f, 0),
-                    new Vector3(.98f, .74f, 1.18f), ZSRVisuals.Gunmetal);
-                ZSRVisuals.Cylinder("AC fan grille", root,
-                    new Vector3(width * .17f, h + .86f, 0), new Vector3(.34f, .05f, .34f), ZSRVisuals.Steel);
-                ZSRVisuals.Box("pipe outside wall", root,
-                    new Vector3(-width * .30f, h * .35f, -depth * .5f - .11f),
-                    new Vector3(.10f, h * .7f, .11f), ZSRVisuals.MetalWorn);
-            }
-            if (chapter >= 1 && index == 1)
-            {
-                ZSRVisuals.Sphere("roof fire", root, new Vector3(-width * .24f, h + .45f, 0),
-                    new Vector3(.32f, .62f, .36f), ZSRVisuals.OrangeGlow);
-                ZSRVisuals.Sphere("roof ember", root, new Vector3(-width * .24f, h + .88f, 0),
-                    new Vector3(.18f, .34f, .20f), ZSRVisuals.Fire);
-            }
-            ZSRVisuals.Box("antenna", root, new Vector3(0, h + 1.5f, 0), new Vector3(.09f, 3f, .09f), ZSRVisuals.Steel);
+
+            ZSRCityArchitecture.Place(root, chapter, profile, (segment + (side < 0 ? 1 : 0)) % 2,
+                Vector3.zero, new Vector3(width, h, depth));
         }
 
         /// <summary>Art-pass for GLB buildings: variation in street-level storytelling,
@@ -211,28 +101,17 @@ namespace ZombieSurvivalRun
 
         void BuildSurfaceDetails()
         {
-            // The wet, cracked asphalt is authored as a seamless material. Previously
-            // separately drawn patch boxes created large black floating rectangles
-            // on the road due to z-fighting and different tiling at grazing angles.
-            for(int side=-1;side<=1;side+=2)
+            for (int side = -1; side <= 1; side += 2)
             {
-                for(int i=0;i<3;i++)
+                for (int i = 0; i < 2; i++)
                 {
-                    float z=-17+i*15.0f;
-                    var barrier=ZSRVisuals.MeshPart("barrier_shell","portable hazard barrier",transform,
-                        new Vector3(side*6.4f,.50f,z),new Vector3(.65f,.80f,.75f),ZSRVisuals.ConcreteDeluxe,
-                        new Vector3(0,side*15,0));
-                    ZSRVisuals.Capsule("barrier rounded cap", barrier.transform, new Vector3(0, .41f, 0), new Vector3(.75f, .16f, .46f), ZSRVisuals.ConcreteDeluxe, new Vector3(90,0,0));
-                    ZSRVisuals.Cylinder("barrier beacon left", barrier.transform, new Vector3(-.30f, .51f, -.08f), new Vector3(.09f,.10f,.09f), chapter==2?ZSRVisuals.BlueGlow:ZSRVisuals.Yellow);
-                    ZSRVisuals.Cylinder("barrier beacon right", barrier.transform, new Vector3(.30f, .51f, -.08f), new Vector3(.09f,.10f,.09f), chapter==2?ZSRVisuals.BlueGlow:ZSRVisuals.Yellow);
-                    ZSRVisuals.Box("reflective warning stripe",barrier.transform,new Vector3(0,.29f,-.44f),
-                        new Vector3(.72f,.07f,.035f),chapter==2?ZSRVisuals.BlueGlow:ZSRVisuals.Yellow);
-                    for(int rock=0;rock<3;rock++)
-                    {
-                        float rockX=side*(5.4f+rock*.38f);
-                        ZSRVisuals.Sphere("sidewalk rubble",transform,new Vector3(rockX,.10f,z+.2f+rock*.34f),
-                            new Vector3(.21f+rock*.05f,.12f,.28f+rock*.04f),ZSRVisuals.ConcreteDark);
-                    }
+                    float z = -17f + i * 25f + side * 2.2f;
+                    ZSRVisuals.MeshPart("lux_rubble", "Broken shoulder masonry", transform,
+                        new Vector3(side * (5.95f + i * .42f), 0, z), new Vector3(.33f, .25f, .34f),
+                        ZSRVisuals.ConcreteDeluxe, new Vector3(0, side * (18f + i * 47f), 0));
+                    ZSRVisuals.MeshPart("barrier_shell", "Abandoned shoulder barrier", transform,
+                        new Vector3(side * 6.38f, .32f, z + 1.48f), new Vector3(.60f, .60f, .72f),
+                        ZSRVisuals.ConcreteDark, new Vector3(0, side * 23f, 0));
                 }
             }
         }
@@ -244,275 +123,239 @@ namespace ZombieSurvivalRun
                 float z=side<0 ? -8.5f : 13f;
                 var area=ZSRVisuals.Pivot("crash debris scene",transform,
                     new Vector3(side*7.90f,0f,z));
-                ZSRVisuals.Box("burnt metal equipment box",area,new Vector3(0,.50f,0),
-                    new Vector3(1.0f,.85f,.90f),ZSRVisuals.MetalWorn,
-                    new Vector3(0,side*11,side*7));
-                ZSRVisuals.Box("angled warning stripe",area,new Vector3(0,.74f,-.49f),
-                    new Vector3(.70f,.08f,.02f),chapter==2?ZSRVisuals.BlueGlow:ZSRVisuals.Yellow,
-                    new Vector3(0,0,-15));
-                for(int j=0;j<4;j++)
-                    ZSRVisuals.Box("roadside broken asphalt chunk",area,
-                        new Vector3(side*(-.22f+j*.39f),.14f,-1f+j*.28f),
-                        new Vector3(.38f,.22f,.37f),ZSRVisuals.ConcreteDark,
-                        new Vector3(j*9,j*25,j*13));
-                ZSRVisuals.Box("rusted roadside signal pole",area,
-                    new Vector3(side*.65f,2.2f,1.40f),new Vector3(.08f,4.4f,.08f),ZSRVisuals.Steel);
-                ZSRVisuals.Box("weathered safety placard",area,
-                    new Vector3(side*.65f,3.65f,1.36f),new Vector3(.65f,.55f,.09f),
-                    chapter==1?ZSRVisuals.Blood:ZSRVisuals.Gunmetal);
-                ZSRVisuals.Box("placard upper reflector",area,
-                    new Vector3(side*.65f,3.85f,1.29f),new Vector3(.58f,.055f,.025f),
-                    chapter==2?ZSRVisuals.BlueGlow:ZSRVisuals.Yellow);
-            }
-        }
+                ZSRVisuals.MeshPart("track_maintenance", "Abandoned maintenance cases", area,
+                    Vector3.zero, Vector3.one, ZSRTrackArt.Surface, new Vector3(0,side*11f,0));
 
-        /// <summary>Three small recurring roadside stories, varying per chunk and chapter.
-        /// All visual props are outside the player lanes, with no gameplay colliders.</summary>
-        void BuildUrbanStory(int segment)
-        {
-            int layout = (segment + chapter * 2) % 3;
-            for (int side = -1; side <= 1; side += 2)
-            {
-                float z = layout == 0 ? 4f : layout == 1 ? -13f : 15f;
-                float x = side * 8.5f;
-                Transform set = ZSRVisuals.Pivot("SCENERY / chapter roadside narrative", transform,
-                    new Vector3(x,0f,z));
-                if (layout == 0)
-                {
-                    // Evacuation checkpoint: steel light mast, battered road sign and crates.
-                    ZSRVisuals.Box("checkpoint steel mast",set,new Vector3(0,3.15f,0),
-                        new Vector3(.13f,6.3f,.15f),ZSRVisuals.MetalWorn);
-                    ZSRVisuals.Box("checkpoint overhead fixture",set,new Vector3(-side*.55f,6.12f,0),
-                        new Vector3(1.28f,.16f,.15f),ZSRVisuals.Gunmetal);
-                    ZSRVisuals.Box("checkpoint warning beacon",set,new Vector3(-side*1.12f,6.02f,0),
-                        new Vector3(.22f,.11f,.30f),chapter==2?ZSRVisuals.BlueGlow:ZSRVisuals.OrangeGlow);
-                    var sign=ZSRVisuals.Box("EVAC damaged notice",set,new Vector3(0,3.9f,-.08f),
-                        new Vector3(1.65f,.82f,.10f),ZSRVisuals.Gunmetal);
-                    ZSRVisuals.Box("notice amber stripe",sign.transform,new Vector3(0,.31f,-.53f),
-                        new Vector3(.98f,.12f,.12f),ZSRVisuals.Yellow);
-                    for(int k=0;k<2;k++)
-                        ZSRVisuals.Box("weathered cargo crate",set,new Vector3(side*(.7f+k*.65f),.42f,-1f+k*.45f),
-                            new Vector3(.74f,.84f,.74f),ZSRVisuals.MetalWorn,new Vector3(0,k*23,0));
-                }
-                else if (layout == 1)
-                {
-                    // Ruined monorail footing and loose steel members; never spans a playable lane.
-                    ZSRVisuals.Box("stripped concrete elevated support",set,new Vector3(side*.65f,3.55f,0),
-                        new Vector3(1.30f,7.1f,1.25f),ZSRVisuals.ConcreteDark,new Vector3(0,0,side*8));
-                    ZSRVisuals.Box("exposed bearing cap",set,new Vector3(side*.65f,7.13f,0),
-                        new Vector3(2.45f,.36f,1.62f),ZSRVisuals.MetalWorn);
-                    ZSRVisuals.Box("broken gantry beam",set,new Vector3(-side*1.05f,7.08f,0),
-                        new Vector3(2.9f,.26f,.27f),ZSRVisuals.Steel,new Vector3(0,0,side*13));
-                    ZSRVisuals.Box("loose suspended cable",set,new Vector3(-side*.36f,4.99f,-.32f),
-                        new Vector3(.045f,3.35f,.04f),ZSRVisuals.Gunmetal,new Vector3(0,0,-side*8));
-                    for(int k=0;k<4;k++)
-                        ZSRVisuals.Box("masonry from ruined support",set,
-                            new Vector3(-side*.3f+k*.25f,.12f,-1.25f+(k%2)*.51f),
-                            new Vector3(.35f,.21f,.36f),ZSRVisuals.ConcreteDeluxe,
-                            new Vector3(k*12,k*31,k*9));
-                }
-                else
-                {
-                    // Stranded utility van uses the actual Polyfork car mesh where available.
-                    Transform carSet=ZSRVisuals.Pivot("abandoned vehicle roadside",set,
-                        new Vector3(side*.1f,0,-1.05f));
-                    if (!ZSRPolyforkWorld.TryObstacle(carSet,0))
-                    {
-                        ZSRVisuals.Box("car underbody",carSet,new Vector3(0,.62f,0),
-                            new Vector3(1.9f,.52f,3.2f),ZSRVisuals.WreckRustMaterial,
-                            new Vector3(0,side*15,0));
-                        ZSRVisuals.Box("car battered roof",carSet,new Vector3(0,1.14f,-.18f),
-                            new Vector3(1.5f,.51f,1.53f),ZSRVisuals.Gunmetal);
-                    }
-                    ZSRVisuals.Box("abandoned reflective cone base",set,new Vector3(-side*1.08f,.12f,1.12f),
-                        new Vector3(.47f,.22f,.45f),ZSRVisuals.Gunmetal);
-                    ZSRVisuals.Cylinder("hazard flare",set,new Vector3(-side*1.08f,.43f,1.12f),
-                        new Vector3(.11f,.34f,.11f),ZSRVisuals.OrangeGlow);
-                }
             }
         }
 
         void BuildLamp(int side, float z)
         {
-            ZSRVisuals.Cylinder("street light pole", transform, new Vector3(side * 7.25f, 3.3f, z), new Vector3(.06f, 3.35f, .06f), ZSRVisuals.Gunmetal);
-            ZSRVisuals.Box("lamp crane", transform, new Vector3(side * 6.55f, 6.6f, z), new Vector3(1.5f, .09f, .10f), ZSRVisuals.Steel);
-            ZSRVisuals.Sphere("streetlamp glow", transform, new Vector3(side * 5.9f, 6.53f, z), new Vector3(.28f, .12f, .28f), chapter == 2 ? ZSRVisuals.BlueGlow : ZSRVisuals.OrangeGlow);
+            ZSRVisuals.MeshPart("track_streetlamp","Weathered street fixture",transform,
+                new Vector3(side*6.37f,0,z),Vector3.one,ZSRTrackArt.Surface,
+                new Vector3(0,side<0?180f:0f,0));
+            ZSRVisuals.Box("street lamp lens",transform,new Vector3(side*5.28f,5.943f,z),
+                new Vector3(.29f,.018f,.18f),ZSRTrackArt.GuideLight(chapter));
         }
 
         public void Tick(float travel)
         {
             transform.position += Vector3.back * travel;
-            if (transform.position.z < -70f) transform.position += Vector3.forward * 184f;
+            if (transform.position.z < -Length * 1.5f) transform.position += Vector3.forward * (Length * 4f);
         }
     }
 
     public sealed class ZSRPickup : MonoBehaviour
     {
         public int Value = 25;
+        static Material brass;
+        Transform token;
+        float previousHeroX, phase, flightTime, flightDuration, pocketOffset;
+        Vector3 launch;
         bool claimed;
+
         public void Build(float x, float z, int value)
         {
             Value = value;
             transform.position = new Vector3(x, .97f, z);
-            ZSRVisuals.Cylinder("gold circular rim", transform, Vector3.zero, new Vector3(.53f, .060f, .53f), ZSRVisuals.GoldGlow, new Vector3(90, 0, 0));
-            ZSRVisuals.Cylinder("inner coin", transform, new Vector3(0, 0, -.08f), new Vector3(.39f, .04f, .39f), ZSRVisuals.Gold, new Vector3(90, 0, 0));
-            ZSRVisuals.Box("currency sign", transform, new Vector3(0, 0, -.14f), new Vector3(.05f, .45f, .03f), ZSRVisuals.GoldGlow);
+            var game = ZSRGame.Instance;
+            previousHeroX = game != null && game.Hero != null ? game.Hero.PositionX : 0f;
+            phase = z * .29f + x;
+            if (brass == null)
+            {
+                brass = ZSRVisuals.MatWithTexture(Color.white, "ProductionArt/SalvageToken", .67f);
+                if (brass.HasProperty("_Metallic")) brass.SetFloat("_Metallic", .56f);
+                if (brass.HasProperty("_EmissionColor"))
+                {
+                    brass.EnableKeyword("_EMISSION");
+                    brass.SetColor("_EmissionColor", new Color(.19f, .078f, .014f));
+                }
+            }
+            token = ZSRVisuals.MeshPart("salvage_token", "Stamped brass supply token", transform,
+                Vector3.zero, Vector3.one, brass).transform;
+            var renderer = token.GetComponent<MeshRenderer>();
+            if (renderer != null)
+                renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         }
-        void Update()
+
+        void LateUpdate()
         {
-            if (ZSRGame.Instance == null || !ZSRGame.Instance.IsRunning) return;
-            float dt = ZSRGame.Instance.FrameStep;
-            transform.position += Vector3.back * ZSRGame.Instance.RunSpeed * dt;
-            transform.Rotate(0, 170f * dt, 0);
-            float radius = ZSRGame.Instance.MagnetActive ? 3.6f : 1.1f;
-            if (!claimed && transform.position.z < 2.2f && transform.position.z > -1.2f && Mathf.Abs(transform.position.x - ZSRGame.Instance.Hero.PositionX) < radius)
+            var game = ZSRGame.Instance;
+            if (game == null || !game.IsRunning || token == null) return;
+            float dt = game.FrameStep;
+            Vector3 hero = game.Hero.transform.position;
+            if (claimed)
+            {
+                flightTime += dt;
+                float t = Mathf.Clamp01(flightTime / flightDuration);
+                Vector3 pocket = hero + new Vector3(pocketOffset, .89f, .10f);
+                transform.position = Vector3.Lerp(launch, pocket, t * (.35f + .65f * t)) +
+                    Vector3.up * (.72f * t * (1f - t));
+                token.localScale = Vector3.one * (1f - .84f * t);
+                if (t >= 1f) Destroy(gameObject);
+                return;
+            }
+
+            Vector3 from = transform.position;
+            Vector3 to = from + Vector3.back * (game.RunSpeed * dt);
+            transform.position = to;
+            float beat = game.Elapsed * 3.6f + phase;
+            token.localPosition = Vector3.up * (.068f * Mathf.Sin(beat));
+            token.localRotation = Quaternion.Euler(7f * Mathf.Sin(beat), 56f * Mathf.Sin(beat * .72f), -7f);
+            float reach = game.MagnetActive ? ZSRGame.MagnetRadius : 1.1f;
+            if (ZSRPickupContact.CoinTime(from.x - previousHeroX, to.x - hero.x, from.z - hero.z, to.z - hero.z,
+                    reach, out float arrival))
             {
                 claimed = true;
-                ZSRGame.Instance.CollectCoin(Value, transform.position);
-                Destroy(gameObject);
+                launch = Vector3.Lerp(from, to, arrival) + token.localPosition;
+                token.localPosition = Vector3.zero;
+                transform.position = launch;
+                pocketOffset = launch.x < Mathf.Lerp(previousHeroX, hero.x, arrival) ? -.25f : .25f;
+                flightDuration = game.MagnetActive ? .27f : .14f;
+                game.CollectCoin(Value, launch);
             }
-            if (transform.position.z < -5f) Destroy(gameObject);
+            else if (to.z < hero.z - 5f) Destroy(gameObject);
+            previousHeroX = hero.x;
         }
     }
 
-    /// <summary>Gameplay and collision timing. Art is handled by ZSRVeilGateView.</summary>
+    /// <summary>One choice per pair, determined at the actual crossing of the veil.</summary>
     public sealed class ZSRBonusGate : MonoBehaviour
     {
         public BonusKind Kind;
         public ZSRBonusGate Sister;
-        bool claimed;
+        [SerializeField] ZSRVeilGateView view;
+        float previousHeroX;
+        bool resolved;
 
         public void Build(BonusKind kind, float x, float z)
         {
             Kind = kind;
             transform.position = new Vector3(x, 0, z);
-            ZSRVeilGateView.Build(transform, kind);
+            var game = ZSRGame.Instance;
+            previousHeroX = game != null && game.Hero != null ? game.Hero.PositionX : 0f;
+            view = ZSRVeilGateView.Build(transform, kind);
         }
 
-        void Update()
+        void LateUpdate()
         {
-            if (ZSRGame.Instance == null || !ZSRGame.Instance.IsRunning) return;
-            transform.position += Vector3.back * ZSRGame.Instance.RunSpeed * ZSRGame.Instance.FrameStep;
-            if (!claimed && transform.position.z < 1.35f && transform.position.z > -1.1f)
+            var game = ZSRGame.Instance;
+            if (game == null || !game.IsRunning || view == null) return;
+            float previousZ = transform.position.z;
+            transform.position += Vector3.back * (game.RunSpeed * game.FrameStep);
+            float gateX = transform.position.x;
+            Vector3 hero = game.Hero.transform.position;
+            float distance = transform.position.z - hero.z;
+            if (!resolved && ZSRPickupContact.CrossedPlane(previousZ - hero.z, distance,
+                    previousHeroX - gateX, hero.x - gateX, out float hitX))
             {
-                claimed = true;
-                if (Mathf.Abs(transform.position.x - ZSRGame.Instance.Hero.PositionX) < 1.55f)
+                bool crossed = ZSRPickupContact.InsideVeil(hitX);
+                Resolve(crossed, hitX);
+                if (crossed)
                 {
-                    ZSRGame.Instance.ApplyBonus(Kind);
-                    if (Sister != null) Sister.claimed = true;
+                    if (Sister != null) Sister.Resolve(false, 0f);
+                    game.ApplyBonus(Kind);
                 }
             }
-            if (transform.position.z < -7f) Destroy(gameObject);
+            view.Tick(game.Elapsed, distance, hero.x - gateX);
+            previousHeroX = hero.x;
+            if (distance < -7f) Destroy(gameObject);
+        }
+
+        void Resolve(bool crossed, float hitX)
+        {
+            if (resolved) return;
+            resolved = true;
+            view.Resolve(crossed, hitX);
         }
     }
 
     public sealed class ZSRObstacle : MonoBehaviour
     {
         bool damaged;
-        int obstacleKind;
+        float contactHalfWidth;
+        MeshRenderer approachMarker;
+        MaterialPropertyBlock markerTint;
         /// <summary>Four clear obstacle silhouettes: wreck, barricade, spikes and rubble.</summary>
-        public void Build(float x,float z,int chapter,int forcedKind=-1)
+        public void Build(float x, float z, int chapter, int forcedKind = -1)
         {
             transform.position=new Vector3(x,0,z);
             float yaw=Random.Range(-12f,12f);
             var root=ZSRVisuals.Pivot("obstacle detailed 3D prop",transform,Vector3.zero);
             root.localEulerAngles=new Vector3(0,yaw,0);
-            int kind=forcedKind>=0?Mathf.Clamp(forcedKind,0,3):Random.Range(0,4);
-            obstacleKind = kind;
+            int kind = forcedKind >= 0 ? Mathf.Clamp(forcedKind, 0, 3) : Random.Range(0, 4);
+            contactHalfWidth = kind == 0 ? 1.42f : kind == 1 ? 1.58f : kind == 2 ? 1.54f : 1.61f;
             root.localScale = Vector3.one * (kind == 0 ? 1.14f : kind == 1 ? 1.18f : kind == 2 ? 1.13f : 1.19f);
-            if (ZSRPolyforkWorld.TryObstacle(root, kind))
+            bool imported = ZSRPolyforkWorld.TryObstacle(root, kind);
+            if (!imported)
             {
-                // Imported GLB is primary visual. Add only subtle context, not a second car.
-                if (kind==0)
+                string model = kind switch
                 {
-                    ZSRVisuals.Box("reflective debris plate",root,
-                        new Vector3(-.82f,.065f,.70f),new Vector3(.72f,.07f,.50f),
-                        ZSRVisuals.MetalWorn,new Vector3(0,18,0));
-                }
-                else if (kind==1)
+                    0 => "track_wreck",
+                    1 => "track_barrier",
+                    2 => "track_spikes",
+                    _ => "track_rubble"
+                };
+                ZSRVisuals.MeshPart(model, "Weathered road hazard", root, Vector3.zero, Vector3.one,
+                    ZSRTrackArt.Surface);
+            }
+
+            if (kind == 0)
+            {
+                ZSRVisuals.WreckFire(root, new Vector3(.28f, 1.04f, -.83f));
+            }
+            else if (kind == 1)
+            {
+                // Recessed amber markers distinguish the upper edges of the concrete.
+                float height = imported ? 1.05f : 1.60f;
+                for (int side = -1; side <= 1; side += 2)
                 {
-                    for(int side=-1;side<=1;side+=2)
-                        ZSRVisuals.Cylinder("barrier corner warning lamp",root,
-                            new Vector3(side*.85f,1.05f,-.28f),
-                            new Vector3(.10f,.11f,.10f),ZSRVisuals.Yellow);
+                    float xMarker = side * .63f;
+                    ZSRVisuals.Box("Work-light housing", root, new Vector3(xMarker, height, -.18f),
+                        new Vector3(.23f, .12f, .15f), ZSRVisuals.Gunmetal);
+                    ZSRVisuals.Box("Work-light lens", root, new Vector3(xMarker, height + .009f, -.264f),
+                        new Vector3(.166f, .060f, .023f), ZSRVisuals.OrangeGlow);
                 }
-                return;
-            }
-            if(kind==0)
-            {
-                // Original unified sedan silhouette. Separate OBJ components keep real
-                // wheel geometry, tempered glass and lights visibly distinct in URP.
-                ZSRVisuals.MeshPart("lux_wreck_body", "damaged full-body sedan 3D",
-                    root, Vector3.zero, Vector3.one, ZSRVisuals.WreckRustMaterial);
-                ZSRVisuals.MeshPart("lux_wreck_wheels", "four rubber wheels",
-                    root, Vector3.zero, Vector3.one, ZSRVisuals.Tire);
-                ZSRVisuals.MeshPart("lux_wreck_hubs", "wheel hubs",
-                    root, Vector3.zero, Vector3.one, ZSRVisuals.MetalWorn);
-                ZSRVisuals.MeshPart("lux_wreck_windows", "shattered dark glazing",
-                    root, Vector3.zero, Vector3.one, ZSRVisuals.WindowDark);
-                ZSRVisuals.MeshPart("lux_wreck_lights", "broken signal lenses",
-                    root, Vector3.zero, Vector3.one, ZSRVisuals.Yellow);
-                ZSRVisuals.Box("front crash grille", root, new Vector3(0, .74f, 1.9f),
-                    new Vector3(1.3f, .21f, .08f), ZSRVisuals.Gunmetal);
-                // Small fire glow, not the giant cylinder that obscured the car.
-                ZSRVisuals.Sphere("engine ember",root,new Vector3(.34f,1.18f,1.04f),
-                    new Vector3(.26f,.24f,.23f),chapter==2?ZSRVisuals.BlueGlow:ZSRVisuals.Fire);
-            }
-            else if(kind==1)
-            {
-                ZSRVisuals.MeshPart("lux_concrete_block", "beveled large 3D road blockade",
-                    root, Vector3.zero, Vector3.one, ZSRVisuals.ConcreteDeluxe);
-                ZSRVisuals.Box("foot left",root,new Vector3(-.72f,.10f,0),
-                    new Vector3(.32f,.17f,1.0f),ZSRVisuals.ConcreteDark);
-                ZSRVisuals.Box("foot right",root,new Vector3(.72f,.10f,0),
-                    new Vector3(.32f,.17f,1.0f),ZSRVisuals.ConcreteDark);
-                for(int i=0;i<4;i++)
-                    ZSRVisuals.Box("diagonal reflective strip",root,new Vector3(-.9f+i*.6f,.94f,-.72f),
-                        new Vector3(.20f,.30f,.045f),chapter==2?ZSRVisuals.BlueGlow:ZSRVisuals.Yellow,
-                        new Vector3(0,0,-32));
-                for(int side=-1;side<=1;side+=2)
-                    ZSRVisuals.Sphere("amber work lamp",root,new Vector3(side*.71f,1.45f,-.05f),
-                        new Vector3(.15f,.14f,.15f),ZSRVisuals.OrangeGlow);
             }
             else if (kind == 2)
             {
-                ZSRVisuals.MeshPart("lux_spike_base", "reinforced bolted trap bed",
-                    root, Vector3.zero, Vector3.one, ZSRVisuals.MetalWorn);
-                ZSRVisuals.MeshPart("lux_spikes", "15 tapered metal spikes",
-                    root, Vector3.zero, Vector3.one, ZSRVisuals.Steel);
-                for(int side=-1;side<=1;side+=2)
-                    ZSRVisuals.Box("trap danger stripe",root,new Vector3(side*.99f,.26f,0),
-                        new Vector3(.12f,.012f,1.85f),ZSRVisuals.Yellow);
+                for (int side = -1; side <= 1; side += 2)
+                    ZSRVisuals.Box("Trap approach reflector", root, new Vector3(side * 1.03f, .106f, -1.143f),
+                        new Vector3(.28f, .041f, .018f), ZSRVisuals.OrangeGlow);
             }
-            else
+            approachMarker = ZSRTrackArt.PlaceHazardMark(transform, contactHalfWidth);
+            if (approachMarker != null)
             {
-                // Multiple fractured convex rocks + fallen slab are a single custom OBJ mesh.
-                ZSRVisuals.MeshPart("lux_rubble", "fractured overpass debris 3D",
-                    root, Vector3.zero, Vector3.one, ZSRVisuals.ConcreteDeluxe);
-                for(int k=0;k<3;k++)
-                    ZSRVisuals.Beam("exposed reinforcing steel",root,
-                        new Vector3(-.75f+k*.62f,.65f,-1.11f),
-                        new Vector3(-.67f+k*.62f,1.42f,.49f),.055f,ZSRVisuals.Steel);
-                ZSRVisuals.Box("hazard marking",root,new Vector3(0,.38f,-.77f),
-                    new Vector3(2.4f,.20f,.08f),ZSRVisuals.Yellow);
+                markerTint = new MaterialPropertyBlock();
+                approachMarker.enabled = false;
             }
         }
         void Update()
         {
-            if (ZSRGame.Instance == null || !ZSRGame.Instance.IsRunning) return;
-            transform.position += Vector3.back * ZSRGame.Instance.RunSpeed * ZSRGame.Instance.FrameStep;
-            // Radius approximates the authored visual footprint plus the hero's torso;
-            // keep collision analytic and deterministic instead of using unstable mesh colliders.
-            float contactHalfWidth = obstacleKind == 0 ? 1.42f : obstacleKind == 1 ? 1.58f :
-                obstacleKind == 2 ? 1.54f : 1.61f;
-            if (!damaged && transform.position.z < 1.65f && transform.position.z > -1.65f &&
-                Mathf.Abs(transform.position.x - ZSRGame.Instance.Hero.PositionX) < contactHalfWidth)
+            var game = ZSRGame.Instance;
+            if (game == null || !game.IsRunning) return;
+            transform.position += Vector3.back * game.RunSpeed * game.FrameStep;
+            float depth = transform.position.z;
+            bool inPath = Mathf.Abs(transform.position.x - game.Hero.PositionX) < contactHalfWidth;
+            if (approachMarker != null)
+            {
+                approachMarker.enabled = !damaged && depth > 1.65f && depth < 30f;
+                if (approachMarker.enabled)
+                {
+                    float strength = Mathf.Clamp01((30f - depth) * .12f);
+                    float pulse = .82f + .18f * Mathf.Sin(game.Elapsed * 9f);
+                    markerTint.SetColor("_Tint", new Color(1f, inPath ? .26f : .55f, .13f,
+                        strength * pulse * (inPath ? .86f : .53f)));
+                    approachMarker.SetPropertyBlock(markerTint);
+                }
+            }
+            if (!damaged && depth < 1.65f && depth > -1.65f && inPath)
             {
                 damaged = true;
-                ZSRGame.Instance.HurtPlayer(20);
-                ZSRGame.Instance.SpawnImpact(transform.position + Vector3.up, true);
+                game.HurtPlayer(20, ZSRDamageKind.Collision, transform.position.x);
+                game.SpawnImpact(transform.position + Vector3.up, true);
             }
-            if (transform.position.z < -7f) Destroy(gameObject);
+            if (depth < -7f) Destroy(gameObject);
         }
     }
 

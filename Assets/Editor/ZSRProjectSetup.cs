@@ -7,6 +7,7 @@ using UnityEngine.SceneManagement;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 using System.IO;
+using System.Collections.Generic;
 
 namespace ZombieSurvivalRun.EditorTools
 {
@@ -34,12 +35,48 @@ namespace ZombieSurvivalRun.EditorTools
             {
                 QueueSetup();return;
             }
-            if(File.Exists(ScenePath)&&AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(PipelinePath)!=null)return;
+            if (File.Exists(ScenePath) && AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(PipelinePath) != null)
+            {
+                var renderer = AssetDatabase.LoadAssetAtPath<UniversalRendererData>(RendererPath);
+                if (renderer != null) { RestorePostProcessing(renderer); return; }
+            }
+            if (!File.Exists(ScenePath) && HasUntitledScene()) return;
             CreateScene();
         }
+
+        static void RestorePostProcessing(UniversalRendererData renderer)
+        {
+            if (renderer.postProcessData != null) return;
+            const string path = "Packages/com.unity.render-pipelines.universal/Runtime/Data/PostProcessData.asset";
+            var data = AssetDatabase.LoadAssetAtPath<PostProcessData>(path);
+            if (data == null)
+            {
+                Debug.LogWarning("[ZSR] Missing URP post-processing data at " + path);
+                return;
+            }
+            renderer.postProcessData = data;
+            EditorUtility.SetDirty(renderer);
+            AssetDatabase.SaveAssetIfDirty(renderer);
+        }
+
+        static bool HasUntitledScene()
+        {
+            for (int i = 0; i < SceneManager.sceneCount; i++)
+            {
+                var scene = SceneManager.GetSceneAt(i);
+                if (scene.isLoaded && string.IsNullOrEmpty(scene.path)) return true;
+            }
+            return false;
+        }
+
         [MenuItem("Zombie Survival Run 0.8/1 • Prepare Project & Scene")]
         public static void CreateScene()
         {
+            if (!File.Exists(ScenePath) && HasUntitledScene())
+            {
+                Debug.LogWarning("[ZSR 0.8] Save the open Untitled scene with File > Save As, then run Prepare Project & Scene again to restore ZSR_Main.");
+                return;
+            }
             try
             {
                 Directory.CreateDirectory("Assets/Scenes");
@@ -50,6 +87,7 @@ namespace ZombieSurvivalRun.EditorTools
                     rp=ScriptableObject.CreateInstance<UniversalRendererData>();
                     AssetDatabase.CreateAsset(rp,RendererPath);
                 }
+                RestorePostProcessing(rp);
                 var urp=AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(PipelinePath);
                 if(urp==null)
                 {
@@ -62,10 +100,28 @@ namespace ZombieSurvivalRun.EditorTools
                 QualitySettings.renderPipeline=urp;
                 if(!File.Exists(ScenePath))
                 {
-                    var scene=EditorSceneManager.NewScene(NewSceneSetup.EmptyScene,NewSceneMode.Single);
-                    EditorSceneManager.SaveScene(scene,ScenePath);
+                    var previousScene = SceneManager.GetActiveScene();
+                    var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
+                    try
+                    {
+                        if (!EditorSceneManager.SaveScene(scene, ScenePath))
+                            throw new IOException("Could not save " + ScenePath);
+                    }
+                    finally
+                    {
+                        if (previousScene.IsValid() && previousScene.isLoaded)
+                        {
+                            SceneManager.SetActiveScene(previousScene);
+                            EditorSceneManager.CloseScene(scene, true);
+                        }
+                    }
                 }
-                EditorBuildSettings.scenes=new[]{new EditorBuildSettingsScene(ScenePath,true)};
+                var buildScenes = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
+                int mainSceneIndex = buildScenes.FindIndex(scene => scene.path == ScenePath);
+                var mainScene = new EditorBuildSettingsScene(ScenePath, true);
+                if (mainSceneIndex < 0) buildScenes.Insert(0, mainScene);
+                else buildScenes[mainSceneIndex] = mainScene;
+                EditorBuildSettings.scenes = buildScenes.ToArray();
                 PlayerSettings.companyName="Zombie Survival Studio";
                 PlayerSettings.productName="Zombie Survival Run";
                 PlayerSettings.defaultInterfaceOrientation=UIOrientation.Portrait;
@@ -83,7 +139,10 @@ namespace ZombieSurvivalRun.EditorTools
         public static void OpenGame()
         {
             if(!File.Exists(ScenePath))CreateScene();
-            if(File.Exists(ScenePath))EditorSceneManager.OpenScene(ScenePath);
+            if (!File.Exists(ScenePath)) return;
+            if (SceneManager.sceneCount == 1 && SceneManager.GetActiveScene().path == ScenePath) return;
+            if (EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+                EditorSceneManager.OpenScene(ScenePath);
         }
         // Editor-only asset gallery: view the actual Unity 3D figurines without entering a level.
         [MenuItem("Zombie Survival Run 0.8/4 • Preview 3D Models")]

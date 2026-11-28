@@ -1,0 +1,198 @@
+Survivor motion polish — 2026-11-28
+Base: d4a23e54ba08d989a89692b5ff5a31758779d332
+Final game/assets/tools: caff63eb70b8a321dedb10d202500b5b7797d3fd
+Not a Unity/Android pass. API compiler warnings suppressed.
+
+=== API compilation, real engine/package references ===
+Game C# content digest 4b4569d97a188f66ea40696261ed0045009cf9a29f63cae879c62a57c06ec740
+Assembly-CSharp 28 PASS
+Assembly-CSharp 28 PASS
+Assembly-CSharp-Editor 18 PASS
+URP post-processing references, setup restoration at both entry points, and camera FXAA verified in source 41439944d30ece34e96484bdb6645b55
+
+=== Aim controller and combined rig, explicit scene/rotation stand-ins ===
+UPPER AIM PASS 20 Hz: 20 s rapid targets, limits, turn speed, convergence, pause, passed enemy, stalled frame, neutral and restart.
+UPPER AIM PASS 30 Hz: 20 s rapid targets, limits, turn speed, convergence, pause, passed enemy, stalled frame, neutral and restart.
+UPPER AIM PASS 60 Hz: 20 s rapid targets, limits, turn speed, convergence, pause, passed enemy, stalled frame, neutral and restart.
+UPPER AIM PASS 120 Hz: 20 s rapid targets, limits, turn speed, convergence, pause, passed enemy, stalled frame, neutral and restart.
+UPPER RIG PASS 20 Hz: 60 s combined lane banking/heading/rapid aim/recoil, restored sparse tracks, bounded neck/shoulders, neutral recovery and untouched death. Scene/rotation stand-ins.
+UPPER RIG PASS 30 Hz: 60 s combined lane banking/heading/rapid aim/recoil, restored sparse tracks, bounded neck/shoulders, neutral recovery and untouched death. Scene/rotation stand-ins.
+UPPER RIG PASS 60 Hz: 60 s combined lane banking/heading/rapid aim/recoil, restored sparse tracks, bounded neck/shoulders, neutral recovery and untouched death. Scene/rotation stand-ins.
+UPPER RIG PASS 120 Hz: 60 s combined lane banking/heading/rapid aim/recoil, restored sparse tracks, bounded neck/shoulders, neutral recovery and untouched death. Scene/rotation stand-ins.
+
+=== Pack and hair, scene stand-ins ===
+SECONDARY PASS: bounded ponytail and pack springs at 20/30/60/120 Hz, frozen pause and neutral recovery after stopping. Scene stand-ins.
+
+=== Previous neck and briefing regression, scene stand-ins ===
+POSE PASS: 24000 frames, keyed and omitted head tracks, bounded steering and neutral recovery.
+BRIEFING PASS: 1000 level entries, manual speakers, blocked run clock, cancellation and clean final start. Managed scene stand-ins.
+
+=== FBX reimport, normals/UV/weights and poses in Blender ===
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Armored: [12658, 6075, 2905] triangles, one skeleton and atlas
+ANATOMY Armored 4495 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.42x, forefoot flexion 20.0/13.4 degrees
+FALL Armored: 22 poses, pavement error 0.000 m, head 1.64 to 0.40 m
+PASS Armored 51 bones, 6684 verts, 12658 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Boss: [13316, 6390, 3061] triangles, one skeleton and atlas
+ANATOMY Boss    3971 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.49x, forefoot flexion 20.2/15.0 degrees
+FALL Boss: 22 poses, pavement error 0.000 m, head 1.80 to 0.66 m
+BOSS attack reach L/R 0.769/0.769 m, ankle drift L/R 0.000/0.000 m
+PASS Boss    51 bones, 9303 verts, 13316 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Brute: [12631, 6062, 2904] triangles, one skeleton and atlas
+ANATOMY Brute   3858 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.38x, forefoot flexion 20.3/13.9 degrees
+FALL Brute: 22 poses, pavement error 0.000 m, head 1.76 to 0.51 m
+PASS Brute   51 bones, 8803 verts, 12631 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Crawler: [14854, 7128, 3416] triangles, one skeleton and atlas
+ANATOMY Crawler 1619 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.22x, forefoot flexion 14.4/12.1 degrees
+FALL Crawler: 22 poses, pavement error 0.000 m, head 0.87 to 0.21 m
+PASS Crawler 51 bones, 9644 verts, 14854 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Eva: [19000, 9120, 4318] triangles, one skeleton and atlas
+ANATOMY Eva     2263 vertices in continuous body, 71 poses, worst 99th-percentile edge stretch 1.33x, forefoot flexion 28.3/21.7 degrees
+GAIT Eva     L ankle-roll 56.2 degrees, support 0.006..0.006 m, rearward travel 0.665 m, loop error 0.0000 m
+WALK Eva     L reach 0.426 m vs 0.830 m running, 27/34 frames near the ground, match with firing variant
+GAIT Eva     R ankle-roll 56.2 degrees, support 0.006..0.006 m, rearward travel 0.665 m, loop error 0.0000 m
+WALK Eva     R reach 0.426 m vs 0.830 m running, 27/34 frames near the ground, match with firing variant
+PASS Eva     58 bones, 11668 verts, 19000 triangles, 1–289 frames, smooth custom normals, medkit, throw, walk and walk-fire poses
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Max: [23098, 11086, 5260] triangles, one skeleton and atlas
+ANATOMY Max     3880 vertices in continuous body, 71 poses, worst 99th-percentile edge stretch 1.58x, forefoot flexion 28.3/21.7 degrees
+GAIT Max     L ankle-roll 56.2 degrees, support 0.006..0.006 m, rearward travel 0.719 m, loop error 0.0000 m
+WALK Max     L reach 0.426 m vs 0.897 m running, 27/34 frames near the ground, match with firing variant
+GAIT Max     R ankle-roll 56.2 degrees, support 0.006..0.006 m, rearward travel 0.719 m, loop error 0.0000 m
+WALK Max     R reach 0.426 m vs 0.897 m running, 27/34 frames near the ground, match with firing variant
+PASS Max     56 bones, 15530 verts, 23098 triangles, 1–289 frames, smooth custom normals, medkit, throw, walk and walk-fire poses
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Runner: [11808, 5667, 2707] triangles, one skeleton and atlas
+ANATOMY Runner  1721 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.33x, forefoot flexion 19.7/17.8 degrees
+FALL Runner: 22 poses, pavement error 0.000 m, head 1.53 to 0.32 m
+GAIT Runner  ankle travel L/R 0.959/0.964 m, ankle lift L/R 0.262/0.269 m
+PASS Runner  51 bones, 6656 verts, 11808 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Toxic: [13133, 6303, 3020] triangles, one skeleton and atlas
+ANATOMY Toxic   1862 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.30x, forefoot flexion 20.3/15.3 degrees
+FALL Toxic: 22 poses, pavement error 0.000 m, head 1.52 to 0.29 m
+GAIT Toxic   ankle travel L/R 0.528/0.409 m, ankle lift L/R 0.140/0.086 m
+PASS Toxic   51 bones, 7465 verts, 13133 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Walker: [12814, 6149, 2943] triangles, one skeleton and atlas
+ANATOMY Walker  1872 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.26x, forefoot flexion 19.4/13.1 degrees
+FALL Walker: 22 poses, pavement error 0.000 m, head 1.57 to 0.27 m
+GAIT Walker  ankle travel L/R 0.510/0.387 m, ankle lift L/R 0.131/0.083 m
+PASS Walker  51 bones, 8426 verts, 12814 triangles, 1–168 frames, smooth custom normals
+Blender 4.3.2
+
+Blender quit
+
+=== Mixed actions and lower-body mask in Blender ===
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+WEAPONS Max: maximum right-palm-to-grip distances {'pistol': 0.04023530055400444, 'rifle': 0.036914410736129256, 'shotgun': 0.03253528439659945, 'minigun': 0.03994765511144624}; all four muzzle rings centered on authored axis.
+HERO MASK Max: 96 action/gait samples, prior maximum foot mismatch 0.907 m, layered error 0.000000 m. Hand pose relative to spine preserved.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+WEAPONS Eva: maximum right-palm-to-grip distances {'pistol': 0.03353221640027193, 'rifle': 0.03277685609706945, 'shotgun': 0.0303768738539152, 'minigun': 0.03879521631477825}; all four muzzle rings centered on authored axis.
+HERO MASK Eva: 96 action/gait samples, prior maximum foot mismatch 0.843 m, layered error 0.000000 m. Hand pose relative to spine preserved.
+Blender 4.3.2
+
+Blender quit
+
+=== Two-hand carry and pack/closed guard geometry in Blender ===
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+PACK Max/Max_LOD1: 247 vertices rigidly bound to Pack below Chest.
+PACK Max/Max_LOD2: 131 vertices rigidly bound to Pack below Chest.
+PACK Max/Max_LOD0: 360 vertices rigidly bound to Pack below Chest.
+GUARDS Max: closed LOD0 shells with sidewalls/back caps after UV seam welding.
+CARRY ProductionArt/Max/run: support-hand span 1.93 mm in weapon frame.
+CARRY ProductionArt/Max/fire: support-hand span 5.98 mm in weapon frame.
+CARRY ProductionArt/Max/walk: support-hand span 12.79 mm in weapon frame.
+CARRY ProductionArt/Max/walk-fire: support-hand span 12.14 mm in weapon frame.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+CARRY zsr-carry-before/Max/run: support-hand span 67.67 mm in weapon frame.
+CARRY zsr-carry-before/Max/fire: support-hand span 71.80 mm in weapon frame.
+CARRY zsr-carry-before/Max/walk: support-hand span 59.20 mm in weapon frame.
+CARRY zsr-carry-before/Max/walk-fire: support-hand span 64.04 mm in weapon frame.
+CARRY CHANGE Max: maximum span 71.80 -> 12.79 mm. FBX measurement, not native gameplay.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+PACK Eva/Eva_LOD1: 232 vertices rigidly bound to Pack below Chest.
+PACK Eva/Eva_LOD0: 336 vertices rigidly bound to Pack below Chest.
+GUARDS Eva: closed LOD0 shells with sidewalls/back caps after UV seam welding.
+PACK Eva/Eva_LOD2: 116 vertices rigidly bound to Pack below Chest.
+CARRY ProductionArt/Eva/run: support-hand span 4.00 mm in weapon frame.
+CARRY ProductionArt/Eva/fire: support-hand span 5.93 mm in weapon frame.
+CARRY ProductionArt/Eva/walk: support-hand span 3.21 mm in weapon frame.
+CARRY ProductionArt/Eva/walk-fire: support-hand span 6.21 mm in weapon frame.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+CARRY zsr-carry-before/Eva/run: support-hand span 64.78 mm in weapon frame.
+CARRY zsr-carry-before/Eva/fire: support-hand span 69.50 mm in weapon frame.
+CARRY zsr-carry-before/Eva/walk: support-hand span 39.58 mm in weapon frame.
+CARRY zsr-carry-before/Eva/walk-fire: support-hand span 44.62 mm in weapon frame.
+CARRY CHANGE Eva: maximum span 69.50 -> 6.21 mm. FBX measurement, not native gameplay.
+Blender 4.3.2
+
+Blender quit
+
+=== Campaign and cadence math ===
+ARSENAL PASS: levels 1/25/150/500; 8000 owned/unowned saved selections across the campaign.
+HERO PASS: heading, banking and walk/run/sprint cadence for both heroes at five campaign speeds.
+PICKUPS PASS: 180 paired crossings from 20 to 120 Hz, lane changes, central gap, coin/magnet sweep.
+SAVE PASS: new, legacy, original finale, mid-campaign and completed saves.
+ECONOMY lv 40: 3 replay(s) with sample wallet 1500 and payout 1911.
+ECONOMY lv 280: 5 replay(s) with sample wallet 4000 and payout 3255.
+ECONOMY lv 880: 5 replay(s) with sample wallet 16000 and payout 6615.
+CAMPAIGN PASS: 1000 distinct openings, 246184 wave units, 40 sectors and 6 formations.
+STORY PASS: 45 beats, first 5, final 990. 46 boss encounters including level 1000.
+BALANCE PASS: worst boss budget 7.45 s at level 215. Math model at 57% firing uptime.
+PRESSURE: 16=1.26×, 65=1.10×, 250=1.30×, 500=1.28×, 750=1.52×, 999=1.60× enemy HP/s vs. best unlocked sustained single-target DPS.
+TRAFFIC PASS: 7240 obstacle windows, 1795 moves, 1.300 s minimum clearance at sprint speed.
+7 infected x 4 time steps (20/30/60/120 Hz). Max pursuit deviation 0.0001 m.
+Lateral hit travel Walker 0.457 m, Brute 0.192 m. Boss held its anchor.
+Verified mirror response, bounded impulses, flinch recovery, reset and ground lock.
+
+=== Real interface class with UI/scene stand-ins ===
+Tools/QA/InterfaceProbeShims.cs(85,70): warning CS0649: Field 'ZSRGame.Pace' is never assigned to, and will always have its default value
+DIALOGUE UI PASS: 92 speaker pages with matching face and complete line.
+FIELD KIT UI PASS: three rendered icons, one callback per item, 72×80 controls, ammo and high-contrast damage notice.
+UI PASS: 27 portrait layouts and 44×44 minimum design-space inputs, all 40 pages with 25 entries, level 1000, rank locks, bold button font, manual dialogue with face portraits and replay callback.
+
+=== Existing textures/fonts/bridge resources ===
+BRIDGE PASS: 1600 loop steps, at least 6.29 m deck overlap, 1492 guardrail triangles.
+ATLAS PASS: nonoverlapping 2048 islands; 768² hero skins, nine times previous skin pixels, one shared material.
+UI IMPORT PASS: original proportions, no mipmaps, clamp and uncompressed desktop art; native face crops.
+MENU PASS: 13 distinct antialiased atlas symbols with clear gutters; all 55 level/district titles fit the home mission card.
+ASSETS PASS: Cyrillic and symbols in both fonts, 700-weight button captions, rounded button alpha, isolated boss emission, four unique arsenal icons.
+
+=== Final integrity and C# content identity ===
+INTEGRITY PASS: 271 unique GUIDs; all assets have metadata; changed/new Python syntax parsed.
+PRESERVATION PASS: seven enemy FBX, four accepted icons and arsenal/campaign profiles identical to d4a23e5.
+API SOURCE DIGEST MATCH: 4b4569d97a188f66ea40696261ed0045009cf9a29f63cae879c62a57c06ec740
+
+=== Native Unity ===
+Unity 6000.3.28f1 batchmode with writable XDG config/cache/data: exit 198 before import.
+No valid Unity Editor license found. Please activate your license.
+BLOCKED: native scene import, Animator/Transform scheduling, PlayMode, Game View, Android build/device, sound, FPS/memory.
+
+=== Asset previews ===
+Final front/back hero resource render saved and visually inspected.
+Final 12 authored-motion frames with actual weapon meshes saved; 0.8 second GIF reopened and checked (12 frames).
+These are Blender renders, not Game View. Runtime C# aiming/breathing/springs are not simulated by this GIF.
+
+=== Corrections after inspection ===
+Initial managed aim probe had CoreModule exposed only via alias, so production using UnityEngine could not resolve. Fixed the probe reference to the real CoreModule and reran both math and extracted-rig checks. Game API compilation itself passed.
+Intermediate knee shells had no sidewalls and did not follow the cloth closely enough. Added walls/back caps and fitted each authored pose to four skinned garment points; exported again and reran dependent geometry/pose/carry checks.

@@ -1,0 +1,481 @@
+Motion/model review / 2026-11-28 UTC
+BASE 72946dff2ea6429f4561b5ef3350d580bd798969
+CODE efbe00894d1089219aaffb832eb4a856a39e39f2
+Native Unity/Android not executed in this pass. Scope is stated per diagnostic.
+
+
+== zsr-analysis-characters.log ==
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+EYES Armored LOD0: atlas 38, left/right faces 74/72
+EYES Armored LOD1: atlas 38, left/right faces 28/30
+EYES Armored LOD2: atlas 38, left/right faces 9/8
+LOD Armored: [14455, 6938, 3310] triangles, one skeleton and atlas
+ANATOMY Armored 4495 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.36x, forefoot flexion 20.0/13.4 degrees
+FALL Armored: 22 poses, pavement error 0.000 m, head 1.66 to 0.35 m
+PASS Armored 51 bones, 7762 verts, 14455 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+EYES Boss LOD0: atlas 38, left/right faces 74/72
+EYES Boss LOD1: atlas 38, left/right faces 26/28
+EYES Boss LOD2: atlas 38, left/right faces 8/8
+LOD Boss: [14159, 6796, 3255] triangles, one skeleton and atlas
+ANATOMY Boss    3971 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.53x, forefoot flexion 20.2/15.0 degrees
+FALL Boss: 22 poses, pavement error 0.000 m, head 1.82 to 0.55 m
+BOSS attack reach L/R 0.769/0.769 m, ankle drift L/R 0.000/0.000 m
+PASS Boss    51 bones, 9995 verts, 14159 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+EYES Brute LOD0: atlas 38, left/right faces 74/72
+EYES Brute LOD1: atlas 38, left/right faces 30/30
+EYES Brute LOD2: atlas 38, left/right faces 9/9
+LOD Brute: [13119, 6296, 3013] triangles, one skeleton and atlas
+ANATOMY Brute   3858 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.46x, forefoot flexion 20.3/13.9 degrees
+FALL Brute: 22 poses, pavement error 0.000 m, head 1.78 to 0.47 m
+PASS Brute   51 bones, 9137 verts, 13119 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+EYES Crawler LOD0: atlas 38, left/right faces 74/72
+EYES Crawler LOD1: atlas 38, left/right faces 30/32
+EYES Crawler LOD2: atlas 38, left/right faces 10/10
+LOD Crawler: [15538, 7458, 3573] triangles, one skeleton and atlas
+ANATOMY Crawler 1619 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.32x, forefoot flexion 14.4/12.1 degrees
+FALL Crawler: 22 poses, pavement error 0.000 m, head 0.57 to 0.26 m
+PASS Crawler 51 bones, 10512 verts, 15538 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+EYES Eva LOD0: atlas 37, left/right faces 74/72
+EYES Eva LOD1: atlas 37, left/right faces 32/32
+EYES Eva LOD2: atlas 37, left/right faces 13/10
+LOD Eva: [18797, 9022, 4286] triangles, one skeleton and atlas
+ANATOMY Eva     2263 vertices in continuous body, 71 poses, worst 99th-percentile edge stretch 1.38x, forefoot flexion 28.4/20.0 degrees
+GAIT Eva     L ankle-roll 56.4 degrees, support 0.006..0.006 m, rearward travel 0.531 m, loop error 0.0000 m
+WALK Eva     L reach 0.426 m vs 0.655 m running, 27/34 frames near the ground, match with firing variant
+GAIT Eva     R ankle-roll 56.4 degrees, support 0.006..0.006 m, rearward travel 0.531 m, loop error 0.0000 m
+WALK Eva     R reach 0.426 m vs 0.655 m running, 27/34 frames near the ground, match with firing variant
+PASS Eva     58 bones, 11574 verts, 18797 triangles, 1–289 frames, smooth custom normals, medkit, throw, walk and walk-fire poses
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+EYES Max LOD0: atlas 36, left/right faces 74/72
+EYES Max LOD1: atlas 36, left/right faces 30/34
+EYES Max LOD2: atlas 36, left/right faces 13/12
+LOD Max: [22710, 10900, 5173] triangles, one skeleton and atlas
+ANATOMY Max     3881 vertices in continuous body, 71 poses, worst 99th-percentile edge stretch 1.58x, forefoot flexion 28.2/18.1 degrees
+GAIT Max     L ankle-roll 56.3 degrees, support 0.006..0.006 m, rearward travel 0.588 m, loop error 0.0000 m
+WALK Max     L reach 0.426 m vs 0.717 m running, 27/34 frames near the ground, match with firing variant
+GAIT Max     R ankle-roll 56.3 degrees, support 0.006..0.006 m, rearward travel 0.588 m, loop error 0.0000 m
+WALK Max     R reach 0.426 m vs 0.717 m running, 27/34 frames near the ground, match with firing variant
+PASS Max     56 bones, 15317 verts, 22710 triangles, 1–289 frames, smooth custom normals, medkit, throw, walk and walk-fire poses
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+EYES Runner LOD0: atlas 38, left/right faces 72/74
+EYES Runner LOD1: atlas 38, left/right faces 30/30
+EYES Runner LOD2: atlas 38, left/right faces 10/10
+LOD Runner: [11806, 5666, 2714] triangles, one skeleton and atlas
+ANATOMY Runner  1721 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.27x, forefoot flexion 20.3/16.7 degrees
+FALL Runner: 22 poses, pavement error 0.000 m, head 1.55 to 0.32 m
+GAIT Runner  ankle travel L/R 0.882/0.892 m, ankle lift L/R 0.253/0.258 m
+PASS Runner  51 bones, 6867 verts, 11806 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+EYES Toxic LOD0: atlas 38, left/right faces 74/72
+EYES Toxic LOD1: atlas 38, left/right faces 28/26
+EYES Toxic LOD2: atlas 38, left/right faces 8/8
+LOD Toxic: [14708, 7058, 3381] triangles, one skeleton and atlas
+ANATOMY Toxic   1862 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.34x, forefoot flexion 20.3/15.3 degrees
+FALL Toxic: 22 poses, pavement error 0.000 m, head 1.54 to 0.32 m
+GAIT Toxic   ankle travel L/R 0.528/0.409 m, ankle lift L/R 0.140/0.086 m
+PASS Toxic   51 bones, 9230 verts, 14708 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+EYES Walker LOD0: atlas 38, left/right faces 74/72
+EYES Walker LOD1: atlas 38, left/right faces 28/30
+EYES Walker LOD2: atlas 38, left/right faces 8/8
+LOD Walker: [12905, 6193, 2968] triangles, one skeleton and atlas
+ANATOMY Walker  1872 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.27x, forefoot flexion 19.4/13.1 degrees
+FALL Walker: 22 poses, pavement error 0.000 m, head 1.59 to 0.29 m
+GAIT Walker  ankle travel L/R 0.510/0.387 m, ankle lift L/R 0.131/0.083 m
+PASS Walker  51 bones, 8740 verts, 12905 triangles, 1–168 frames, smooth custom normals
+Blender 4.3.2
+
+Blender quit
+
+
+== zsr-analysis-contact.log ==
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Armored: peak adjacent rotation 11.51 deg, loop 5.24 mm / 0.345 deg, knee flexion 42.6..79.9 deg.
+CONTACT/CONTINUITY PASS Armored — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Boss: peak adjacent rotation 12.27 deg, loop 0.87 mm / 0.056 deg, knee flexion 39.8..81.2 deg.
+CONTACT/CONTINUITY PASS Boss — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Brute: peak adjacent rotation 12.48 deg, loop 0.85 mm / 0.056 deg, knee flexion 40.6..81.4 deg.
+CONTACT/CONTINUITY PASS Brute — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Crawler: peak adjacent rotation 21.11 deg, loop 0.11 mm / 0.097 deg, knee flexion 84.5..135.0 deg.
+CRAWLER L: skin floor -1.21 mm, lowest hand -1.18 mm, recovery 98.95 mm; 19/24 frames within 35 mm of contact plane.
+CRAWLER R: skin floor -1.21 mm, lowest hand -1.21 mm, recovery 97.26 mm; 20/24 frames within 35 mm of contact plane.
+CONTACT/CONTINUITY PASS Crawler — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Eva: peak adjacent rotation 14.52 deg, loop 0.07 mm / 0.000 deg, knee flexion 28.1..97.3 deg.
+CONTACT Eva: peak knee height 0.586 m, foot separation 0.200 m; maximum palm-pad/fore-end distance 11.87 mm, minimum upward palm normal 0.992, minimum finger middle-joint bend 62.1 deg.
+CONTACT/CONTINUITY PASS Eva — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Max: peak adjacent rotation 15.37 deg, loop 0.81 mm / 0.112 deg, knee flexion 27.6..96.9 deg.
+CONTACT Max: peak knee height 0.647 m, foot separation 0.224 m; maximum palm-pad/fore-end distance 16.25 mm, minimum upward palm normal 0.991, minimum finger middle-joint bend 61.4 deg.
+CONTACT/CONTINUITY PASS Max — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Runner: peak adjacent rotation 15.30 deg, loop 0.89 mm / 0.069 deg, knee flexion 27.1..102.2 deg.
+CONTACT/CONTINUITY PASS Runner — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Toxic: peak adjacent rotation 11.34 deg, loop 0.51 mm / 0.040 deg, knee flexion 46.0..83.6 deg.
+CONTACT/CONTINUITY PASS Toxic — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Walker: peak adjacent rotation 11.96 deg, loop 0.76 mm / 0.040 deg, knee flexion 44.5..82.1 deg.
+CONTACT/CONTINUITY PASS Walker — Blender FBX, not Unity.
+Blender 4.3.2
+
+Blender quit
+
+
+== zsr-analysis-layers.log ==
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+WEAPONS Max: maximum right-palm-to-grip distances {'pistol': 0.020525421838946616, 'rifle': 0.03162730834130465, 'shotgun': 0.04571942029735087, 'minigun': 0.055392939872450905}; all four muzzle rings centered on authored axis.
+HERO MASK Max: 96 action/gait samples, prior maximum foot mismatch 0.742 m, layered error 0.000000 m. Hand pose relative to spine preserved.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+WEAPONS Eva: maximum right-palm-to-grip distances {'pistol': 0.021161141297269957, 'rifle': 0.036870483552089814, 'shotgun': 0.05126249202587824, 'minigun': 0.058936231539256666}; all four muzzle rings centered on authored axis.
+HERO MASK Eva: 96 action/gait samples, prior maximum foot mismatch 0.680 m, layered error 0.000000 m. Hand pose relative to spine preserved.
+Blender 4.3.2
+
+Blender quit
+
+
+== zsr-analysis-upper-final.log ==
+ARM REACH PASS: 4000 moving/reachable/unreachable targets, fixed segment lengths, sampled elbow side and degenerate arm guard. Actual production vector math.
+ARM SCALE PASS: 60 transformed solves at .01–10x, 2 mm equal/unequal segments, reachable/overreaching/near-shoulder targets, full fold, straight sample, finite lengths and invalid guards. Actual production vector math.
+UPPER AIM PASS 20 Hz: 20 s rapid targets, limits, turn speed, convergence, pause, passed enemy, stalled frame, neutral and restart.
+UPPER AIM PASS 30 Hz: 20 s rapid targets, limits, turn speed, convergence, pause, passed enemy, stalled frame, neutral and restart.
+UPPER AIM PASS 60 Hz: 20 s rapid targets, limits, turn speed, convergence, pause, passed enemy, stalled frame, neutral and restart.
+UPPER AIM PASS 120 Hz: 20 s rapid targets, limits, turn speed, convergence, pause, passed enemy, stalled frame, neutral and restart.
+UPPER RIG PASS 20 Hz: 60 s combined lane banking/heading/rapid aim/recoil, restored sparse tracks, bounded neck/shoulders, neutral recovery and untouched death. Scene/rotation stand-ins.
+WEAPON SOCKET PASS 20 Hz: real ApplyAim preserves running roll, wrist mount offset, no-target motion and at most one degree of fine correction. Scene/rotation stand-ins.
+SUPPORT GRIP PASS 20 Hz: real ApplySupportGrip, four targets, wrist following, fixed lengths, restored pose, item release and immediate death release. Scene/rotation stand-ins, unit scale.
+LAST ROUND RECOIL PASS Pistol 20 Hz: actual Fire+Reload/UseItem/Die and ApplyUpperBodyAim, ordinary/last pitch 2.365/2.365 deg, preserved impulse, item recovery, no accumulation and death/nonhero/missing-weapon guards. Scene/rotation stand-ins, not native Animator/render.
+LAST ROUND RECOIL PASS Rifle 20 Hz: actual Fire+Reload/UseItem/Die and ApplyUpperBodyAim, ordinary/last pitch 3.135/3.135 deg, preserved impulse, item recovery, no accumulation and death/nonhero/missing-weapon guards. Scene/rotation stand-ins, not native Animator/render.
+LAST ROUND RECOIL PASS Shotgun 20 Hz: actual Fire+Reload/UseItem/Die and ApplyUpperBodyAim, ordinary/last pitch 5.775/5.775 deg, preserved impulse, item recovery, no accumulation and death/nonhero/missing-weapon guards. Scene/rotation stand-ins, not native Animator/render.
+LAST ROUND RECOIL PASS Minigun 20 Hz: actual Fire+Reload/UseItem/Die and ApplyUpperBodyAim, ordinary/last pitch 1.375/1.375 deg, preserved impulse, item recovery, no accumulation and death/nonhero/missing-weapon guards. Scene/rotation stand-ins, not native Animator/render.
+UPPER RIG PASS 30 Hz: 60 s combined lane banking/heading/rapid aim/recoil, restored sparse tracks, bounded neck/shoulders, neutral recovery and untouched death. Scene/rotation stand-ins.
+WEAPON SOCKET PASS 30 Hz: real ApplyAim preserves running roll, wrist mount offset, no-target motion and at most one degree of fine correction. Scene/rotation stand-ins.
+SUPPORT GRIP PASS 30 Hz: real ApplySupportGrip, four targets, wrist following, fixed lengths, restored pose, item release and immediate death release. Scene/rotation stand-ins, unit scale.
+LAST ROUND RECOIL PASS Pistol 30 Hz: actual Fire+Reload/UseItem/Die and ApplyUpperBodyAim, ordinary/last pitch 2.365/2.365 deg, preserved impulse, item recovery, no accumulation and death/nonhero/missing-weapon guards. Scene/rotation stand-ins, not native Animator/render.
+LAST ROUND RECOIL PASS Rifle 30 Hz: actual Fire+Reload/UseItem/Die and ApplyUpperBodyAim, ordinary/last pitch 3.135/3.135 deg, preserved impulse, item recovery, no accumulation and death/nonhero/missing-weapon guards. Scene/rotation stand-ins, not native Animator/render.
+LAST ROUND RECOIL PASS Shotgun 30 Hz: actual Fire+Reload/UseItem/Die and ApplyUpperBodyAim, ordinary/last pitch 5.775/5.775 deg, preserved impulse, item recovery, no accumulation and death/nonhero/missing-weapon guards. Scene/rotation stand-ins, not native Animator/render.
+LAST ROUND RECOIL PASS Minigun 30 Hz: actual Fire+Reload/UseItem/Die and ApplyUpperBodyAim, ordinary/last pitch 1.375/1.375 deg, preserved impulse, item recovery, no accumulation and death/nonhero/missing-weapon guards. Scene/rotation stand-ins, not native Animator/render.
+UPPER RIG PASS 60 Hz: 60 s combined lane banking/heading/rapid aim/recoil, restored sparse tracks, bounded neck/shoulders, neutral recovery and untouched death. Scene/rotation stand-ins.
+WEAPON SOCKET PASS 60 Hz: real ApplyAim preserves running roll, wrist mount offset, no-target motion and at most one degree of fine correction. Scene/rotation stand-ins.
+SUPPORT GRIP PASS 60 Hz: real ApplySupportGrip, four targets, wrist following, fixed lengths, restored pose, item release and immediate death release. Scene/rotation stand-ins, unit scale.
+LAST ROUND RECOIL PASS Pistol 60 Hz: actual Fire+Reload/UseItem/Die and ApplyUpperBodyAim, ordinary/last pitch 2.365/2.365 deg, preserved impulse, item recovery, no accumulation and death/nonhero/missing-weapon guards. Scene/rotation stand-ins, not native Animator/render.
+LAST ROUND RECOIL PASS Rifle 60 Hz: actual Fire+Reload/UseItem/Die and ApplyUpperBodyAim, ordinary/last pitch 3.135/3.135 deg, preserved impulse, item recovery, no accumulation and death/nonhero/missing-weapon guards. Scene/rotation stand-ins, not native Animator/render.
+LAST ROUND RECOIL PASS Shotgun 60 Hz: actual Fire+Reload/UseItem/Die and ApplyUpperBodyAim, ordinary/last pitch 5.775/5.775 deg, preserved impulse, item recovery, no accumulation and death/nonhero/missing-weapon guards. Scene/rotation stand-ins, not native Animator/render.
+LAST ROUND RECOIL PASS Minigun 60 Hz: actual Fire+Reload/UseItem/Die and ApplyUpperBodyAim, ordinary/last pitch 1.375/1.375 deg, preserved impulse, item recovery, no accumulation and death/nonhero/missing-weapon guards. Scene/rotation stand-ins, not native Animator/render.
+UPPER RIG PASS 120 Hz: 60 s combined lane banking/heading/rapid aim/recoil, restored sparse tracks, bounded neck/shoulders, neutral recovery and untouched death. Scene/rotation stand-ins.
+WEAPON SOCKET PASS 120 Hz: real ApplyAim preserves running roll, wrist mount offset, no-target motion and at most one degree of fine correction. Scene/rotation stand-ins.
+SUPPORT GRIP PASS 120 Hz: real ApplySupportGrip, four targets, wrist following, fixed lengths, restored pose, item release and immediate death release. Scene/rotation stand-ins, unit scale.
+LAST ROUND RECOIL PASS Pistol 120 Hz: actual Fire+Reload/UseItem/Die and ApplyUpperBodyAim, ordinary/last pitch 2.365/2.365 deg, preserved impulse, item recovery, no accumulation and death/nonhero/missing-weapon guards. Scene/rotation stand-ins, not native Animator/render.
+LAST ROUND RECOIL PASS Rifle 120 Hz: actual Fire+Reload/UseItem/Die and ApplyUpperBodyAim, ordinary/last pitch 3.135/3.135 deg, preserved impulse, item recovery, no accumulation and death/nonhero/missing-weapon guards. Scene/rotation stand-ins, not native Animator/render.
+LAST ROUND RECOIL PASS Shotgun 120 Hz: actual Fire+Reload/UseItem/Die and ApplyUpperBodyAim, ordinary/last pitch 5.775/5.775 deg, preserved impulse, item recovery, no accumulation and death/nonhero/missing-weapon guards. Scene/rotation stand-ins, not native Animator/render.
+LAST ROUND RECOIL PASS Minigun 120 Hz: actual Fire+Reload/UseItem/Die and ApplyUpperBodyAim, ordinary/last pitch 1.375/1.375 deg, preserved impulse, item recovery, no accumulation and death/nonhero/missing-weapon guards. Scene/rotation stand-ins, not native Animator/render.
+FBX GRIP PASS Max: 1080 pose/weapon/actor/import-unit cases; first-pose marker and barrel calibration, wrist following, fixed segments, reachable target error <= 0.012 mm, item/reload/death restore. SHA256 4c4ca5fb3840ad55e1070e8c6fc12060275e5fbad7aef25184385d48de107fe2. Blender FBX poses with scene/rotation stand-ins; no native Unity import/Animator/render validation.
+FBX GRIP PASS Eva: 1080 pose/weapon/actor/import-unit cases; first-pose marker and barrel calibration, wrist following, fixed segments, reachable target error <= 0.013 mm, item/reload/death restore. SHA256 866595bc038981e14558136893bbcd69a5c45a5363e0742838689544e2ad3589. Blender FBX poses with scene/rotation stand-ins; no native Unity import/Animator/render validation.
+
+
+== zsr-motion-shot-after.log ==
+SHOT TIMING PASS Pistol 20 Hz: first flash, full pre-decay recoil, expiry, recovery, pause, invalid graph, repeated shots, death and reset. Actual Fire/LateUpdate/control methods; pose/scene/graph observers, no native render.
+SHOT TIMING PASS Rifle 20 Hz: first flash, full pre-decay recoil, expiry, recovery, pause, invalid graph, repeated shots, death and reset. Actual Fire/LateUpdate/control methods; pose/scene/graph observers, no native render.
+SHOT TIMING PASS Shotgun 20 Hz: first flash, full pre-decay recoil, expiry, recovery, pause, invalid graph, repeated shots, death and reset. Actual Fire/LateUpdate/control methods; pose/scene/graph observers, no native render.
+SHOT TIMING PASS Minigun 20 Hz: first flash, full pre-decay recoil, expiry, recovery, pause, invalid graph, repeated shots, death and reset. Actual Fire/LateUpdate/control methods; pose/scene/graph observers, no native render.
+SHOT TIMING PASS Pistol 30 Hz: first flash, full pre-decay recoil, expiry, recovery, pause, invalid graph, repeated shots, death and reset. Actual Fire/LateUpdate/control methods; pose/scene/graph observers, no native render.
+SHOT TIMING PASS Rifle 30 Hz: first flash, full pre-decay recoil, expiry, recovery, pause, invalid graph, repeated shots, death and reset. Actual Fire/LateUpdate/control methods; pose/scene/graph observers, no native render.
+SHOT TIMING PASS Shotgun 30 Hz: first flash, full pre-decay recoil, expiry, recovery, pause, invalid graph, repeated shots, death and reset. Actual Fire/LateUpdate/control methods; pose/scene/graph observers, no native render.
+SHOT TIMING PASS Minigun 30 Hz: first flash, full pre-decay recoil, expiry, recovery, pause, invalid graph, repeated shots, death and reset. Actual Fire/LateUpdate/control methods; pose/scene/graph observers, no native render.
+SHOT TIMING PASS Pistol 60 Hz: first flash, full pre-decay recoil, expiry, recovery, pause, invalid graph, repeated shots, death and reset. Actual Fire/LateUpdate/control methods; pose/scene/graph observers, no native render.
+SHOT TIMING PASS Rifle 60 Hz: first flash, full pre-decay recoil, expiry, recovery, pause, invalid graph, repeated shots, death and reset. Actual Fire/LateUpdate/control methods; pose/scene/graph observers, no native render.
+SHOT TIMING PASS Shotgun 60 Hz: first flash, full pre-decay recoil, expiry, recovery, pause, invalid graph, repeated shots, death and reset. Actual Fire/LateUpdate/control methods; pose/scene/graph observers, no native render.
+SHOT TIMING PASS Minigun 60 Hz: first flash, full pre-decay recoil, expiry, recovery, pause, invalid graph, repeated shots, death and reset. Actual Fire/LateUpdate/control methods; pose/scene/graph observers, no native render.
+SHOT TIMING PASS Pistol 120 Hz: first flash, full pre-decay recoil, expiry, recovery, pause, invalid graph, repeated shots, death and reset. Actual Fire/LateUpdate/control methods; pose/scene/graph observers, no native render.
+SHOT TIMING PASS Rifle 120 Hz: first flash, full pre-decay recoil, expiry, recovery, pause, invalid graph, repeated shots, death and reset. Actual Fire/LateUpdate/control methods; pose/scene/graph observers, no native render.
+SHOT TIMING PASS Shotgun 120 Hz: first flash, full pre-decay recoil, expiry, recovery, pause, invalid graph, repeated shots, death and reset. Actual Fire/LateUpdate/control methods; pose/scene/graph observers, no native render.
+SHOT TIMING PASS Minigun 120 Hz: first flash, full pre-decay recoil, expiry, recovery, pause, invalid graph, repeated shots, death and reset. Actual Fire/LateUpdate/control methods; pose/scene/graph observers, no native render.
+
+
+== zsr-motion-shot-api.log ==
+Game C# content digest c31d4faef0d9f68f5aece6777c5013d962ac86962b085fb9c239e9b7564d2a52
+Assembly-CSharp 28 PASS
+Assembly-CSharp 28 PASS
+Assembly-CSharp-Editor 18 PASS
+URP post-processing references, setup restoration at both entry points, and camera FXAA verified in source 41439944d30ece34e96484bdb6645b55
+
+
+== zsr-analysis-forelock-final.log ==
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FORELOCK FIT {"vertices": 26, "faces": 12, "probes": 1106, "minimum_gap_mm": 0.6943196058273315, "maximum_gap_mm": 5.533978343009949}
+PASS fitted vertices and triangle interiors, reduced head clearance; not Unity.
+Blender 4.3.2
+
+Blender quit
+
+
+== zsr-proxy-bindings-after.log ==
+PROXY eyes/low-poly: 96 vertices, 1 reference(s), 86 valid faces
+PROXY hair/short01: 2984 vertices, 3 reference(s), 1839 valid faces
+PROXY hair/ponytail01: 3718 vertices, 3 reference(s), 2676 valid faces
+PROXY teeth/teeth_base: 3868 vertices, 3 reference(s), 3560 valid faces
+PROXY clothes/female_casualsuit01: 2197 vertices, 3 reference(s), 2118 valid faces
+PROXY clothes/male_casualsuit01: 8426 vertices, 3 reference(s), 8336 valid faces
+PROXY clothes/male_casualsuit02: 2136 vertices, 3 reference(s), 2060 valid faces
+PROXY clothes/male_casualsuit03: 2499 vertices, 3 reference(s), 2400 valid faces
+PROXY clothes/male_casualsuit05: 3195 vertices, 3 reference(s), 2998 valid faces
+Blender 4.3.2
+
+Blender quit
+
+
+== zsr-analysis-preview-materials.log ==
+CITY_MATERIAL_PASS 0 roughness 0.79 tint (0.91, 0.95, 1.0) emission (0.67, 0.67, 0.67)
+CITY_MATERIAL_PASS 1 roughness 0.79 tint (1.0, 0.84, 0.72) emission (0.67, 0.67, 0.67)
+CITY_MATERIAL_PASS 2 roughness 0.79 tint (0.77, 0.88, 1.0) emission (0.67, 0.67, 0.67)
+CHARACTER_EMISSION_PASS (1.25, 0.54, 0.28) strength 1.0
+SCOPE: Blender shader-node setup only; no render, FBX import, Unity or texture regeneration.
+Blender 4.3.2
+
+Blender quit
+
+
+== zsr-analysis-integrity.log ==
+PASS Python AST 10 changed/new files
+PASS 273 unique asset GUIDs; all asset files have metadata
+PASS 13 accepted icons, atlases, gameplay/pace/arsenal/campaign sources unchanged from 72946df
+PASS actual API-check source digest: c31d4faef0d9f68f5aece6777c5013d962ac86962b085fb9c239e9b7564d2a52
+PASS all 100 historical T-ID matrix rows unchanged; native criteria not promoted
+PASS git diff --check
+
+
+== zsr-analysis-cadence.log ==
+EXPORTED 18 actual campaign/cadence rows; steady modes, zero lateral speed, no native scene.
+
+
+== zsr-analysis-stance.log ==
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+MODEL FOOT LEVEL MODE CADENCE STANCE_MS SOLE_MM ROAD_MM RESIDUAL_MM
+Max L 1 Run 1.00000 320.00 708.0 3744.0 3036.0
+Max L 1 Surge 1.11355 287.37 708.0 4169.1 3461.2
+Max L 15 Run 1.20823 264.85 708.0 4523.6 3815.7
+Max L 15 Surge 1.34543 237.84 708.0 5037.3 4329.3
+Max L 1000 Run 1.36125 235.08 708.0 5096.5 4388.5
+Max L 1000 Surge 1.51582 211.11 708.0 5675.2 4967.3
+Max R 1 Run 1.00000 320.00 708.0 3744.0 3036.0
+Max R 1 Surge 1.11355 287.37 708.0 4169.1 3461.2
+Max R 15 Run 1.20823 264.85 708.0 4523.6 3815.7
+Max R 15 Surge 1.34543 237.84 708.0 5037.3 4329.3
+Max R 1000 Run 1.36125 235.08 708.0 5096.5 4388.5
+Max R 1000 Surge 1.51582 211.11 708.0 5675.2 4967.3
+Max L 1 Walk 1.00000 736.67 475.8 4050.9 3575.1
+Max L 15 Walk 1.20823 609.71 475.8 4894.5 4418.6
+Max L 1000 Walk 1.36125 541.17 475.8 5514.3 5038.5
+Max R 1 Walk 1.00000 736.67 475.9 4050.9 3575.1
+Max R 15 Walk 1.20823 609.71 475.9 4894.5 4418.6
+Max R 1000 Walk 1.36125 541.17 475.9 5514.3 5038.5
+Eva L 1 Run 1.07000 306.54 659.8 3586.5 2926.8
+Eva L 1 Surge 1.19150 275.28 659.8 3993.8 3334.0
+Eva L 15 Run 1.29281 253.71 659.8 4333.4 3673.6
+Eva L 15 Surge 1.43961 227.84 659.8 4825.4 4165.7
+Eva L 1000 Run 1.45653 225.19 659.8 4882.2 4222.4
+Eva L 1000 Surge 1.62193 202.23 659.8 5436.6 4776.8
+Eva R 1 Run 1.07000 306.54 659.8 3586.5 2926.8
+Eva R 1 Surge 1.19150 275.28 659.8 3993.8 3334.0
+Eva R 15 Run 1.29281 253.71 659.8 4333.4 3673.6
+Eva R 15 Surge 1.43961 227.84 659.8 4825.4 4165.7
+Eva R 1000 Run 1.45653 225.19 659.8 4882.2 4222.4
+Eva R 1000 Surge 1.62193 202.23 659.8 5436.6 4776.8
+Eva L 1 Walk 1.07000 688.47 476.0 3785.9 3309.9
+Eva L 15 Walk 1.29281 569.82 476.0 4574.3 4098.3
+Eva L 1000 Walk 1.45653 505.77 476.0 5153.6 4677.5
+Eva R 1 Walk 1.07000 688.47 476.0 3785.9 3309.9
+Eva R 15 Walk 1.29281 569.82 476.0 4574.3 4098.3
+Eva R 1000 Walk 1.45653 505.77 476.0 5153.6 4677.5
+Blender 4.3.2
+
+Blender quit
+
+
+== infected-stride-aligned-audit.log ==
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+ALIGN Walker factor 0.99928249467133 forward (0.0, 0.9992825984954834, -0.03787169232964516) object_scale (1.0, 1.0, 1.0)
+STRIDE {"name": "Walker", "side": "L", "samples": 7, "align_factor": 0.999282, "native_stance_mps": 1.0291, "scale": 1, "rate": 0.97, "current_foot_mps": 0.9982, "chase_mps": 1.48, "stance_slip_mps": -0.4818, "required_rate": 1.4382}
+STRIDE {"name": "Walker", "side": "R", "samples": 6, "align_factor": 0.999282, "native_stance_mps": 0.798, "scale": 1, "rate": 0.97, "current_foot_mps": 0.7741, "chase_mps": 1.48, "stance_slip_mps": -0.7059, "required_rate": 1.8545}
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+ALIGN Runner factor 0.999257784587029 forward (1.9074551660391847e-10, 0.9992578029632568, -0.038520000874996185) object_scale (1.0, 1.0, 1.0)
+STRIDE {"name": "Runner", "side": "L", "samples": 4, "align_factor": 0.999258, "native_stance_mps": 2.4436, "scale": 0.97, "rate": 1.53, "current_foot_mps": 3.6265, "chase_mps": 3, "stance_slip_mps": 0.6265, "required_rate": 1.2657}
+STRIDE {"name": "Runner", "side": "R", "samples": 5, "align_factor": 0.999258, "native_stance_mps": 2.4422, "scale": 0.97, "rate": 1.53, "current_foot_mps": 3.6245, "chase_mps": 3, "stance_slip_mps": 0.6245, "required_rate": 1.2664}
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+ALIGN Armored factor 0.9993497967937982 forward (1.67058603062209e-10, 0.9993500113487244, -0.03605049103498459) object_scale (1.0, 1.0, 1.0)
+STRIDE {"name": "Armored", "side": "L", "samples": 7, "align_factor": 0.99935, "native_stance_mps": 1.0656, "scale": 1.14, "rate": 0.82, "current_foot_mps": 0.9961, "chase_mps": 1.15, "stance_slip_mps": -0.1539, "required_rate": 0.9467}
+STRIDE {"name": "Armored", "side": "R", "samples": 6, "align_factor": 0.99935, "native_stance_mps": 1.068, "scale": 1.14, "rate": 0.82, "current_foot_mps": 0.9984, "chase_mps": 1.15, "stance_slip_mps": -0.1516, "required_rate": 0.9445}
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+ALIGN Brute factor 0.9994258442575849 forward (3.531752677232946e-18, 0.9994259476661682, -0.033878326416015625) object_scale (1.0, 1.0, 1.0)
+STRIDE {"name": "Brute", "side": "L", "samples": 7, "align_factor": 0.999426, "native_stance_mps": 1.1479, "scale": 1.22, "rate": 0.69, "current_foot_mps": 0.9663, "chase_mps": 0.78, "stance_slip_mps": 0.1863, "required_rate": 0.557}
+STRIDE {"name": "Brute", "side": "R", "samples": 7, "align_factor": 0.999426, "native_stance_mps": 1.1546, "scale": 1.22, "rate": 0.69, "current_foot_mps": 0.9719, "chase_mps": 0.78, "stance_slip_mps": 0.1919, "required_rate": 0.5537}
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+ALIGN Toxic factor 0.9992406480651611 forward (-1.778146115437625e-18, 0.9992406368255615, -0.03896480053663254) object_scale (1.0, 1.0, 1.0)
+STRIDE {"name": "Toxic", "side": "L", "samples": 7, "align_factor": 0.999241, "native_stance_mps": 1.1206, "scale": 1.09, "rate": 0.91, "current_foot_mps": 1.1115, "chase_mps": 0.55, "stance_slip_mps": 0.5615, "required_rate": 0.4503}
+STRIDE {"name": "Toxic", "side": "R", "samples": 6, "align_factor": 0.999241, "native_stance_mps": 0.8743, "scale": 1.09, "rate": 0.91, "current_foot_mps": 0.8672, "chase_mps": 0.55, "stance_slip_mps": 0.3172, "required_rate": 0.5772}
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+ALIGN Crawler factor 0.9991233072027857 forward (-1.5197595785998441e-12, 0.999123215675354, -0.04186485707759857) object_scale (1.0, 1.0, 1.0)
+STRIDE {"name": "Crawler", "side": "L", "samples": 7, "align_factor": 0.999123, "native_stance_mps": 0.7401, "scale": 0.7, "rate": 1.18, "current_foot_mps": 0.6113, "chase_mps": 2.6, "stance_slip_mps": -1.9887, "required_rate": 5.0186}
+STRIDE {"name": "Crawler", "side": "R", "samples": 7, "align_factor": 0.999123, "native_stance_mps": 0.74, "scale": 0.7, "rate": 1.18, "current_foot_mps": 0.6112, "chase_mps": 2.6, "stance_slip_mps": -1.9888, "required_rate": 5.0195}
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+ALIGN Boss factor 0.9994479429512861 forward (0.0, 0.9994483590126038, -0.033212389796972275) object_scale (1.0, 1.0, 1.0)
+STRIDE {"name": "Boss", "side": "L", "samples": 7, "align_factor": 0.999448, "native_stance_mps": 1.2219, "scale": 2.6, "rate": 0.6, "current_foot_mps": 1.9062, "chase_mps": 0, "stance_slip_mps": 1.9062, "required_rate": 0.0}
+STRIDE {"name": "Boss", "side": "R", "samples": 7, "align_factor": 0.999448, "native_stance_mps": 1.2212, "scale": 2.6, "rate": 0.6, "current_foot_mps": 1.905, "chase_mps": 0, "stance_slip_mps": 1.905, "required_rate": 0.0}
+Blender 4.3.2
+
+Blender quit
+
+
+== infected-support-audit.log ==
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+SUPPORT {"name": "Walker", "side": "L", "vertices": 282, "stance_min_mm": 4.83, "stance_min_frame": 37, "stance_max_mm": 16.5, "stance_max_frame": 33, "swing_min_mm": 20.6, "swing_peak_mm": 102.97, "toe_range_mm": [4.83, 41.13], "heel_range_mm": [9.82, 82.91]}
+SUPPORT {"name": "Walker", "side": "R", "vertices": 282, "stance_min_mm": 4.98, "stance_min_frame": 48, "stance_max_mm": 15.89, "stance_max_frame": 45, "swing_min_mm": 12.82, "swing_peak_mm": 44.49, "toe_range_mm": [5.71, 40.62], "heel_range_mm": [9.36, 78.41]}
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+SUPPORT {"name": "Runner", "side": "L", "vertices": 269, "stance_min_mm": 5.03, "stance_min_frame": 36, "stance_max_mm": 16.2, "stance_max_frame": 33, "swing_min_mm": 38.26, "swing_peak_mm": 227.29, "toe_range_mm": [5.03, 40.35], "heel_range_mm": [10.28, 84.15]}
+SUPPORT {"name": "Runner", "side": "R", "vertices": 641, "stance_min_mm": 6.01, "stance_min_frame": 48, "stance_max_mm": 13.3, "stance_max_frame": 46, "swing_min_mm": 18.93, "swing_peak_mm": 228.33, "toe_range_mm": [6.01, 36.9], "heel_range_mm": [7.02, 71.13]}
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+SUPPORT {"name": "Armored", "side": "L", "vertices": 219, "stance_min_mm": 4.85, "stance_min_frame": 37, "stance_max_mm": 15.44, "stance_max_frame": 33, "swing_min_mm": 28.58, "swing_peak_mm": 103.13, "toe_range_mm": [4.85, 40.22], "heel_range_mm": [9.87, 84.36]}
+SUPPORT {"name": "Armored", "side": "R", "vertices": 222, "stance_min_mm": 5.19, "stance_min_frame": 49, "stance_max_mm": 16.05, "stance_max_frame": 45, "swing_min_mm": 13.25, "swing_peak_mm": 99.43, "toe_range_mm": [6.32, 42.17], "heel_range_mm": [9.67, 79.07]}
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+SUPPORT {"name": "Brute", "side": "L", "vertices": 281, "stance_min_mm": 4.83, "stance_min_frame": 37, "stance_max_mm": 15.47, "stance_max_frame": 33, "swing_min_mm": 44.51, "swing_peak_mm": 113.46, "toe_range_mm": [4.83, 40.24], "heel_range_mm": [9.79, 85.17]}
+SUPPORT {"name": "Brute", "side": "R", "vertices": 475, "stance_min_mm": 5.56, "stance_min_frame": 54, "stance_max_mm": 20.22, "stance_max_frame": 45, "swing_min_mm": 21.22, "swing_peak_mm": 107.01, "toe_range_mm": [5.56, 38.38], "heel_range_mm": [14.22, 86.91]}
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+SUPPORT {"name": "Toxic", "side": "L", "vertices": 272, "stance_min_mm": 4.87, "stance_min_frame": 37, "stance_max_mm": 16.5, "stance_max_frame": 33, "swing_min_mm": 14.08, "swing_peak_mm": 107.04, "toe_range_mm": [4.87, 41.13], "heel_range_mm": [9.97, 79.2]}
+SUPPORT {"name": "Toxic", "side": "R", "vertices": 651, "stance_min_mm": 6.24, "stance_min_frame": 48, "stance_max_mm": 20.42, "stance_max_frame": 44, "swing_min_mm": 14.78, "swing_peak_mm": 45.95, "toe_range_mm": [6.24, 39.28], "heel_range_mm": [14.28, 84.17]}
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+SUPPORT {"name": "Crawler", "side": "L", "vertices": 582, "stance_min_mm": 5.75, "stance_min_frame": 37, "stance_max_mm": 14.79, "stance_max_frame": 33, "swing_min_mm": 12.13, "swing_peak_mm": 78.23, "toe_range_mm": [5.75, 33.81], "heel_range_mm": [7.9, 56.16]}
+SUPPORT {"name": "Crawler", "side": "R", "vertices": 578, "stance_min_mm": 5.79, "stance_min_frame": 49, "stance_max_mm": 14.24, "stance_max_frame": 45, "swing_min_mm": 17.34, "swing_peak_mm": 80.93, "toe_range_mm": [5.79, 31.47], "heel_range_mm": [8.02, 58.41]}
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+SUPPORT {"name": "Boss", "side": "L", "vertices": 442, "stance_min_mm": 4.99, "stance_min_frame": 43, "stance_max_mm": 20.1, "stance_max_frame": 33, "swing_min_mm": 11.43, "swing_peak_mm": 118.05, "toe_range_mm": [4.99, 44.12], "heel_range_mm": [14.56, 84.4]}
+SUPPORT {"name": "Boss", "side": "R", "vertices": 442, "stance_min_mm": 5.19, "stance_min_frame": 55, "stance_max_mm": 20.23, "stance_max_frame": 45, "swing_min_mm": 18.72, "swing_peak_mm": 120.4, "toe_range_mm": [5.19, 43.95], "heel_range_mm": [14.72, 84.36]}
+Blender 4.3.2
+
+Blender quit
+
+
+== Expected reproduced failure before fix: zsr-motion-shot-before.log ==
+SHOT TIMING FAIL: Pistol/20 Hz normal: first flash survives until a render opportunity
+SHOT TIMING FAIL: Rifle/20 Hz normal: first flash survives until a render opportunity
+SHOT TIMING FAIL: Shotgun/20 Hz normal: first flash survives until a render opportunity
+SHOT TIMING FAIL: Minigun/20 Hz normal: first flash survives until a render opportunity
+SHOT TIMING FAIL: Pistol/30 Hz normal: pose sees full shot recoil before decay (0.016333332 vs 0.043)
+SHOT TIMING FAIL: Rifle/30 Hz normal: pose sees full shot recoil before decay (0.03033333 vs 0.057)
+SHOT TIMING FAIL: Shotgun/30 Hz normal: pose sees full shot recoil before decay (0.078333326 vs 0.105)
+SHOT TIMING FAIL: Minigun/30 Hz normal: pose sees full shot recoil before decay (0 vs 0.025)
+SHOT TIMING FAIL: Pistol/60 Hz normal: pose sees full shot recoil before decay (0.029666666 vs 0.043)
+SHOT TIMING FAIL: Rifle/60 Hz normal: pose sees full shot recoil before decay (0.043666665 vs 0.057)
+SHOT TIMING FAIL: Shotgun/60 Hz normal: pose sees full shot recoil before decay (0.09166666 vs 0.105)
+SHOT TIMING FAIL: Minigun/60 Hz normal: pose sees full shot recoil before decay (0.011666666 vs 0.025)
+SHOT TIMING FAIL: Pistol/120 Hz normal: pose sees full shot recoil before decay (0.036333334 vs 0.043)
+SHOT TIMING FAIL: Rifle/120 Hz normal: pose sees full shot recoil before decay (0.050333332 vs 0.057)
+SHOT TIMING FAIL: Shotgun/120 Hz normal: pose sees full shot recoil before decay (0.09833333 vs 0.105)
+SHOT TIMING FAIL: Minigun/120 Hz normal: pose sees full shot recoil before decay (0.018333333 vs 0.025)
+Traceback (most recent call last):
+  File "/workspace/Games/Tools/QA/check_shot_timing.py", line 46, in <module>
+    subprocess.run([runtime / "dotnet", executable], check=True)
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '[PosixPath('/workspace/zsr-unity/Editor/Data/NetCoreRuntime/dotnet'), PosixPath('/tmp/tmp0c_36prr/ShotTimingProbe.dll')]' returned non-zero exit status 1.
+
+
+== Expected reproduced failure before fix: zsr-motion-last-round-before.log ==
+ARM REACH PASS: 4000 moving/reachable/unreachable targets, fixed segment lengths, sampled elbow side and degenerate arm guard. Actual production vector math.
+ARM SCALE PASS: 60 transformed solves at .01–10x, 2 mm equal/unequal segments, reachable/overreaching/near-shoulder targets, full fold, straight sample, finite lengths and invalid guards. Actual production vector math.
+UPPER AIM PASS 20 Hz: 20 s rapid targets, limits, turn speed, convergence, pause, passed enemy, stalled frame, neutral and restart.
+UPPER AIM PASS 30 Hz: 20 s rapid targets, limits, turn speed, convergence, pause, passed enemy, stalled frame, neutral and restart.
+UPPER AIM PASS 60 Hz: 20 s rapid targets, limits, turn speed, convergence, pause, passed enemy, stalled frame, neutral and restart.
+UPPER AIM PASS 120 Hz: 20 s rapid targets, limits, turn speed, convergence, pause, passed enemy, stalled frame, neutral and restart.
+Tools/QA/UpperRigProbe.cs(103,19): warning CS0649: Field 'AimRig.barrelRotor' is never assigned to, and will always have its default value null
+Tools/QA/UpperRigProbe.cs(103,31): warning CS0649: Field 'AimRig.muzzleFlash' is never assigned to, and will always have its default value null
+Tools/QA/UpperRigProbe.cs(102,30): warning CS0414: The field 'AimRig.barrelSpeed' is assigned but its value is never used
+Tools/QA/UpperRigProbe.cs(101,14): warning CS0414: The field 'AimRig.firing' is assigned but its value is never used
+Tools/QA/UpperRigProbe.cs(102,15): warning CS0414: The field 'AimRig.flashTime' is assigned but its value is never used
+Tools/QA/UpperRigProbe.cs(102,54): warning CS0414: The field 'AimRig.age' is assigned but its value is never used
+Tools/QA/UpperRigProbe.cs(101,21): warning CS0414: The field 'AimRig.shotPending' is assigned but its value is never used
+UPPER RIG PASS 20 Hz: 60 s combined lane banking/heading/rapid aim/recoil, restored sparse tracks, bounded neck/shoulders, neutral recovery and untouched death. Scene/rotation stand-ins.
+WEAPON SOCKET PASS 20 Hz: real ApplyAim preserves running roll, wrist mount offset, no-target motion and at most one degree of fine correction. Scene/rotation stand-ins.
+SUPPORT GRIP PASS 20 Hz: real ApplySupportGrip, four targets, wrist following, fixed lengths, restored pose, item release and immediate death release. Scene/rotation stand-ins, unit scale.
+Unhandled exception. System.Exception: Pistol/20: last Fire+Reload applies ordinary-shot recoil (0 vs 2.3650038 degrees)
+   at ZombieSurvivalRun.AimRig.Need(Boolean ok, String message)
+   at ZombieSurvivalRun.AimRig.CheckLastRoundRecoil(Int32 hz, WeaponType weapon)
+   at UpperRigProbe.Main(String[] args)
+Traceback (most recent call last):
+  File "/workspace/Games/Tools/QA/check_upper_aim.py", line 50, in <module>
+    subprocess.run([runtime/'dotnet',rig,*([args.fbx_samples.resolve()] if args.fbx_samples else [])],check=True)
+  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '[PosixPath('/workspace/zsr-unity/Editor/Data/NetCoreRuntime/dotnet'), PosixPath('/tmp/tmpv8jvrzx_/UpperRigProbe.dll')]' died with <Signals.SIGABRT: 6>.
+
+
+== Expected reproduced failure before fix: zsr-forelock-fit-before.log ==
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FORELOCK_FIT {"vertices": 10, "faces": 4, "probes": 370, "minimum_gap_mm": 15.84218442440033, "maximum_gap_mm": 104.02509570121765}
+Traceback (most recent call last):
+  File "/tmp/zsr-check-forelock-fit.py", line 35, in <module>
+    assert -.001<min(gaps) and max(gaps)<.008,result
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {'vertices': 10, 'faces': 4, 'probes': 370, 'minimum_gap_mm': 15.84218442440033, 'maximum_gap_mm': 104.02509570121765}
+
+Error: script failed, file: '/tmp/zsr-check-forelock-fit.py', exiting.
+Blender 4.3.2
+
+Blender quit
+
+
+== Expected reproduced failure before fix: zsr-eye-guard-before.log ==
+Traceback (most recent call last):
+  File "/workspace/Games/Tools/Art/check_characters.py", line 103, in <module>
+    assert min(eye_sides.values())>0,(path,index,'missing fitted eye UV faces',eye_slot,eye_sides)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: (PosixPath('Assets/Resources/ProductionArt/Armored.fbx'), 0, 'missing fitted eye UV faces', 38, {-1: 0, 1: 0})
+
+Error: script failed, file: 'Tools/Art/check_characters.py', exiting.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+Blender 4.3.2
+
+Blender quit

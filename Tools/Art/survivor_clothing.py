@@ -1,0 +1,434 @@
+"""Fit the CC0 MakeHuman garments to the game's morphed bodies and existing rig."""
+from collections import defaultdict
+import re
+import math
+
+
+# Hero skin and clothing have dedicated 768 squares; enemies use 256/512.
+WARDROBE = {
+    "Max": ("male_casualsuit01", 40),
+    "Eva": ("male_casualsuit05", 41),
+    "Walker": ("male_casualsuit03", 42),
+    "Runner": ("male_casualsuit02", 43),
+    "Toxic": ("male_casualsuit05", 44),
+    "Crawler": ("female_casualsuit01", 45),
+}
+OUTFITS={**WARDROBE,'Brute':('male_casualsuit03',42),'Boss':('male_casualsuit03',42)}
+TORN = {'Walker':((-.095,.747,.047,.069),),
+        'Runner':((.145,.772,.043,.058),),
+        'Toxic':((-.075,.754,.055,.080),),
+        'Crawler':((.075,.724,.046,.073),)}
+
+
+def torn_opening(actor,point,margin=1.):
+    if point.y < .055:return False
+    for x,z,rx,rz in TORN.get(actor.name,()):
+        u,v=(point.x-x)/rx,(point.z-z*actor.h)/rz
+        jagged=1+.12*math.sin(math.atan2(v,u)*7)
+        if u*u+v*v < (margin*jagged)**2:return True
+    return False
+
+
+def scout_opening(actor,point,margin=1.):
+    if actor.name!='Eva' or point.y<.060:return False
+    t=point.z/actor.h
+    if not .60<t<.823:return False
+    width=(.026+.029*math.sin(math.pi*(t-.60)/.223))*margin
+    return abs(point.x)<width
+
+
+def exposed_arm(actor, point, weights, overlap=0.):
+    if not actor.hero:
+        return False
+    side = "L" if point.x < 0 else "R"
+    arm_weight=sum(weights.get(part+side,0.) for part in
+                   ("UpperArm","Forearm","Hand"))
+    shoulder=actor.bones["UpperArm"+side][0]
+    elbow=actor.bones["Forearm"+side][0]
+    axis=elbow-shoulder
+    reach=(point-shoulder).dot(axis)/axis.length_squared
+    return arm_weight>.52 and reach > ( .70 if actor.name=="Max" else 1.12 )-overlap
+
+
+def read_proxy(pack, name, family="clothes"):
+    from mathutils import Vector
+    text = pack.read(f"{family}/{name}/{name}.mhclo").decode()
+    lines = text.splitlines()
+    mapping = []
+    active = False
+    scales = {}
+    hidden = set()
+    for line in lines:
+        words = line.split()
+        if not words or line.startswith("#"):
+            continue
+        if words[0] in ("x_scale", "y_scale", "z_scale"):
+            scales["xyz".index(words[0][0])] = (int(words[1]), int(words[2]), float(words[3]))
+        elif words[0] == "verts":
+            active = True
+        elif words[0] == "delete_verts":
+            active = False
+        elif active and len(words) == 9:
+            mapping.append(([int(x) for x in words[:3]], [float(x) for x in words[3:6]],
+                            Vector(tuple(float(x) for x in words[6:9]))))
+        elif active and len(words) == 1 and words[0].isdigit():
+            # MakeHuman also permits direct basemesh bindings. Its low-poly
+            # eyes use this form rather than three barycentric references.
+            mapping.append(([int(words[0])], [1.0], Vector((0, 0, 0))))
+    if "delete_verts" in text:
+        for match in re.finditer(r"(\d+)\s*-\s*(\d+)|(\d+)", text.split("delete_verts", 1)[1]):
+            if match[3]:
+                hidden.add(int(match[3]))
+            else:
+                hidden.update(range(int(match[1]), int(match[2]) + 1))
+    return mapping, scales, hidden
+
+
+def hidden_body(actor, pack):
+    if actor.name not in OUTFITS:
+        return set()
+    hidden = read_proxy(pack, OUTFITS[actor.name][0])[2]
+    if actor.tank:
+        hidden={i for i in hidden if i in actor.body.geometry and actor.h*.39<actor.body.geometry[i].z<actor.h*.54}
+    for index in tuple(hidden):
+        point=actor.body.geometry.get(index)
+        if point is not None and (torn_opening(actor,point,1.45) or scout_opening(actor,point,1.65)):
+            hidden.remove(index)
+    if actor.hero:
+        for index in tuple(hidden):
+            point=actor.body.geometry.get(index)
+            if point is not None and (exposed_arm(actor,point,actor.body.bind_weights[index],.13) or
+               actor.h*.54 < point.z < actor.h*.615):
+                hidden.remove(index)
+    if actor.name in ("Runner","Toxic","Crawler"):
+        for index in tuple(hidden):
+            point = actor.body.geometry.get(index)
+            if point is not None and ((actor.name=="Crawler" and point.z<.42) or
+               (actor.name in ("Runner","Toxic") and point.x>.02 and point.z<.44)):
+                hidden.remove(index)
+    return hidden
+
+
+def append_garment(actor, pack):
+    from mathutils import Vector
+    from makehuman_body import read_obj, append_reduced
+    if actor.name not in OUTFITS:
+        return
+    name, slot = OUTFITS[actor.name]
+    mapping, axes, _ = read_proxy(pack, name)
+    source, uv, faces, _ = read_obj(pack.read(f"clothes/{name}/{name}.obj").decode().splitlines())
+    assert len(source) == len(mapping), (actor.name, len(source), len(mapping))
+    body = actor.body
+    scale = Vector((1, 1, 1))
+    for axis, (a, b, reference) in axes.items():
+        scale[axis] = abs(body.source[a][axis] - body.source[b][axis]) / reference
+    positions, weights = [], []
+    for indices, amounts, offset in mapping:
+        point = sum((body.source[i]*w for i, w in zip(indices, amounts)), Vector((0, 0, 0)))
+        point += Vector(tuple(offset[i]*scale[i] for i in range(3)))
+        fitted = body.shape(point)
+        if fitted.z < .38:
+            fitted = body.normalized_foot(fitted, "L" if fitted.x < 0 else "R")
+        fitted.y += .004 if fitted.y > .04 else -.004
+        positions.append(fitted)
+        mixed = defaultdict(float)
+        for index, amount in zip(indices, amounts):
+            for bone, weight in body.bind_weights[index].items():
+                mixed[bone] += max(0, amount)*weight
+        ranked = sorted(mixed.items(), key=lambda item: item[1], reverse=True)[:4]
+        total = sum(weight for _, weight in ranked)
+        weights.append({bone: weight/total for bone, weight in ranked if weight > .00001})
+    shirt=set()
+    # Shirt and trousers are separate connected surfaces in the CC0 proxies.
+    # Shorten only the torso hem; never lift trousers or the sleeve vertices.
+    if actor.hero:
+        parent=list(range(len(positions)))
+        def root(index):
+            while parent[index]!=index:
+                parent[index]=parent[parent[index]]
+                index=parent[index]
+            return index
+        for face in faces:
+            first=root(face[0][0])
+            for index,_ in face[1:]:parent[root(index)]=first
+        components=defaultdict(list)
+        for index in range(len(positions)):components[root(index)].append(index)
+        for entries in components.values():
+            if sum(positions[i].z for i in entries)/len(entries)<actor.h*.60:
+                continue
+            shirt.update(entries)
+            hem=min(positions[i].z for i in entries)
+            desired=actor.h*(.584 if actor.name=="Eva" else .568)
+            if hem>=desired:continue
+            for i in entries:
+                p=positions[i]
+                side="L" if p.x<0 else "R"
+                if sum(weights[i].get(part+side,0) for part in ("UpperArm","Forearm","Hand"))>.35:
+                    continue
+                t=max(0,min(1,(p.z-hem)/(actor.h*.69-hem)))
+                p.z+=(desired-hem)*(1-t*t*(3-2*t))
+                # The field jacket has a sewn hem, not the source shirt's
+                # long pointed tails. Preserve the upper torso and sleeves.
+                if p.z<desired+.025:
+                    p.z=max(p.z,desired+.008+.003*math.cos(p.x*14))
+        # Remove the source casual shirt's bloused belly and flared rear hem.
+        # Sample the same anatomical body used to fit the proxy. Leave sleeve
+        # volume, joint positions and the open scout jacket's front intact.
+        trunk=[point for index,point in body.geometry.items()
+               if sum(body.bind_weights[index].get(bone,0.)
+                      for bone in ('Pelvis','Spine','Chest'))>.72]
+        for i in shirt:
+            p=positions[i]
+            side='L' if p.x<0 else 'R'
+            if sum(weights[i].get(part+side,0.) for part in ('UpperArm','Forearm','Hand'))>.30:
+                continue
+            waist=math.exp(-((p.z/actor.h-.649)/.080)**2)
+            samples=sorted(trunk,key=lambda q:abs(q.z-p.z))[:36]
+            half_width=max(abs(q.x) for q in samples)+.020
+            # Compress only excess ease, with a smooth transition into the
+            # chest and hem; cloth retains clearance over the torso.
+            if abs(p.x)>half_width:
+                p.x+=(math.copysign(half_width,p.x)-p.x)*waist*.80
+            near=sorted(samples,key=lambda q:abs(q.x-p.x))[:12]
+            edge=(max(q.y for q in near)+.023 if p.y>.035
+                  else min(q.y for q in near)-.020)
+            if (p.y-edge)*(1 if p.y>.035 else -1)>0:
+                p.y+=(edge-p.y)*waist*.76
+    # Add restrained cloth volume and compression folds around real joints.
+    # This deforms the fitted garment, never the anatomy or joint anchors.
+    for p,entries in zip(positions,weights):
+        side='L' if p.x<0 else 'R'
+        knee=actor.bones['Shin'+side][0]
+        leg=entries.get('Thigh'+side,0)+entries.get('Shin'+side,0)
+        if leg>.65 and .23<p.z<actor.h*.54:
+            radial=Vector((p.x-knee.x,p.y-knee.y,0))
+            if radial.length>.02:
+                zone=math.exp(-((p.z-knee.z)/.13)**2)
+                fold=zone*(.005+.005*math.cos((p.z-knee.z)*76+(p.x-knee.x)*15))
+                slack=.008*math.exp(-((p.z-(knee.z+.19))/.16)**2)
+                p+=radial.normalized()*(fold+slack)
+        if actor.hero and leg>.70 and .145<p.z<.39:
+            # Gather the trouser hem into the field boot instead of a wide,
+            # rigid bell around the ankle. Keep the leg joints unchanged.
+            ankle=actor.bones['Foot'+side][0]
+            taper=.20*math.exp(-((p.z-.215)/.105)**2)
+            p.x+=(ankle.x-p.x)*taper
+            p.y+=(ankle.y-p.y)*taper
+        elbow=actor.bones['Forearm'+side][0]
+        arm=entries.get('UpperArm'+side,0)+entries.get('Forearm'+side,0)
+        if actor.hero and arm>.7:
+            axis=actor.bones['Hand'+side][0]-actor.bones['UpperArm'+side][0]
+            offset=p-elbow; along=offset.dot(axis.normalized())
+            radial=offset-axis.normalized()*along
+            if radial.length>.02:
+                p+=radial.normalized()*(.004*math.exp(-(along/.075)**2)*(1+math.cos(along*105)))
+    # Proxy fitting can assign adjacent armpit or crotch vertices to dissimilar
+    # base-body triangles. Smooth that transition before reducing the garment.
+    neighbors=[set() for _ in positions]
+    for face in faces:
+        ids=[index for index,_ in face]
+        for a,b in zip(ids,ids[1:]+ids[:1]):
+            neighbors[a].add(b)
+            neighbors[b].add(a)
+    for _ in range(6):
+        softened=[]
+        for index,entries in enumerate(weights):
+            nearby=neighbors[index]
+            mixed=defaultdict(float)
+            for bone,value in entries.items():mixed[bone]+=value*.50
+            for adjacent in nearby:
+                for bone,value in weights[adjacent].items():
+                    mixed[bone]+=value*.50/max(1,len(nearby))
+            ranked=sorted(mixed.items(),key=lambda pair:pair[1],reverse=True)[:4]
+            total=sum(value for _,value in ranked)
+            softened.append({bone:value/total for bone,value in ranked})
+        weights=softened
+    accepted = []
+    for face in faces:
+        center = sum((positions[i] for i, _ in face), Vector((0, 0, 0)))/len(face)
+        if actor.tank:
+            hem=actor.h*(.36 if actor.name=='Boss' else .22 if center.x<0 else .33)
+            hem+=.016*math.sin(center.x*63+center.y*37)
+            if not hem<center.z<actor.h*.55:continue
+        mixed=defaultdict(float)
+        for i,_ in face:
+            for bone,value in weights[i].items():mixed[bone]+=value/len(face)
+        if exposed_arm(actor,center,mixed):
+            continue
+        if torn_opening(actor,center):
+            continue
+        if scout_opening(actor,center):
+            continue
+        # Keep the previously authored shoes and clear their articulated ankle region.
+        if center.z < .19:
+            continue
+        # Infected clothing has real missing sections and asymmetric ragged hems.
+        if not actor.hero and center.z < actor.h*.64:
+            if actor.name == "Crawler" and center.z < .42:
+                continue
+            if actor.name in ("Toxic", "Runner") and center.x > .02 and center.z < .44:
+                continue
+        accepted.append((tuple(i for i, _ in face), tuple(uv[j] for _, j in face)))
+    append_reduced(actor, actor.name+" fitted garment", positions, accepted,
+                   [slot]*len(accepted), weights, .62 if actor.hero else .43)
+    if actor.hero:
+        append_tailoring(actor)
+
+
+def append_tailoring(actor):
+    """Rolled cuffs and shaped jacket facings, on the existing garment/rig."""
+    from mathutils import Vector
+    h=actor.h
+    cloth=0 if actor.name=='Max' else 1
+    # A continuous cuff with a shallow compression crease has a much softer
+    # silhouette than another solid plate attached to the upper arm.
+    for side in ('L','R'):
+        shoulder=actor.bones['UpperArm'+side][0]
+        elbow=actor.bones['Forearm'+side][0]
+        axis=(elbow-shoulder).normalized()
+        center=shoulder.lerp(elbow,.675 if actor.name=='Max' else 1.075)
+        samples=[]
+        for point,weights in zip(actor.vertices,actor.weights):
+            if sum(weights.get(part+side,0.) for part in ('UpperArm','Forearm'))<.65:
+                continue
+            offset=Vector(point)-center
+            if abs(offset.dot(axis))<.025:
+                samples.append((offset-axis*offset.dot(axis)).length)
+        radius=sorted(samples)[int(len(samples)*.82)] if samples else .060
+        radius=min(.084,max(.047,radius))
+        rings=[]
+        for distance,scale in ((-.013,.98),(0,1.035),(.012,.99)):
+            point=center+axis*distance
+            bone='UpperArm'+side if actor.name=='Max' else 'Forearm'+side
+            rings.append((point,radius*scale,radius*.88*scale,{bone:1.}))
+        actor.loft(rings,[cloth,cloth],12,0,Vector((0,1,0)))
+    # Front collar/facing edges frame the neck; the scout's open red jacket
+    # remains separate from her pale undershirt. Surface sampling prevents
+    # the facings from floating over a generic fixed-depth chest.
+    for sign in (-1,1):
+        outline=((.045,.746),(.088,.770),(.101,.827),(.068,.848),(.042,.815))
+        if actor.name=='Max':
+            outline=((.050,.805),(.081,.814),(.095,.845),(.062,.857),(.045,.835))
+        first=len(actor.vertices)
+        for x,z in outline:
+            x*=sign;z*=h
+            y=actor.body.chest_surface(x,z)+.024
+            actor.vertices.append((x,y,z))
+            actor.weights.append({'Chest':1.})
+        face=tuple(first+i for i in range(len(outline)))
+        # Outline is counter-clockwise in XZ on the right side, hence -Y.
+        actor.faces.append(face[::-1] if sign>0 else face)
+        coords=tuple((x/.12,(z-.74)/.12) for x,z in outline)
+        actor.tiles.append((cloth,coords[::-1] if sign>0 else coords))
+
+def append_hair(actor, pack):
+    from mathutils import Vector
+    from makehuman_body import read_obj, append_reduced, smooth
+    name = "short01" if actor.name in ("Max","Walker") else "ponytail01"
+    mapping, axes, _ = read_proxy(pack,name,"hair")
+    _, uv, faces, _ = read_obj(pack.read(f"hair/{name}/{name}.obj").decode().splitlines())
+    body = actor.body
+    scale = Vector((1,1,1))
+    for axis,(a,b,reference) in axes.items():
+        scale[axis] = abs(body.source[a][axis]-body.source[b][axis])/reference
+    points=[]
+    for indices,amounts,offset in mapping:
+        point=sum((body.source[i]*weight for i,weight in zip(indices,amounts)),Vector((0,0,0)))
+        point += Vector(tuple(offset[i]*scale[i] for i in range(3)))
+        fitted=body.shape(point)
+        if actor.name=='Max':
+            # Sculpt the existing groom instead of stacking tubular locks on
+            # top of it. Its original cards supply the fine broken silhouette.
+            crown=smooth(actor.h*.962,actor.h*.997,fitted.z)
+            fitted.x-=.018*crown
+            fitted.y+=.010*crown
+            fitted.z+=.007*crown*(1-smooth(-.045,.065,fitted.x)*.45)
+        elif actor.name=='Eva' and fitted.z>actor.h*.945:
+            crown=smooth(actor.h*.945,actor.h*.994,fitted.z)
+            fitted.x-=.008*crown
+            front=smooth(.065,.122,fitted.y)*(1-smooth(.035,.082,abs(fitted.x)))
+            fitted.z+=.009*front*(1-crown)
+        if actor.name=='Eva' and fitted.y<-.105 and fitted.z<actor.h*.955:
+            t=min(1,max(0,(actor.h*.950-fitted.z)/(actor.h*.16)))
+            # Gather into the tie, then let the ponytail arc away from the
+            # neck. The original animated HairTie/HairTail weights remain.
+            fitted.x+=.019*math.sin(math.pi*t)
+            fitted.y-=.018*math.sin(math.pi*t)
+        points.append(fitted)
+    geometry=[(tuple(i for i,_ in face),tuple(uv[j] for _,j in face)) for face in faces]
+    if not actor.hero:
+        # Sparse, irregular remaining locks rather than the survivor's groomed cap.
+        geometry=[face for index,face in enumerate(geometry) if index%7 not in (0,1)]
+    weights=[]
+    for point in points:
+        if actor.name=="Eva" and point.y<-.10 and point.z<actor.h*.96:
+            t=min(1,max(0,(actor.h*.94-point.z)/(actor.h*.14)))
+            weights.append({"HairTie":1-t,"HairTail":t})
+        else:
+            weights.append({"Head":1.0})
+    tile=34 if name=="short01" else 35
+    append_reduced(actor,actor.name+" swept hair",points,geometry,[tile]*len(geometry),weights,.58)
+    if actor.name=='Eva':
+        append_groomed_locks(actor)
+
+
+def append_groomed_locks(actor):
+    """One flat side-swept forelock, tucked into the native ponytail groom."""
+    from mathutils import Vector
+    from mathutils.bvhtree import BVHTree
+    h=actor.h
+    path=((.055,.981,.003),(.021,.977,.008),(-.025,.966,.009),
+          (-.062,.951,.006),(-.080,.936,.0008))
+    # Keep the authored outline, but follow the forehead's curvature between
+    # its long spans; projecting five rows alone leaves their chords inside skin.
+    rows=[tuple(a+(b-a)*step/3 for a,b in zip(start,end))
+          for start,end in zip(path,path[1:]) for step in range(3)]+[path[-1]]
+    # Project each corner onto its actual head triangle. The torso helper's
+    # wide maximum-depth window picks the nose for temple points, pushing a
+    # narrow forelock several centimetres away from the face.
+    head_faces=[tuple(index for index,_ in face) for face in actor.body.faces
+                if all(actor.body.geometry[index].z>h*.88 for index,_ in face)]
+    used=sorted({index for face in head_faces for index in face})
+    lookup={index:i for i,index in enumerate(used)}
+    skin=BVHTree.FromPolygons([actor.body.geometry[index] for index in used],
+                             [tuple(lookup[index] for index in face) for face in head_faces],
+                             all_triangles=False)
+    first=len(actor.vertices)
+    for x,z,width in rows:
+        for sign in (-1,1):
+            height=z*h+sign*width
+            hit,_,_,_=skin.ray_cast(Vector((x,h*.4,height)),Vector((0,-1,0)),h*.8)
+            if hit is None:
+                raise ValueError(f"{actor.name} forelock misses head at {(x,height)}")
+            y=hit.y+.003
+            actor.vertices.append((x,y,height))
+            actor.weights.append({'Head':1.})
+    for i in range(len(rows)-1):
+        a=first+i*2
+        actor.faces.append((a+2,a+3,a+1,a))
+        # Follow the same warm directional strand island as the scalp.
+        u=.15+i/(len(rows)-1)*.14;next_u=.15+(i+1)/(len(rows)-1)*.14
+        actor.tiles.append((35,((next_u,.62),(next_u,.73),(u,.73),(u,.62))))
+
+
+def append_fitted_head_part(actor,pack,family,name,tile,ratio):
+    from mathutils import Vector
+    from makehuman_body import read_obj,append_reduced
+    mapping,axes,_=read_proxy(pack,name,family)
+    source,uv,faces,_=read_obj(pack.read(f'{family}/{name}/{name}.obj').decode().splitlines())
+    label=(actor.name,family,name)
+    assert source and len(mapping)==len(source),(label,'proxy/OBJ vertex count',len(mapping),len(source))
+    assert all(0<=index<len(actor.body.source) for ids,_,_ in mapping for index in ids),(label,'basemesh index')
+    assert faces and all(len(face)>=3 and all(0<=i<len(source) and 0<=j<len(uv)
+                                             for i,j in face) for face in faces),(label,'OBJ face/UV index')
+    scale=Vector((1,1,1))
+    for axis,(a,b,reference) in axes.items():
+        scale[axis]=abs(actor.body.source[a][axis]-actor.body.source[b][axis])/reference
+    points=[]
+    for ids,amounts,offset in mapping:
+        point=sum((actor.body.source[i]*weight for i,weight in zip(ids,amounts)),Vector((0,0,0)))
+        point+=Vector(tuple(offset[i]*scale[i] for i in range(3)))
+        points.append(actor.body.shape(point))
+    assert len(points)==len(source),(label,'fitted vertex count')
+    geometry=[(tuple(i for i,_ in face),tuple(uv[j] for _,j in face)) for face in faces]
+    append_reduced(actor,actor.name+' '+name,points,geometry,[tile]*len(geometry),[{'Head':1.} for _ in points],ratio)

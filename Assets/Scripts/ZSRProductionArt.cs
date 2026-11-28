@@ -106,6 +106,35 @@ namespace ZombieSurvivalRun
     /// </summary>
     public sealed class ZSRProductionArt : MonoBehaviour
     {
+        static bool warnedMissingSettings;
+        static readonly System.Collections.Generic.HashSet<string> WarnedMissingPrefabs = new();
+
+        static void ReportFallback(ZSRProductionArtSettings settings, string character)
+        {
+            if (settings == null && !warnedMissingSettings)
+            {
+                warnedMissingSettings = true;
+                Debug.LogWarning("[ZSR ART] Missing Resources/ProductionArtSettings.asset and shipped art could not load. Using legacy fallback.");
+            }
+            else if (settings != null && WarnedMissingPrefabs.Add(character))
+                Debug.LogWarning("[ZSR ART] No valid custom or shipped rig for " + character + ". Using legacy fallback.");
+        }
+
+        ZSRBundledCharacter bundled;
+        public Transform MuzzlePoint => bundled != null ? bundled.Muzzle : null;
+        public Transform ItemHand => bundled != null ? bundled.ItemHand : null;
+
+        static ZSRProductionArt CreateBundled(Transform parent, string name, bool hero,
+            WeaponType weapon)
+        {
+            var character = ZSRBundledCharacter.Create(parent, name, hero, weapon);
+            if (character == null) return null;
+            var art = character.gameObject.AddComponent<ZSRProductionArt>();
+            art.bundled = character;
+            art.WeaponAnchor = character.Muzzle != null ? character.Muzzle.parent : null;
+            return art;
+        }
+
         Animator animator;
         ZSRPolyforkBoneMotion motion;
         GameObject muzzle;
@@ -113,29 +142,47 @@ namespace ZombieSurvivalRun
         float hitUntil;
         float shootUntil;
         int currentState = 0;
-        float lateralLean;
+        float lateralLean, strideHeading;
+        public Vector3 MouthPosition => bundled != null && bundled.Mouth != null
+            ? bundled.Mouth.position : transform.position + transform.up*1.55f;
         public Transform WeaponAnchor { get; private set; }
 
         public static ZSRProductionArt CreateHero(Transform parent, int selected, WeaponType gun)
         {
+            string name = selected == 0 ? "Max" : "Eva";
             var settings = Resources.Load<ZSRProductionArtSettings>("ProductionArtSettings");
-            if (settings == null) return null;
-            var prefab = selected == 0 ? settings.maxPrefab : settings.evaPrefab;
-            var fallback = selected == 0 ? settings.maxMotionController : settings.evaMotionController;
-            var avatar = selected == 0 ? settings.maxAvatar : settings.evaAvatar;
-            return Create(parent, prefab, settings.heroController, fallback, avatar, true, gun,
-                settings.heroOffset, settings.heroScale, settings.spawnLegacyGun);
+            if (settings != null)
+            {
+                var prefab = selected == 0 ? settings.maxPrefab : settings.evaPrefab;
+                var fallback = selected == 0 ? settings.maxMotionController : settings.evaMotionController;
+                var avatar = selected == 0 ? settings.maxAvatar : settings.evaAvatar;
+                var custom = Create(parent, prefab, settings.heroController, fallback, avatar, true, gun,
+                    settings.heroOffset, settings.heroScale, settings.spawnLegacyGun);
+                if (custom != null) return custom;
+            }
+            var shipped = CreateBundled(parent, name, true, gun);
+            if (shipped == null) ReportFallback(settings, name);
+            return shipped;
         }
 
         public static ZSRProductionArt CreateZombie(Transform parent, ZombieType type)
         {
             var settings = Resources.Load<ZSRProductionArtSettings>("ProductionArtSettings");
-            if (settings == null) return null;
-            var imported = Create(parent, settings.EnemyPrefab(type), settings.zombieController,
-                settings.EnemyMotion(type), settings.EnemyAvatar(type), false,
-                WeaponType.Rifle, settings.zombieOffset, settings.zombieScale, false);
-            if (imported != null) imported.ConfigureInfectedStyle(type);
-            return imported;
+            if (settings != null)
+            {
+                var custom = Create(parent, settings.EnemyPrefab(type), settings.zombieController,
+                    settings.EnemyMotion(type), settings.EnemyAvatar(type), false,
+                    WeaponType.Rifle, settings.zombieOffset, settings.zombieScale, false);
+                if (custom != null)
+                {
+                    custom.ConfigureInfectedStyle(type);
+                    return custom;
+                }
+            }
+            string name = type.ToString();
+            var shipped = CreateBundled(parent, name, false, WeaponType.Rifle);
+            if (shipped == null) ReportFallback(settings, name);
+            return shipped;
         }
 
         static ZSRProductionArt Create(Transform parent, GameObject prefab,
@@ -155,7 +202,8 @@ namespace ZombieSurvivalRun
             if (meshes.Length == 0)
             {
                 Debug.LogError("[ZSR Production] Prefab " + prefab.name + " has no renderers; retaining legacy model.");
-                Destroy(instance);
+                if (Application.isPlaying) Destroy(instance);
+                else DestroyImmediate(instance);
                 return null;
             }
             var production = instance.AddComponent<ZSRProductionArt>();
@@ -290,7 +338,7 @@ namespace ZombieSurvivalRun
 
         public void SetZombieMovementStyle(ZombieType type)
         {
-            if (dead) return;
+            if (dead || bundled != null) return;
             float pitch = type == ZombieType.Crawler ? 48f : type == ZombieType.Runner ? 13f :
                 type == ZombieType.Brute ? -5f : type == ZombieType.Toxic ? 7f : 3f;
             transform.localRotation = Quaternion.Slerp(transform.localRotation,
@@ -311,7 +359,8 @@ namespace ZombieSurvivalRun
                     !n.Contains("gurney") && !n.Contains("trolley") &&
                     !n.Contains("pushcart") && !n.Contains("medicalcart") &&
                     !n.Contains("hospitalbed") && !n.Contains("wheelcart") &&
-                    !n.Contains("rollingbed")) continue;
+                    !n.Contains("rollingbed") && !n.Contains("medical_case") &&
+                    !n.Contains("medicalcase")) continue;
                 // Disable *only* a named prop renderer. Don't disable its parent rig/bones.
                 foreach (var visual in child.GetComponentsInChildren<Renderer>(true))
                     visual.enabled = false;
@@ -328,27 +377,34 @@ namespace ZombieSurvivalRun
             currentState = hash;
         }
 
-        public void PlayRun()
+        public void PlayRun(float stridePhase = 0f)
         {
             dead = false;
             hitUntil = 0f;
             shootUntil = 0f;
             currentState = 0;
+            if (bundled != null) { bundled.ResetMotion(stridePhase); return; }
             ChangeState("Run", 0f);
             if(motion != null) motion.Running = true;
         }
 
-        public void SetLateralLean(float movement)
+        public void SetLateralLean(float sideways, float acceleration, float forward, float dt)
         {
             if (dead) return;
-            float tilt = Mathf.Clamp(-movement * .85f, -6f, 6f);
-            lateralLean = Mathf.Lerp(lateralLean, tilt, 1f - Mathf.Exp(-Time.deltaTime * 11f));
-            transform.localRotation = Quaternion.Euler(0f, 0f, lateralLean);
+            float settle = 1f - Mathf.Exp(-dt * 12f);
+            lateralLean = Mathf.Lerp(lateralLean, ZSRHeroGait.Bank(sideways, acceleration), settle);
+            strideHeading = Mathf.Lerp(strideHeading, ZSRHeroGait.Heading(sideways, forward), settle);
+            if (bundled != null && bundled.TrySetSteering(lateralLean, strideHeading))
+                transform.localRotation = Quaternion.Euler(0f, strideHeading, 0f);
+            else
+                transform.localRotation = Quaternion.Euler(Mathf.Abs(lateralLean) * .15f, strideHeading, lateralLean);
         }
 
-        public void Tick(bool running, float speed)
+        public void Tick(bool running, float speed, bool walking = false)
         {
             if (dead) return;
+            if (bundled != null) { bundled.Tick(running, speed, walking); return; }
+            if (walking) speed *= .60f;
             if (animator != null && animator.runtimeAnimatorController != null)
                 animator.speed = Mathf.Clamp(speed, .6f, 1.8f);
             if (Time.time >= hitUntil)
@@ -362,6 +418,7 @@ namespace ZombieSurvivalRun
         public void Hit()
         {
             if (dead) return;
+            if (bundled != null) { bundled.Hit(); return; }
             hitUntil = Time.time + .20f;
             ChangeState("Hit", .04f);
             if(motion != null) motion.ReactHit();
@@ -371,19 +428,36 @@ namespace ZombieSurvivalRun
         {
             dead = true;
             shootUntil = 0f;
+            if (bundled != null) { bundled.Die(); return; }
             if (animator != null) animator.speed = 1f;
             ChangeState("Death", .07f);
             if(motion != null) motion.Running = false;
         }
 
-        public void Fire()
+        public void Fire(Vector3 target)
         {
             if (dead) return;
+            if (bundled != null) { bundled.Fire(target); return; }
             shootUntil = Time.time + .20f;
             if (muzzle == null) return;
             muzzle.SetActive(true);
             CancelInvoke(nameof(HideMuzzle));
             Invoke(nameof(HideMuzzle), .06f);
+        }
+
+        public void UseItem(bool medkit)
+        {
+            if (!dead && bundled != null) bundled.UseItem(medkit);
+        }
+
+        public void Reload(float seconds)
+        {
+            if (!dead && bundled != null) bundled.Reload(seconds);
+        }
+
+        public void Attack()
+        {
+            if (!dead && bundled != null) bundled.Attack();
         }
 
         void HideMuzzle() { if (muzzle != null) muzzle.SetActive(false); }

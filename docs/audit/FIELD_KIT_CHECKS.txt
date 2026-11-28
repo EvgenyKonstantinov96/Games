@@ -1,0 +1,93 @@
+Field kit and visibility checks — 2026-11-28
+Base: e0c5421695b5f26f60e6d0d02c660b2a0292e14e
+Game/assets/tools: a0fa0a161d905348cc127958fc4f8398e23b3125
+This is not a native Unity / Android pass. Package compiler warnings suppressed.
+
+=== Managed C# API compilation / real Unity and package references ===
+Game C# content digest ce65a30af15ef57f15f5767dfa31edebf5f9260d71bac11901fe30be112c0e74
+Assembly-CSharp 27 PASS
+Assembly-CSharp 27 PASS
+Assembly-CSharp-Editor 18 PASS
+URP post-processing references, setup restoration at both entry points, and camera FXAA verified in source 41439944d30ece34e96484bdb6645b55
+
+=== Geometry, item art and URP source audit ===
+PROP PASS drone: 1084 triangles, normalized normals, UVs and nondegenerate faces; bounds [1.022, 0.293, 0.882].
+PROP PASS rotor: 100 triangles, normalized normals, UVs and nondegenerate faces; bounds [0.51, 0.026, 0.062].
+PROP PASS grenade: 1220 triangles, normalized normals, UVs and nondegenerate faces; bounds [0.17, 0.234, 0.17].
+PROP PASS medkit: 340 triangles, normalized normals, UVs and nondegenerate faces; bounds [0.336, 0.262, 0.15].
+FIELD KIT ART PASS: three distinct 512² transparent icons, no clipped border, red medical case / olive grenade / light quadcopter; shared 512² atlas.
+URP SOURCE PASS: configured additional light value 1 equals actual package PerPixel; debug canvas identity and public shutdown APIs verified in Core 17.3. Not a native UI/render test.
+
+=== Actual interface class / managed UI scene stand-ins ===
+Tools/QA/InterfaceProbeShims.cs(85,70): warning CS0649: Field 'ZSRGame.Pace' is never assigned to, and will always have its default value
+DIALOGUE UI PASS: 92 speaker pages with matching face and complete line.
+FIELD KIT UI PASS: three rendered icons, one callback per item, 72×80 controls, ammo and high-contrast damage notice.
+UI PASS: 27 portrait layouts and 44×44 minimum design-space inputs, all 40 pages with 25 entries, level 1000, rank locks, bold button font, manual dialogue with face portraits and replay callback.
+
+=== Actual grenade flight / scene stand-ins ===
+FLIGHT PASS: 48 throws at 20/30/60/120 Hz with Unity vector math. Release, fixed aim, moving road, pace change, pause, trail and impact within 1 mm of analytical endpoint.
+
+=== Actual contact and spit methods / scene stand-ins ===
+MELEE PASS 20 Hz: three enemy types, one physical contact per attack, no adjacent-lane damage, distinct bite/claw cause.
+TOXIC PASS 20 Hz: wind-up 0.450s, flight 0.500s, 5 scenarios, pause, 6 shot / 44 enemy caps.
+MELEE PASS 30 Hz: three enemy types, one physical contact per attack, no adjacent-lane damage, distinct bite/claw cause.
+TOXIC PASS 30 Hz: wind-up 0.433s, flight 0.500s, 5 scenarios, pause, 6 shot / 44 enemy caps.
+MELEE PASS 60 Hz: three enemy types, one physical contact per attack, no adjacent-lane damage, distinct bite/claw cause.
+TOXIC PASS 60 Hz: wind-up 0.433s, flight 0.483s, 5 scenarios, pause, 6 shot / 44 enemy caps.
+MELEE PASS 120 Hz: three enemy types, one physical contact per attack, no adjacent-lane damage, distinct bite/claw cause.
+TOXIC PASS 120 Hz: wind-up 0.425s, flight 0.483s, 5 scenarios, pause, 6 shot / 44 enemy caps.
+
+=== Existing asset regressions ===
+BRIDGE PASS: 1600 loop steps, at least 6.29 m deck overlap, 1492 guardrail triangles.
+ATLAS PASS: nonoverlapping 2048 islands; 768² hero skins, nine times previous skin pixels, one shared material.
+UI IMPORT PASS: original proportions, no mipmaps, clamp and uncompressed desktop art; native face crops.
+MENU PASS: 13 distinct antialiased atlas symbols with clear gutters; all 55 level/district titles fit the home mission card.
+ASSETS PASS: Cyrillic and symbols in both fonts, 700-weight button captions, rounded button alpha, isolated boss emission, four unique arsenal icons.
+
+=== Road and campaign resource regressions ===
+LANDMARK PASS ruins      1488 triangles, 6.830 m road headroom.
+LANDMARK PASS industrial 1680 triangles, 6.555 m road headroom.
+LANDMARK PASS evacuation 1644 triangles, 6.170 m road headroom.
+BRIDGE SURFACE PASS: 46 m module, 4 seamless repeats, three dashes per repeat, PBR maps registered, two shoulder drains and feathered lamp mask.
+STREET PASS track_streetlamp: 132 triangles, normals/UVs, 0.190 m beyond hero corridor.
+STREET PASS track_maintenance: 516 triangles, normals/UVs, 1.757 m beyond hero corridor.
+CAMPAIGN ART PASS: distinct warm/cool skies, low-gloss road and wet patches, two portrait covers.
+
+=== GUID, metadata, FBX and accepted weapon preservation ===
+INTEGRITY PASS: 270 unique GUIDs; every asset file has metadata. Nine FBX and accepted weapon icons byte-identical to baseline.
+
+=== Blender projection checks (not URP render) ===
+FRAME CHECK Eva 390x844 x=-4.3: silhouette x=0.094..0.293 y=0.171..0.425, rails at 20m=0.193..0.930.
+FRAME CHECK Eva 390x844 x=+0.0: silhouette x=0.404..0.599 y=0.177..0.427, rails at 16m=0.058..0.942.
+FRAME CHECK Eva 390x844 x=+4.3: silhouette x=0.708..0.908 y=0.171..0.425, rails at 20m=0.070..0.807.
+FRAME CHECK Eva 1080x2400 x=-4.3: silhouette x=0.084..0.288 y=0.171..0.425, rails at 20m=0.184..0.942.
+FRAME CHECK Eva 1080x2400 x=+0.0: silhouette x=0.401..0.601 y=0.177..0.427, rails at 16m=0.046..0.954.
+FRAME CHECK Eva 1080x2400 x=+4.3: silhouette x=0.714..0.919 y=0.171..0.425, rails at 20m=0.058..0.816.
+FRAME CHECK Eva 1080x2640 x=-4.3: silhouette x=0.084..0.288 y=0.201..0.432, rails at 20m=0.184..0.942.
+FRAME CHECK Eva 1080x2640 x=+0.0: silhouette x=0.401..0.601 y=0.206..0.434, rails at 16m=0.046..0.954.
+FRAME CHECK Eva 1080x2640 x=+4.3: silhouette x=0.714..0.919 y=0.201..0.432, rails at 20m=0.058..0.816.
+FRAME CHECK Max 390x844 x=-4.3: silhouette x=0.088..0.295 y=0.166..0.445, rails at 20m=0.193..0.930.
+FRAME CHECK Max 390x844 x=+0.0: silhouette x=0.398..0.601 y=0.173..0.447, rails at 16m=0.058..0.942.
+FRAME CHECK Max 390x844 x=+4.3: silhouette x=0.704..0.911 y=0.166..0.445, rails at 20m=0.070..0.807.
+FRAME CHECK Max 1080x2400 x=-4.3: silhouette x=0.077..0.289 y=0.166..0.445, rails at 20m=0.184..0.942.
+FRAME CHECK Max 1080x2400 x=+0.0: silhouette x=0.396..0.603 y=0.173..0.447, rails at 16m=0.046..0.954.
+FRAME CHECK Max 1080x2400 x=+4.3: silhouette x=0.710..0.922 y=0.166..0.445, rails at 20m=0.058..0.816.
+FRAME CHECK Max 1080x2640 x=-4.3: silhouette x=0.077..0.289 y=0.196..0.450, rails at 20m=0.184..0.942.
+FRAME CHECK Max 1080x2640 x=+0.0: silhouette x=0.396..0.603 y=0.202..0.452, rails at 16m=0.046..0.954.
+FRAME CHECK Max 1080x2640 x=+4.3: silhouette x=0.710..0.922 y=0.196..0.450, rails at 20m=0.058..0.816.
+Saved: '/tmp/zsr-fieldkit-run.png'
+
+=== Python syntax and final C# content identity ===
+PASS ast.parse: six changed Art scripts and three QA runner scripts.
+PASS final source digest matches API-compiled digest: ce65a30af15ef57f15f5767dfa31edebf5f9260d71bac11901fe30be112c0e74
+
+=== Native Unity attempt ===
+Unity 6000.3.28f1 batchmode: process exit 198 before project import.
+No valid Unity Editor license found. Please activate your license.
+BLOCKED: native import, PlayMode, Game View, Android build/device, sound, FPS and memory.
+
+=== Failures corrected and rerun ===
+Initial geometry check: degenerate medkit latch faces. Clamped bevel to thin dimensions; regenerated all props/icons; geometry checks PASS.
+Initial flight probe compilation: ZSRCombatArt absent from probe. Updated material stand-in; 48 throws PASS.
+Icon render fit: applied world transforms to rotor bounds and projected fit with margin; all three transparent borders PASS.
+URP mode first misread; actual package enum verified PerPixel=1. Original serialized value 1 retained.

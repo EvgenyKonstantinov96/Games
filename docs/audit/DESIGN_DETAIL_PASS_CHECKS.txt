@@ -1,0 +1,472 @@
+Zombie Survival Run: design detail pass / 2026-11-28 UTC
+BASE d0307fe8006fb2f48536e34670c15425495f6b1f
+CODE e77db6627f27b8cc5604eafee341cc39c353f88e
+Non-native checks only; scope is stated per check.
+
+
+== zsr-fidelity-characters.log ==
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Armored: [14309, 6868, 3277] triangles, one skeleton and atlas
+ANATOMY Armored 4495 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.36x, forefoot flexion 20.0/13.4 degrees
+FALL Armored: 22 poses, pavement error 0.000 m, head 1.66 to 0.35 m
+PASS Armored 51 bones, 7679 verts, 14309 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Boss: [14013, 6725, 3222] triangles, one skeleton and atlas
+ANATOMY Boss    3971 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.53x, forefoot flexion 20.2/15.0 degrees
+FALL Boss: 22 poses, pavement error 0.000 m, head 1.82 to 0.55 m
+BOSS attack reach L/R 0.769/0.769 m, ankle drift L/R 0.000/0.000 m
+PASS Boss    51 bones, 9912 verts, 14013 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Brute: [12973, 6226, 2979] triangles, one skeleton and atlas
+ANATOMY Brute   3858 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.46x, forefoot flexion 20.3/13.9 degrees
+FALL Brute: 22 poses, pavement error 0.000 m, head 1.78 to 0.47 m
+PASS Brute   51 bones, 9054 verts, 12973 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Crawler: [15392, 7388, 3540] triangles, one skeleton and atlas
+ANATOMY Crawler 1619 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.32x, forefoot flexion 14.4/12.1 degrees
+FALL Crawler: 22 poses, pavement error 0.000 m, head 0.57 to 0.26 m
+PASS Crawler 51 bones, 10429 verts, 15392 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Eva: [18635, 8943, 4250] triangles, one skeleton and atlas
+ANATOMY Eva     2263 vertices in continuous body, 71 poses, worst 99th-percentile edge stretch 1.38x, forefoot flexion 28.4/20.0 degrees
+GAIT Eva     L ankle-roll 56.4 degrees, support 0.006..0.006 m, rearward travel 0.531 m, loop error 0.0000 m
+WALK Eva     L reach 0.426 m vs 0.655 m running, 27/34 frames near the ground, match with firing variant
+GAIT Eva     R ankle-roll 56.4 degrees, support 0.006..0.006 m, rearward travel 0.531 m, loop error 0.0000 m
+WALK Eva     R reach 0.426 m vs 0.655 m running, 27/34 frames near the ground, match with firing variant
+PASS Eva     58 bones, 11475 verts, 18635 triangles, 1–289 frames, smooth custom normals, medkit, throw, walk and walk-fire poses
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Max: [22564, 10829, 5139] triangles, one skeleton and atlas
+ANATOMY Max     3881 vertices in continuous body, 71 poses, worst 99th-percentile edge stretch 1.58x, forefoot flexion 28.2/18.1 degrees
+GAIT Max     L ankle-roll 56.3 degrees, support 0.006..0.006 m, rearward travel 0.588 m, loop error 0.0000 m
+WALK Max     L reach 0.426 m vs 0.717 m running, 27/34 frames near the ground, match with firing variant
+GAIT Max     R ankle-roll 56.3 degrees, support 0.006..0.006 m, rearward travel 0.588 m, loop error 0.0000 m
+WALK Max     R reach 0.426 m vs 0.717 m running, 27/34 frames near the ground, match with firing variant
+PASS Max     56 bones, 15234 verts, 22564 triangles, 1–289 frames, smooth custom normals, medkit, throw, walk and walk-fire poses
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Runner: [11660, 5595, 2681] triangles, one skeleton and atlas
+ANATOMY Runner  1721 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.27x, forefoot flexion 20.3/16.7 degrees
+FALL Runner: 22 poses, pavement error 0.000 m, head 1.55 to 0.32 m
+GAIT Runner  ankle travel L/R 0.882/0.892 m, ankle lift L/R 0.253/0.258 m
+PASS Runner  51 bones, 6784 verts, 11660 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Toxic: [14562, 6989, 3349] triangles, one skeleton and atlas
+ANATOMY Toxic   1862 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.34x, forefoot flexion 20.3/15.3 degrees
+FALL Toxic: 22 poses, pavement error 0.000 m, head 1.54 to 0.32 m
+GAIT Toxic   ankle travel L/R 0.528/0.409 m, ankle lift L/R 0.140/0.086 m
+PASS Toxic   51 bones, 9147 verts, 14562 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Walker: [12759, 6124, 2933] triangles, one skeleton and atlas
+ANATOMY Walker  1872 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.27x, forefoot flexion 19.4/13.1 degrees
+FALL Walker: 22 poses, pavement error 0.000 m, head 1.59 to 0.29 m
+GAIT Walker  ankle travel L/R 0.510/0.387 m, ankle lift L/R 0.131/0.083 m
+PASS Walker  51 bones, 8657 verts, 12759 triangles, 1–168 frames, smooth custom normals
+Blender 4.3.2
+
+Blender quit
+
+
+== zsr-fidelity-carry.log ==
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+PACK Max/Max_LOD2: 181 vertices rigidly bound to Pack below Chest.
+PACK Max/Max_LOD0: 305 vertices rigidly bound to Pack below Chest.
+GUARDS Max: closed LOD0 shells with sidewalls/back caps after UV seam welding.
+PACK Max/Max_LOD1: 264 vertices rigidly bound to Pack below Chest.
+CARRY ProductionArt/Max/run: support-hand span 5.96 mm in weapon frame.
+CARRY ProductionArt/Max/fire: support-hand span 8.73 mm in weapon frame.
+CARRY ProductionArt/Max/walk: support-hand span 6.05 mm in weapon frame.
+CARRY ProductionArt/Max/walk-fire: support-hand span 8.99 mm in weapon frame.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+PACK Eva/Eva_LOD2: 170 vertices rigidly bound to Pack below Chest.
+PACK Eva/Eva_LOD1: 249 vertices rigidly bound to Pack below Chest.
+PACK Eva/Eva_LOD0: 281 vertices rigidly bound to Pack below Chest.
+GUARDS Eva: closed LOD0 shells with sidewalls/back caps after UV seam welding.
+CARRY ProductionArt/Eva/run: support-hand span 4.84 mm in weapon frame.
+CARRY ProductionArt/Eva/fire: support-hand span 8.56 mm in weapon frame.
+CARRY ProductionArt/Eva/walk: support-hand span 4.03 mm in weapon frame.
+CARRY ProductionArt/Eva/walk-fire: support-hand span 9.19 mm in weapon frame.
+Blender 4.3.2
+
+Blender quit
+
+
+== zsr-fidelity-weapon-motion.log ==
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+WEAPON Max/run: angular travel 4.49 deg, vertical travel 54.34 mm, support-hand span 1.58 mm; deforming wrist mount
+WEAPON Max/fire: angular travel 2.92 deg, vertical travel 47.51 mm, support-hand span 2.20 mm; deforming wrist mount
+WEAPON Max/walk: angular travel 3.04 deg, vertical travel 27.11 mm, support-hand span 3.55 mm; deforming wrist mount
+WEAPON Max/walk-fire: angular travel 1.90 deg, vertical travel 21.86 mm, support-hand span 2.14 mm; deforming wrist mount
+WEAPON MOTION PASS Max: all four carry cycles, angular motion, support hand and loop seams. Blender, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+WEAPON Eva/run: angular travel 4.52 deg, vertical travel 54.87 mm, support-hand span 0.37 mm; deforming wrist mount
+WEAPON Eva/fire: angular travel 2.96 deg, vertical travel 48.08 mm, support-hand span 0.33 mm; deforming wrist mount
+WEAPON Eva/walk: angular travel 2.93 deg, vertical travel 27.09 mm, support-hand span 1.37 mm; deforming wrist mount
+WEAPON Eva/walk-fire: angular travel 2.20 deg, vertical travel 24.11 mm, support-hand span 7.22 mm; deforming wrist mount
+WEAPON MOTION PASS Eva: all four carry cycles, angular motion, support hand and loop seams. Blender, not Unity.
+Blender 4.3.2
+
+Blender quit
+
+
+== zsr-fidelity-aim.log ==
+ARM REACH PASS: 4000 moving/reachable/unreachable targets, fixed segment lengths, sampled elbow side and degenerate arm guard. Actual production vector math.
+ARM SCALE PASS: 60 transformed solves at .01–10x, 2 mm equal/unequal segments, reachable/overreaching/near-shoulder targets, full fold, straight sample, finite lengths and invalid guards. Actual production vector math.
+UPPER AIM PASS 20 Hz: 20 s rapid targets, limits, turn speed, convergence, pause, passed enemy, stalled frame, neutral and restart.
+UPPER AIM PASS 30 Hz: 20 s rapid targets, limits, turn speed, convergence, pause, passed enemy, stalled frame, neutral and restart.
+UPPER AIM PASS 60 Hz: 20 s rapid targets, limits, turn speed, convergence, pause, passed enemy, stalled frame, neutral and restart.
+UPPER AIM PASS 120 Hz: 20 s rapid targets, limits, turn speed, convergence, pause, passed enemy, stalled frame, neutral and restart.
+UPPER RIG PASS 20 Hz: 60 s combined lane banking/heading/rapid aim/recoil, restored sparse tracks, bounded neck/shoulders, neutral recovery and untouched death. Scene/rotation stand-ins.
+WEAPON SOCKET PASS 20 Hz: real ApplyAim preserves running roll, wrist mount offset, no-target motion and at most one degree of fine correction. Scene/rotation stand-ins.
+SUPPORT GRIP PASS 20 Hz: real ApplySupportGrip, four targets, wrist following, fixed lengths, restored pose, item release and immediate death release. Scene/rotation stand-ins, unit scale.
+UPPER RIG PASS 30 Hz: 60 s combined lane banking/heading/rapid aim/recoil, restored sparse tracks, bounded neck/shoulders, neutral recovery and untouched death. Scene/rotation stand-ins.
+WEAPON SOCKET PASS 30 Hz: real ApplyAim preserves running roll, wrist mount offset, no-target motion and at most one degree of fine correction. Scene/rotation stand-ins.
+SUPPORT GRIP PASS 30 Hz: real ApplySupportGrip, four targets, wrist following, fixed lengths, restored pose, item release and immediate death release. Scene/rotation stand-ins, unit scale.
+UPPER RIG PASS 60 Hz: 60 s combined lane banking/heading/rapid aim/recoil, restored sparse tracks, bounded neck/shoulders, neutral recovery and untouched death. Scene/rotation stand-ins.
+WEAPON SOCKET PASS 60 Hz: real ApplyAim preserves running roll, wrist mount offset, no-target motion and at most one degree of fine correction. Scene/rotation stand-ins.
+SUPPORT GRIP PASS 60 Hz: real ApplySupportGrip, four targets, wrist following, fixed lengths, restored pose, item release and immediate death release. Scene/rotation stand-ins, unit scale.
+UPPER RIG PASS 120 Hz: 60 s combined lane banking/heading/rapid aim/recoil, restored sparse tracks, bounded neck/shoulders, neutral recovery and untouched death. Scene/rotation stand-ins.
+WEAPON SOCKET PASS 120 Hz: real ApplyAim preserves running roll, wrist mount offset, no-target motion and at most one degree of fine correction. Scene/rotation stand-ins.
+SUPPORT GRIP PASS 120 Hz: real ApplySupportGrip, four targets, wrist following, fixed lengths, restored pose, item release and immediate death release. Scene/rotation stand-ins, unit scale.
+FBX GRIP PASS Max: 1080 pose/weapon/actor/import-unit cases; first-pose marker and barrel calibration, wrist following, fixed segments, reachable target error <= 0.012 mm, item/reload/death restore. SHA256 cc2ab32d51de19ba9c61ded6e59fe0f9811d91bfcb47139138101c42c0461605. Blender FBX poses with scene/rotation stand-ins; no native Unity import/Animator/render validation.
+FBX GRIP PASS Eva: 1080 pose/weapon/actor/import-unit cases; first-pose marker and barrel calibration, wrist following, fixed segments, reachable target error <= 0.013 mm, item/reload/death restore. SHA256 56de30123639a571096e3e989152335ba81c18852daa79da6c9f46219fa3191d. Blender FBX poses with scene/rotation stand-ins; no native Unity import/Animator/render validation.
+
+
+== zsr-fidelity-layers.log ==
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+WEAPONS Max: maximum right-palm-to-grip distances {'pistol': 0.020525421838946616, 'rifle': 0.03162730834130465, 'shotgun': 0.04571942029735087, 'minigun': 0.055392939872450905}; all four muzzle rings centered on authored axis.
+HERO MASK Max: 96 action/gait samples, prior maximum foot mismatch 0.742 m, layered error 0.000000 m. Hand pose relative to spine preserved.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+WEAPONS Eva: maximum right-palm-to-grip distances {'pistol': 0.021161141297269957, 'rifle': 0.036870483552089814, 'shotgun': 0.05126249202587824, 'minigun': 0.058936231539256666}; all four muzzle rings centered on authored axis.
+HERO MASK Eva: 96 action/gait samples, prior maximum foot mismatch 0.680 m, layered error 0.000000 m. Hand pose relative to spine preserved.
+Blender 4.3.2
+
+Blender quit
+
+
+== zsr-fidelity-contact.log ==
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Armored: peak adjacent rotation 11.51 deg, loop 5.24 mm / 0.345 deg, knee flexion 42.6..79.9 deg.
+CONTACT/CONTINUITY PASS Armored — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Boss: peak adjacent rotation 12.27 deg, loop 0.87 mm / 0.056 deg, knee flexion 39.8..81.2 deg.
+CONTACT/CONTINUITY PASS Boss — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Brute: peak adjacent rotation 12.48 deg, loop 0.85 mm / 0.056 deg, knee flexion 40.6..81.4 deg.
+CONTACT/CONTINUITY PASS Brute — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Crawler: peak adjacent rotation 21.11 deg, loop 0.11 mm / 0.097 deg, knee flexion 84.5..135.0 deg.
+CRAWLER L: skin floor -1.21 mm, lowest hand -1.18 mm, recovery 98.95 mm; 19/24 frames within 35 mm of contact plane.
+CRAWLER R: skin floor -1.21 mm, lowest hand -1.21 mm, recovery 97.26 mm; 20/24 frames within 35 mm of contact plane.
+CONTACT/CONTINUITY PASS Crawler — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Eva: peak adjacent rotation 14.52 deg, loop 0.07 mm / 0.000 deg, knee flexion 28.1..97.3 deg.
+CONTACT Eva: peak knee height 0.586 m, foot separation 0.200 m; maximum palm-pad/fore-end distance 11.87 mm, minimum upward palm normal 0.992, minimum finger middle-joint bend 62.1 deg.
+CONTACT/CONTINUITY PASS Eva — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Max: peak adjacent rotation 15.37 deg, loop 0.81 mm / 0.112 deg, knee flexion 27.6..96.9 deg.
+CONTACT Max: peak knee height 0.647 m, foot separation 0.224 m; maximum palm-pad/fore-end distance 16.25 mm, minimum upward palm normal 0.991, minimum finger middle-joint bend 61.4 deg.
+CONTACT/CONTINUITY PASS Max — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Runner: peak adjacent rotation 15.30 deg, loop 0.89 mm / 0.069 deg, knee flexion 27.1..102.2 deg.
+CONTACT/CONTINUITY PASS Runner — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Toxic: peak adjacent rotation 11.34 deg, loop 0.51 mm / 0.040 deg, knee flexion 46.0..83.6 deg.
+CONTACT/CONTINUITY PASS Toxic — Blender FBX, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+JOINTS Walker: peak adjacent rotation 11.96 deg, loop 0.76 mm / 0.040 deg, knee flexion 44.5..82.1 deg.
+CONTACT/CONTINUITY PASS Walker — Blender FBX, not Unity.
+Blender 4.3.2
+
+Blender quit
+
+
+== zsr-fidelity-head-review.log ==
+POSE PASS: 24000 frames, keyed and omitted head tracks, bounded steering and neutral recovery.
+BRIEFING PASS: 1000 level entries, manual speakers, blocked run clock, cancellation and clean final start. Managed scene stand-ins.
+
+
+== zsr-fidelity-api.log ==
+Game C# content digest 24a4aeda12f0e4bb9c6d3ec29549dec787d9062fcfa4e7dd7da2329262814994
+Assembly-CSharp 28 PASS
+Assembly-CSharp 28 PASS
+Assembly-CSharp-Editor 18 PASS
+URP post-processing references, setup restoration at both entry points, and camera FXAA verified in source 41439944d30ece34e96484bdb6645b55
+
+
+== zsr-fidelity-shared-assets.log ==
+BRIDGE PASS: 1600 loop steps, at least 6.29 m deck overlap, 1492 guardrail triangles.
+ATLAS PASS: nonoverlapping 2048 islands; 768² hero skins, nine times previous skin pixels, one shared material.
+UI IMPORT PASS: original proportions, no mipmaps, clamp and uncompressed desktop art; native face crops.
+MENU PASS: 13 distinct antialiased atlas symbols with clear gutters; all 55 level/district titles fit the home mission card.
+ASSETS PASS: Cyrillic and symbols in both fonts, 700-weight button captions, rounded button alpha, isolated boss emission, four unique arsenal icons.
+
+
+== zsr-fidelity-campaign-assets.log ==
+LANDMARK PASS ruins      1488 triangles, 6.830 m road headroom.
+LANDMARK PASS industrial 1680 triangles, 6.555 m road headroom.
+LANDMARK PASS evacuation 1644 triangles, 6.170 m road headroom.
+BRIDGE SURFACE PASS: 46 m module, 4 seamless repeats, three dashes per repeat, PBR maps registered, two shoulder drains and feathered lamp mask.
+STREET PASS track_streetlamp: 132 triangles, normals/UVs, 0.190 m beyond hero corridor.
+STREET PASS track_maintenance: 516 triangles, normals/UVs, 1.757 m beyond hero corridor.
+CAMPAIGN ART PASS: distinct warm/cool skies, low-gloss road and wet patches, two portrait covers.
+
+
+== zsr-fidelity-surfaces.log ==
+{
+  "result": "PASS",
+  "normal_max_unit_error": 0.013423,
+  "smoothness_medians": {
+    "0": 35.0,
+    "3": 92.0,
+    "4": 104.0,
+    "19": 65.0,
+    "21": 124.0,
+    "24": 82.0,
+    "26": 60.0,
+    "36": 210.0,
+    "40": 38.0,
+    "41": 37.0
+  },
+  "deterministic_repeat": true,
+  "sha256": {
+    "CharacterAtlas.png": "3f7a903637501ed23869623c84e6572a4ffe076b820095f659342f56a3ebc149",
+    "CharacterAtlas_normal.png": "dff66abed32767a2b350c08b4a1f932c618a3ff3efe1756e2894286a5eff8e03",
+    "CharacterAtlas_surface.png": "09d3af5d748282ae9718b85bea0a530a268498fa8ffd7d0ade8d0b7f91b95843",
+    "CharacterAtlas_emission.png": "0f8a724599b9a90c632a315c1340388a8b64d2813b71f537b80fb55265d62f2e"
+  },
+  "scope": "Python asset checks only; Unity import/render/device acceptance not tested"
+}
+
+
+== zsr-fidelity-track-check.log ==
+TRACK FINISH PASS: normalized relief; concrete/rubber dielectric, zinc/spikes metallic, glass smoother than concrete.
+TRACK BOLTS PASS: finite closed capped rods along all three axes, including vertical.
+TRACK ENVELOPE PASS track_barrier: 136 vertices / 236 triangles, finite geometry and baseline envelope.
+TRACK ENVELOPE PASS track_gate_pylon: 128 vertices / 228 triangles, finite geometry and baseline envelope.
+TRACK ENVELOPE PASS track_guardrail: 808 vertices / 1492 triangles, finite geometry and baseline envelope.
+TRACK ENVELOPE PASS track_spikes: 504 vertices / 944 triangles, finite geometry and baseline envelope.
+TRACK ENVELOPE PASS track_rubble: 226 vertices / 328 triangles, finite geometry and baseline envelope.
+TRACK ENVELOPE PASS track_wreck: 768 vertices / 1436 triangles, finite geometry and baseline envelope.
+
+
+== zsr-fidelity-integrity.log ==
+PASS Python AST: 18 changed/new source files
+PASS 273 unique Unity GUIDs; all asset files have metadata
+PASS 6 accepted weapon icons and progression/weapon files unchanged from d0307fe
+PASS API check C# source digest still matches final files: 24a4aeda12f0e4bb9c6d3ec29549dec787d9062fcfa4e7dd7da2329262814994
+PASS git diff --check
+
+
+== Current final character surface repeat ==
+{
+  "result": "PASS",
+  "normal_max_unit_error": 0.013423,
+  "smoothness_medians": {
+    "0": 35.0,
+    "3": 92.0,
+    "4": 104.0,
+    "19": 65.0,
+    "21": 124.0,
+    "24": 82.0,
+    "26": 60.0,
+    "36": 210.0,
+    "40": 38.0,
+    "41": 37.0
+  },
+  "deterministic_repeat": true,
+  "sha256": {
+    "CharacterAtlas.png": "3f7a903637501ed23869623c84e6572a4ffe076b820095f659342f56a3ebc149",
+    "CharacterAtlas_normal.png": "dff66abed32767a2b350c08b4a1f932c618a3ff3efe1756e2894286a5eff8e03",
+    "CharacterAtlas_surface.png": "09d3af5d748282ae9718b85bea0a530a268498fa8ffd7d0ade8d0b7f91b95843",
+    "CharacterAtlas_emission.png": "0f8a724599b9a90c632a315c1340388a8b64d2813b71f537b80fb55265d62f2e"
+  },
+  "scope": "Python asset checks only; Unity import/render/device acceptance not tested"
+}
+
+
+== Expected regression on original baseline solver (failure before fix) ==
+Original HEAD solver regression exit: -6
+ARM REACH PASS: 4000 moving/reachable/unreachable targets, fixed segment lengths, sampled elbow side and degenerate arm guard. Actual production vector math.
+Unhandled exception. System.Exception: Scaled arm segment lengths preserved
+   at UpperAimProbe.Need(Boolean ok, String text)
+   at UpperAimProbe.CheckReach(Vector3 shoulder, Vector3 elbow, Vector3 wrist, Vector3 target, Vector3& joint, Vector3& end)
+   at UpperAimProbe.CheckScaledArms()
+   at UpperAimProbe.Main()
+
+
+
+== Intermediate export defect diagnosed before LOD UV fix ==
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+Armored_LOD0 BAD 0 []
+Armored_LOD2 BAD 3 [(2729, [(698.4797973632812, 1537.9999694824219), (766.0, 1568.0), (706.0, 1568.0)]), (2730, [(706.0, 1568.0), (766.0, 1568.0), (702.0279541015625, 1598.0)]), (2865, [(578.0, 1711.0), (638.0, 1711.0), (573.8589477539062, 1726.0)])]
+Armored_LOD1 BAD 4 [(3154, [(776.0, 1580.8571472167969), (782.0, 1583.8920288085938), (767.8517456054688, 1601.0690002441406)]), (5469, [(776.0, 1598.0), (767.8517456054688, 1601.0690002441406), (782.0, 1583.8920288085938), (782.0, 1598.0)]), (5475, [(770.0, 1589.4285583496094), (770.0, 1576.5714111328125), (776.0, 1580.8571472167969), (767.8517456054688, 1601.0690002441406)]), (5829, [(962.0, 1647.0), (1022.0, 1647.0), (956.0825805664062, 1662.0000305175781)])]
+Blender 4.3.2
+
+Blender quit
+
+
+== Additional sculpt-only fit checks; not native Animator ==
+WARN (bke.appdir): ./source/blender/blenkernel/intern/appdir.cc:1186 tempdir_session_create: Could not generate a temp file name for '/tmp/blender_lenGgG', falling back to '/tmp/'
+BIB_FIT (0.223, 0.648, 0.824, 3) verts 176 xlim -0.19364579021930695 0.19364579021930695 minimum_triangle_area 5.213164521955392e-05 all_torso_weights
+BIB_FIT (0.207, 0.735, 0.807, 4, 0.016) verts 176 xlim -0.20962080359458923 0.20962080359458923 minimum_triangle_area 1.529793923185652e-05 all_torso_weights
+BIB_FIT (0.211, 0.683, 0.747, 4, 0.016) verts 176 xlim -0.21286286413669586 0.21286286413669586 minimum_triangle_area 4.454651953859545e-06 all_torso_weights
+BIB_FIT (0.191, 0.65, 0.695, 4, 0.016) verts 176 xlim -0.18005989491939545 0.18005989491939545 minimum_triangle_area 2.2199770097539688e-05 all_torso_weights
+BAD_UV Armored []
+INFECTED_DETAIL Armored verts 7679 used 7679 triangles 14309 bones 51 source_normal (-0.0, 0.995, 0.099)
+PASS seven sculpt-only models; no animation/export/render performed
+Blender 4.3.2
+rmdir: Device or resource busy
+
+Blender quit
+INFECTED_DETAIL Toxic verts 9147 used 8839 triangles 14562 bones 51 source_normal (0.0, 0.989, 0.146)
+INFECTED_DETAIL Boss verts 9912 used 7738 triangles 14013 bones 51 source_normal (0.0, 1.0, -0.003)
+PASS seven sculpt-only models; no animation/export/render performed
+Blender 4.3.2
+
+Blender quit
+
+
+== Native Unity attempt: BLOCKED (licence) ==
+Unity Editor version:    6000.3.28f1 (8f082d2fe476)
+Branch:                  6000.3/respin/6000.3.28f1-21f78c3e21d1
+Build type:              Release
+Batch mode:              YES
+System name:             Linux
+Distro version:          #1 SMP Tue Oct 20 21:56:04 UTC 2026
+Kernel version:          6.18.57
+Architecture:            x86_64
+Available memory:        9968 MB
+Date:                    2026-11-28T12:01:32Z
+VBCSCompilerServerWatchdog: watching VBCSCompiler (PID 25199)
+[Licensing::Module] Trying to connect to existing licensing client channel...
+Initialize udev device monitor.
+[Licensing::IpcConnector] Channel LicenseClient-agent doesn't exist
+[Licensing::Module] Successfully launched the LicensingClient (PId: 25203)
+
+COMMAND LINE ARGUMENTS:
+/workspace/zsr-unity/Editor/Unity
+-batchmode
+-nographics
+-projectPath
+/workspace/Games
+-quit
+-logFile
+/tmp/zsr-fidelity-unity.log
+Successfully changed project path to: /workspace/Games
+/workspace/Games
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=33554432"
+    "memorysetup-remapper-allocator-initial-capacity=32768"
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=33554432"
+    "memorysetup-bucket-allocator-block-count=8"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=33554432"
+    "memorysetup-profiler-bucket-allocator-block-count=8"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=16777216"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+Player connection [140033839786880]  Target information:
+
+Player connection [140033839786880]  * "[IP] 172.26.91.245 [Port] 55504 [Flags] 2 [Guid] 3847353090 [EditorId] 3847353090 [Version] 1048832 [Id] LinuxEditor(16,172.26.91.245) [Debug] 1 [PackageName] LinuxEditor [ProjectName] Editor"
+
+Player connection [140033839786880]  * "[IP] 172.31.2.30 [Port] 55504 [Flags] 2 [Guid] 3847353090 [EditorId] 3847353090 [Version] 1048832 [Id] LinuxEditor(16,172.26.91.245) [Debug] 1 [PackageName] LinuxEditor [ProjectName] Editor"
+
+Player connection [140033839786880] Host joined multi-casting on [225.0.0.222:54997]...
+Player connection [140033839786880] Host joined alternative multi-casting on [225.0.0.222:34997]...
+Input System module state changed to: Initialized.
+[Physics::Module] Initialized fallback backend.
+[Physics::Module] Id: 0xdecafbad
+[Licensing::IpcConnector] Successfully connected to: "LicenseClient-agent" at "2026-11-28T12:01:32.336756Z"
+[SignatureVerifier] Application signature verification not supported on this platform.
+[Licensing::Client] Handshaking with LicensingClient:
+  Version:                 1.19.0+4cc3dda
+  Session Id:              3d97da39896f4f6ca0d3be81bdaa4cef
+  Correlation Id:          47661e7a871d8ccb303b0e1670963109
+  External correlation Id: 3879758003374988970
+  Machine Id:              AhLFQwUU3JxAiyBzMJ8EbqLQRSo=
+[Licensing::Module] Successfully connected to LicensingClient on channel: "LicenseClient-agent" (connect: 0.29s, validation: 0.03s, handshake: 0.00s)
+[Licensing::IpcConnector] Successfully connected to: "LicenseClient-agent-notifications" at "2026-11-28T12:01:32.364821Z"
+[Licensing::Module] Connected to LicensingClient (PId: 25203, launch time: 0.00, total connection time: 0.32s)
+[Licensing::Module] Error: Access token is unavailable; failed to update
+[Licensing::Client] Error: Code 404 while processing request (status: Found 0 entitlement groups and 0 free entitlements matching requested entitlement ids)
+[Licensing::Client] Successfully updated license, isAsync: False, time: 0.01
+[Licensing::Client] Error: Code 404 while processing request (status: Found 0 entitlement groups and 0 free entitlements matching requested entitlement ids)
+[Licensing::Module] Error: 'com.unity.editor.headless' was not found.
+[Licensing::Module] Licensing Background thread has ended after 0.39s
+[Package Manager] Connected to IPC stream "Upm-25194" after 1.1 seconds.
+[Licensing::Client] Error: Code 404 while processing request (status: Found 0 entitlement groups and 0 free entitlements matching requested entitlement ids)
+[Licensing::Module] Error: 'com.unity.editor.headless' was not found.
+[Licensing::Client] Error: Code 404 while processing request (status: Found 0 entitlement groups and 0 free entitlements matching requested entitlement ids)
+No valid Unity Editor license found. Please activate your license.
+VBCSCompilerServerWatchdog: requested VBCSCompiler shutdown
+
+== Offline camera framing and actual resource renders (Blender, NOT Unity) ==
+FRAME CHECK Eva 390x844 x=-4.3: silhouette x=0.096..0.297 y=0.174..0.427, rails at 20m=0.193..0.930.
+FRAME CHECK Eva 390x844 x=+0.0: silhouette x=0.405..0.602 y=0.180..0.430, rails at 16m=0.058..0.942.
+FRAME CHECK Eva 390x844 x=+4.3: silhouette x=0.709..0.911 y=0.174..0.427, rails at 20m=0.070..0.807.
+FRAME CHECK Eva 1080x2400 x=-4.3: silhouette x=0.085..0.292 y=0.174..0.427, rails at 20m=0.184..0.942.
+FRAME CHECK Eva 1080x2400 x=+0.0: silhouette x=0.402..0.604 y=0.180..0.430, rails at 16m=0.046..0.954.
+FRAME CHECK Eva 1080x2400 x=+4.3: silhouette x=0.715..0.922 y=0.174..0.427, rails at 20m=0.058..0.816.
+FRAME CHECK Eva 1080x2640 x=-4.3: silhouette x=0.085..0.292 y=0.204..0.434, rails at 20m=0.184..0.942.
+FRAME CHECK Eva 1080x2640 x=+0.0: silhouette x=0.402..0.604 y=0.209..0.436, rails at 16m=0.046..0.954.
+FRAME CHECK Eva 1080x2640 x=+4.3: silhouette x=0.715..0.922 y=0.204..0.434, rails at 20m=0.058..0.816.
+FRAME CHECK Max 390x844 x=-4.3: silhouette x=0.094..0.296 y=0.172..0.449, rails at 20m=0.193..0.930.
+FRAME CHECK Max 390x844 x=+0.0: silhouette x=0.404..0.602 y=0.179..0.451, rails at 16m=0.058..0.942.
+FRAME CHECK Max 390x844 x=+4.3: silhouette x=0.709..0.912 y=0.172..0.449, rails at 20m=0.070..0.807.
+FRAME CHECK Max 1080x2400 x=-4.3: silhouette x=0.084..0.291 y=0.172..0.449, rails at 20m=0.184..0.942.
+FRAME CHECK Max 1080x2400 x=+0.0: silhouette x=0.401..0.605 y=0.179..0.451, rails at 16m=0.046..0.954.
+FRAME CHECK Max 1080x2400 x=+4.3: silhouette x=0.715..0.923 y=0.172..0.449, rails at 20m=0.058..0.816.
+FRAME CHECK Max 1080x2640 x=-4.3: silhouette x=0.084..0.291 y=0.202..0.454, rails at 20m=0.184..0.942.
+FRAME CHECK Max 1080x2640 x=+0.0: silhouette x=0.401..0.605 y=0.208..0.456, rails at 16m=0.046..0.954.
+FRAME CHECK Max 1080x2640 x=+4.3: silhouette x=0.715..0.923 y=0.202..0.454, rails at 20m=0.058..0.816.
+Saved: '/tmp/zsr-fidelity-run-after.png'
+Hero and infected renders completed at frame 39, identical camera/lights before and after.

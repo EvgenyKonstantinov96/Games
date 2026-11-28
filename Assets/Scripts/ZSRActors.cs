@@ -6,25 +6,34 @@ namespace ZombieSurvivalRun
     public enum WeaponType { Pistol, Rifle, Shotgun, Minigun }
 
     /// <summary>Art-direction v0.7: actual subdivided OBJ body parts and articulated, soft running motion.</summary>
+    [DefaultExecutionOrder(-70)]
     public sealed class ZSRHero : MonoBehaviour
     {
         public float TargetX;
+        internal float PreviousX { get; private set; }
         public float PositionX => transform.position.x;
         public int MaxHealth { get; private set; } = 132;
         public int Health { get; set; } = 132;
         public int Selection { get; private set; }
-        public Vector3 Muzzle => weapon != null ? weapon.TransformPoint(new Vector3(0,.05f,.97f)) : transform.position+Vector3.up*1.6f+Vector3.forward;
+        public Vector3 Muzzle => production != null && production.MuzzlePoint != null
+            ? production.MuzzlePoint.position
+            : weapon != null ? weapon.TransformPoint(new Vector3(0,.05f,.97f))
+            : transform.position + Vector3.up * 1.6f + Vector3.forward;
 
         Transform body, hips, torso, head, leftHip, rightHip, leftKnee, rightKnee, leftShoulder, rightShoulder, leftElbow, rightElbow, weapon;
         GameObject flash, model;
         ZSRSkinnedArt rigged;
         ZSRProductionArt production;
-        float stride, recoil, muzzleTime, velocityX, hitT;
+        float stride, recoil, muzzleTime, velocityX, hitT, itemTime;
+        public bool IsUsingItem => itemTime > 0f;
+        public Vector3 ItemOrigin => production != null && production.ItemHand != null
+            ? production.ItemHand.position + transform.forward * .055f
+            : transform.TransformPoint(new Vector3(-.32f, 1.30f, .23f));
 
         public void Build(int selection, WeaponType gun)
         {
             Selection = selection;
-            if (model != null) Destroy(model);
+            if (model != null) { model.SetActive(false); Destroy(model); }
             bool female = selection == 1;
             model = new GameObject(female ? "EVA / skeletal character" : "MAX / skeletal character");
             model.transform.SetParent(transform,false);
@@ -120,50 +129,61 @@ namespace ZombieSurvivalRun
         {
             Build(selection,weaponType);
             MaxHealth=selection==0?132:112;Health=MaxHealth;
-            TargetX=0;transform.position=Vector3.zero;velocityX=0;stride=0;recoil=0;hitT=0;
+            TargetX=0;PreviousX=0;transform.position=Vector3.zero;velocityX=0;stride=0;recoil=0;hitT=0;itemTime=0;
         }
-        public void Fire(){recoil=.14f;muzzleTime=.066f;if(production!=null){production.Fire();return;}if(rigged!=null){rigged.Fire();return;}if(flash!=null)flash.SetActive(true);}
+        public void Fire(Vector3 aim)
+        {
+            recoil = .14f;
+            muzzleTime = .066f;
+            if (production != null) production.Fire(aim);
+            else if (rigged != null) rigged.Fire();
+            else if (flash != null) flash.SetActive(true);
+        }
+
+        public void UseItem(bool medkit)
+        {
+            itemTime = medkit ? .8f : .6f;
+            if (production != null) production.UseItem(medkit);
+        }
         public void Hit(){hitT=.20f;if(production!=null)production.Hit();}
+        public void Reload(float seconds) { if (production != null) production.Reload(seconds); }
+        public void Die() { if (production != null) production.Die(); }
         void Update()
         {
+            PreviousX = PositionX;
             var g=ZSRGame.Instance;
-            if(g==null||body==null)return;
+            if (g == null || body == null || g.State == ZSRState.Paused) return;
             float dt=g.FrameStep;
             bool running=g.IsRunning;
+            if (running && itemTime > 0f) itemTime = Mathf.Max(0f, itemTime - dt);
+            bool walking = running && g.Pace == ZSRPace.Walk;
+            float previousVelocity = velocityX;
+            if (running && dt > 0f)
+            {
+                Vector3 position = transform.position;
+                position.x = Mathf.SmoothDamp(position.x, TargetX, ref velocityX, .14f, 21f, dt);
+                transform.position = position;
+            }
+            float sideways = running ? velocityX : 0f;
+            float acceleration = running && dt > 0f ? (sideways - previousVelocity) / dt : 0f;
+            float gaitRate = ZSRHeroGait.Cadence(Selection, g.Plan.Speed, g.PaceScale, sideways, walking);
             if (production != null)
             {
-                if (running)
-                {
-                    Vector3 p = transform.position;
-                    p.x = Mathf.SmoothDamp(p.x, TargetX, ref velocityX, .14f, 21f, dt);
-                    transform.position = p;
-                }
-                production.Tick(running, Selection == 0 ? 1f : 1.07f);
-                production.SetLateralLean(running ? velocityX : 0f);
+                production.Tick(running, gaitRate, walking);
+                production.SetLateralLean(sideways, acceleration, g.RunSpeed, dt);
                 hitT = Mathf.MoveTowards(hitT, 0, dt * 3.2f);
                 return;
             }
             if (rigged != null)
             {
-                if (running)
-                {
-                    Vector3 p = transform.position;
-                    p.x = Mathf.SmoothDamp(p.x, TargetX, ref velocityX, .14f, 21f, dt);
-                    transform.position = p;
-                }
-                rigged.transform.localEulerAngles = new Vector3(0, 0,
-                    Mathf.Clamp(-velocityX * 2.0f, -10, 10) + hitT * 4f);
-                if (running) rigged.SetRunningSpeed(Selection == 0 ? 1f : 1.07f);
+                rigged.transform.localEulerAngles = new Vector3(0, ZSRHeroGait.Heading(sideways, g.RunSpeed),
+                    ZSRHeroGait.Bank(sideways, acceleration) + hitT * 4f);
+                if (running) rigged.SetRunningSpeed(walking ? gaitRate * .60f : gaitRate);
                 hitT = Mathf.MoveTowards(hitT, 0, dt * 3.2f);
                 return;
             }
-            if(running)
-            {
-                var p=transform.position;
-                p.x=Mathf.SmoothDamp(p.x,TargetX,ref velocityX,.14f,21f,dt);
-                transform.position=p;
-                stride+=dt*(Selection==0?10.2f:11.2f);
-            }
+            if (running)
+                stride += dt * 10.2f * gaitRate * (walking ? .60f : 1f);
             float gait=running?Mathf.Sin(stride):0f;
             float leftLift=running?Mathf.Max(0,-gait):0f;
             float rightLift=running?Mathf.Max(0,gait):0f;
@@ -195,19 +215,22 @@ namespace ZombieSurvivalRun
         public float HealthFraction => Mathf.Clamp01(hitPoints / maxHitPoints);
         public float DistanceZ => transform.position.z;
         public float X => transform.position.x;
-        public Vector3 AimPoint => transform.position + Vector3.up * (Kind == ZombieType.Boss ? 3.2f : Kind == ZombieType.Brute ? 2.6f : Kind==ZombieType.Crawler ? 0.85f:1.55f);
+        internal Vector3 TravelVelocity { get; private set; }
+        public Vector3 AimPoint => transform.position + Vector3.up * (Kind == ZombieType.Boss ? 3.2f : Kind == ZombieType.Brute ? 2.05f : Kind==ZombieType.Crawler ? 0.85f:1.55f);
 
         Transform body, torso, armL, armR, legL, legR, head;
         ZSRSkinnedArt rigged;
         ZSRProductionArt production;
         float hitPoints, maxHitPoints, walkSpeed, phase, clock, stagger, deathTime, attackTimer;
-        bool contacted;
-        int themeLevel;
+        bool contacted, attackTelegraphed;
+        float spitLane;
+        ZSRLevelPlan levelPlan;
+        ZSRInfectedMotion motion;
 
         public void Construct(ZombieType type)
         {
             Kind=type;gameObject.name="INFECTED / "+type;
-            float scale=type==ZombieType.Boss?2.60f:type==ZombieType.Brute?1.55f:type==ZombieType.Armored?1.14f:
+            float scale=type==ZombieType.Boss?2.60f:type==ZombieType.Brute?1.22f:type==ZombieType.Armored?1.14f:
                 type==ZombieType.Runner?.97f:type==ZombieType.Crawler?.70f:type==ZombieType.Toxic?1.09f:1f;
             transform.localScale=Vector3.one*scale;
             production = ZSRProductionArt.CreateZombie(transform, type);
@@ -293,62 +316,76 @@ namespace ZombieSurvivalRun
             return pivot;
         }
 
-        public void Activate(float x, float z, int level)
+        public void Activate(float x, float z, int level) => Activate(x, z, new ZSRLevelPlan(level));
+
+        internal void Activate(float x, float z, ZSRLevelPlan plan)
         {
-            themeLevel = level;
+            levelPlan = plan;
             transform.position = new Vector3(x, 0, z);
             transform.rotation = Quaternion.Euler(0, 180, 0);
-            maxHitPoints = Kind == ZombieType.Boss ? 880f + Mathf.Max(0, level - 5) * 48f :
-                           Kind == ZombieType.Brute ? 170f + level * 7f :
-                           Kind == ZombieType.Armored ? 98f + level * 3f :
-                           Kind == ZombieType.Runner ? 34f + level * 1.3f :
-                           Kind == ZombieType.Toxic ? 62f + level * 2.2f :
-                           Kind == ZombieType.Crawler ? 41f + level * 1.6f :
-                           54f + level * 1.8f;
+            maxHitPoints = plan.EnemyHealth(Kind);
             hitPoints = maxHitPoints;
             walkSpeed = Kind == ZombieType.Boss ? 0f : Kind == ZombieType.Brute ? .78f : Kind == ZombieType.Runner ? 3.0f :
                 Kind==ZombieType.Crawler?2.6f:Kind==ZombieType.Toxic ? 0.55f:Kind == ZombieType.Armored ? 1.15f : 1.48f;
-            Alive = true; contacted = false; stagger = 0; deathTime = 0; clock = phase; attackTimer = 2f;
+            walkSpeed *= plan.EnemySpeedScale;
+            motion.Reset(Kind);
+            TravelVelocity = Vector3.zero;
+            Alive = true; contacted = false; attackTelegraphed = false; stagger = 0; deathTime = 0; clock = phase; attackTimer = 2f;
             if(body!=null){body.localEulerAngles=Vector3.zero;body.localPosition=Vector3.zero;}
             if (rigged != null) {rigged.transform.localPosition = Vector3.zero;rigged.transform.localRotation = Quaternion.identity;}
             if(torso!=null)torso.localEulerAngles=Vector3.zero;
             gameObject.SetActive(true);
             if (rigged != null) rigged.PlayRun();
-            if (production != null) production.PlayRun();
+            if (production != null) production.PlayRun(phase / (2f * Mathf.PI));
         }
 
         public void TakeHit(int damage, Vector3 source)
         {
-            if (!Alive) return;
+            if (!Alive || damage <= 0) return;
             hitPoints -= damage;
             stagger = Mathf.Min(1f, stagger + .40f);
+            Vector3 direction = transform.position - source;
+            bool flinch = motion.Hit(new Vector2(direction.x, direction.z), damage, maxHitPoints);
             ZSRGame.Instance.SpawnImpact(AimPoint, Kind == ZombieType.Armored);
-            if (hitPoints > 0)
+            if (hitPoints > 0 && flinch)
             {
-                // An actual hit reaction must be played for living enemies, not only death VFX.
                 if (production != null) production.Hit();
                 if (rigged != null) rigged.Hit();
             }
             if (hitPoints <= 0)
             {
-                Alive = false;
-                deathTime = .8f;
-                if (rigged != null) rigged.Die();
-                if (production != null) production.Die();
+                Fall();
                 ZSRGame.Instance.OnZombieKilled(this);
             }
+        }
+
+        void Fall()
+        {
+            Alive = false;
+            deathTime = .95f; // The authored collapse lasts 21 frames at 30 Hz.
+            motion.Fall(walkSpeed);
+            if (rigged != null) rigged.Die();
+            if (production != null) production.Die();
+        }
+
+        void FaceTravel()
+        {
+            transform.rotation = Quaternion.Euler(motion.Pitch, 180f - motion.Yaw, motion.Roll);
         }
 
         void Update()
         {
             if (ZSRGame.Instance == null || !ZSRGame.Instance.IsRunning || body == null) return;
             float dt = ZSRGame.Instance.FrameStep;
+            if (dt <= 0f) return;
             if (!Alive)
             {
                 deathTime -= dt;
-                float t = 1 - Mathf.Clamp01(deathTime / .8f);
+                float t = 1 - Mathf.Clamp01(deathTime / .95f);
                 if (rigged == null && production == null) body.localEulerAngles = new Vector3(t * 75, 0, t * 54);
-                transform.position += Vector3.back * (ZSRGame.Instance.RunSpeed * .52f) * dt;
+                Vector2 slide = motion.Slide(ZSRGame.Instance.RunSpeed, dt);
+                transform.position += new Vector3(slide.x, 0, slide.y);
+                FaceTravel();
                 if (deathTime <= 0) ZSRGame.Instance.RecycleZombie(this);
                 return;
             }
@@ -358,7 +395,7 @@ namespace ZombieSurvivalRun
                 float rate = Kind == ZombieType.Runner ? 1.53f : Kind == ZombieType.Crawler ? 1.18f :
                     Kind == ZombieType.Brute ? .69f : Kind == ZombieType.Armored ? .82f :
                     Kind == ZombieType.Boss ? .60f : Kind == ZombieType.Toxic ? .91f : .97f;
-                production.Tick(true, rate);
+                production.Tick(true, rate * levelPlan.EnemySpeedScale);
                 production.SetZombieMovementStyle(Kind);
             }
             else if (rigged != null)
@@ -389,51 +426,95 @@ namespace ZombieSurvivalRun
             if(Kind==ZombieType.Crawler)body.localPosition=new Vector3(0,-.34f+Mathf.Abs(gait)*.04f,0);
             }
 
-            Vector3 p = transform.position;
-            p.z -= (Kind == ZombieType.Boss ? 2.5f : ZSRGame.Instance.RunSpeed + walkSpeed) * dt;
-            float dx = ZSRGame.Instance.Hero.PositionX - p.x;
-            p.x += Mathf.Clamp(dx, -1, 1) * dt * (Kind == ZombieType.Runner ? 1.9f : Kind == ZombieType.Boss ? .38f : .84f);
+            Vector3 previous = transform.position;
+            float heroX = ZSRGame.Instance.Hero.PositionX;
+            Vector2 travel = motion.Pursue(heroX - previous.x, walkSpeed, ZSRGame.Instance.RunSpeed, dt);
+            Vector3 p = previous + new Vector3(travel.x, 0f, travel.y);
+            p.x = Mathf.Clamp(p.x, -4.45f, 4.45f);
             if (Kind == ZombieType.Boss && p.z < 12f) p.z = 12f;
+            float dx = heroX - p.x;
+            TravelVelocity = (p - previous) / dt;
             transform.position = p;
+            FaceTravel();
 
-            if(Kind==ZombieType.Toxic && p.z>1.25f && p.z<13f)
+            if (Kind == ZombieType.Toxic && !contacted && p.z > 1.25f)
             {
-                attackTimer-=dt;
-                if(attackTimer<=0)
+                // Scale the approach distance with road speed so the wind-up remains visible.
+                var game = ZSRGame.Instance;
+                float approach = 5f + (game.RunSpeed + walkSpeed) * .9f;
+                if (!attackTelegraphed && p.z < approach && Mathf.Abs(dx) < 2.2f)
                 {
-                    attackTimer=3.1f;
-                    if(Mathf.Abs(dx)<2.2f)
+                    attackTelegraphed = true;
+                    spitLane = heroX;
+                    attackTimer = .42f;
+                    if (production != null) production.Attack();
+                    game.ToxicBurst(production != null ? production.MouthPosition : AimPoint);
+                    game.Notify("ТОКСИН — СМЕНИ ПОЛОСУ", 1.25f);
+                }
+                else if (attackTelegraphed)
+                {
+                    attackTimer -= dt;
+                    if (attackTimer <= 0f)
                     {
-                        ZSRGame.Instance.HurtPlayer(8);
-                        ZSRVisuals.Explosion(AimPoint,.95f,ZSRVisuals.ToxicGlow,.3f);
+                        contacted = true;
+                        game.LaunchToxicSpit(production != null ? production.MouthPosition : AimPoint, spitLane);
                     }
                 }
             }
             if (Kind == ZombieType.Boss && p.z <= 12.1f)
             {
+                const float strikeWidth = 2.9f;
+                const float windup = .49f;
+                var game = ZSRGame.Instance;
                 attackTimer -= dt;
+                TelegraphAttack(windup);
+                if (attackTimer > 0f && attackTimer <= windup)
+                    game.WarnBossStrike(p.x, p.z, strikeWidth, 1f - attackTimer / windup);
                 if (attackTimer <= 0)
                 {
-                    attackTimer = Mathf.Max(2.5f, 3.4f - themeLevel * .03f);
-                    if (Mathf.Abs(dx) < 2.9f) ZSRGame.Instance.HurtPlayer(themeLevel >= 15 ? 18 : 15);
-                    ZSRGame.Instance.Notify("МУТАНТ АТАКУЕТ!", 1.2f);
+                    attackTimer = levelPlan.BossAttackDelay;
+                    attackTelegraphed = false;
+                    game.BossStrike(p.x, p.z - .72f);
+                    if (Mathf.Abs(p.x - game.Hero.PositionX) < strikeWidth) game.HurtPlayer(levelPlan.Level >= 15 ? 18 : 15, ZSRDamageKind.Slam, p.x);
+                    else game.Notify("УДАР МУТАНТА МИМО", .9f);
                 }
             }
-            // Physical contact requires both depth overlap and a matching lane.
-            // Previously every zombie dealt damage when its Z reached 1, even across the road.
-            if (Kind != ZombieType.Boss && p.z <= 1.0f && p.z >= -.85f && !contacted &&
-                Mathf.Abs(p.x - ZSRGame.Instance.Hero.PositionX) < (Kind == ZombieType.Brute ? 1.23f : .78f))
+            if (Kind != ZombieType.Boss && Kind != ZombieType.Toxic && p.z > 1f &&
+                p.z <= 1f + (ZSRGame.Instance.RunSpeed + walkSpeed) * .32f &&
+                Mathf.Abs(dx) < 1.25f && !attackTelegraphed)
+            {
+                attackTelegraphed = true;
+                if (production != null) production.Attack();
+            }
+            // Test a swept body footprint against the runner's movement in this frame.
+            // Matching the forward reach to the body removes damage from passing in another lane.
+            var player = ZSRGame.Instance.Hero;
+            float halfWidth = Kind == ZombieType.Brute ? 1.02f : .59f;
+            float halfDepth = Kind == ZombieType.Brute ? .86f : .62f;
+            var from = new Vector2((previous.x - player.PreviousX) / halfWidth, previous.z / halfDepth);
+            var to = new Vector2((p.x - player.PositionX) / halfWidth, p.z / halfDepth);
+            Vector2 path = to - from;
+            float nearest = path.sqrMagnitude > .0001f ? Mathf.Clamp01(-Vector2.Dot(from, path) / path.sqrMagnitude) : 0f;
+            if (Kind != ZombieType.Boss && !contacted && (from + path * nearest).sqrMagnitude <= 1f)
             {
                 contacted = true;
-                ZSRGame.Instance.HurtPlayer(Kind == ZombieType.Brute ? 25 : Kind == ZombieType.Armored ? 16 : Kind == ZombieType.Runner ? 12 : 8);
-                Alive = false; deathTime = .6f;
-                if (production != null) production.Die();
-                if (rigged != null) rigged.Die();
+                if (!attackTelegraphed && production != null) production.Attack();
+                var kind = Kind == ZombieType.Walker || Kind == ZombieType.Crawler ? ZSRDamageKind.Bite : ZSRDamageKind.Claw;
+                ZSRGame.Instance.HurtPlayer(Kind == ZombieType.Brute ? 25 : Kind == ZombieType.Armored ? 16 :
+                    Kind == ZombieType.Runner ? 12 : 8, kind, p.x);
+                // Let the authored strike finish before the actor leaves the road.
             }
             // Enemies that missed the player must leave the active list and return to the pool.
             // Without this, after a few waves the 44-enemy cap stopped all subsequent spawns.
-            if (Kind != ZombieType.Boss && p.z < -8f)
+            if (Kind != ZombieType.Boss && p.z < -2.2f)
                 ZSRGame.Instance.RecycleZombie(this);
+        }
+
+        void TelegraphAttack(float leadTime)
+        {
+            if (attackTimer > leadTime || attackTelegraphed) return;
+            attackTelegraphed = true;
+            if (production != null) production.Attack();
         }
     }
 }

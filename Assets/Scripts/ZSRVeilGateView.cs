@@ -3,151 +3,148 @@ using UnityEngine.Rendering;
 
 namespace ZombieSurvivalRun
 {
-    /// <summary>Two clean metal pylons and a translucent tinted curtain (no rings).</summary>
+    /// <summary>Beveled pylons, a translucent veil and a short, readable bonus sign.</summary>
     public sealed class ZSRVeilGateView : MonoBehaviour
     {
-        Material veilMaterial;
-        Material accentMaterial;
-        Mesh veilMesh;
-        Transform veilTransform;
-        float seed;
-        Color tint;
+        Material veilMaterial, signMaterial, accentMaterial;
+        Mesh veilMesh, signMesh;
 
-        public static void Build(Transform parent, BonusKind kind)
+        static readonly int Drive = Shader.PropertyToID("_Drive");
+        bool resolved, selected;
+        float passageStart, contactU;
+
+        public static ZSRVeilGateView Build(Transform parent, BonusKind kind)
         {
             var view = parent.gameObject.AddComponent<ZSRVeilGateView>();
             view.Construct(parent, kind);
+            return view;
         }
 
-        static Color Tint(BonusKind kind)
+        internal static (int slot, string label, string texture, Color tint, string title) Appearance(BonusKind kind)
         {
-            switch(kind)
+            return kind switch
             {
-                case BonusKind.DoubleDamage: return new Color(1f, .42f, .12f);
-                case BonusKind.RapidFire: return new Color(.22f, .83f, 1f);
-                case BonusKind.Shield: return new Color(.24f, .48f, 1f);
-                case BonusKind.Heal: return new Color(.27f, 1f, .57f);
-                case BonusKind.Magnet: return new Color(1f, .78f, .20f);
-                default: return new Color(.70f, .41f, 1f);
-            }
-        }
-
-        static string Title(BonusKind kind)
-        {
-            switch(kind)
-            {
-                case BonusKind.DoubleDamage: return "x2 DAMAGE";
-                case BonusKind.RapidFire: return "RAPID FIRE";
-                case BonusKind.Shield: return "SHIELD";
-                case BonusKind.Heal: return "HEAL";
-                case BonusKind.Magnet: return "MAGNET";
-                default: return "DRONE";
-            }
-        }
-
-        static string TextureName(BonusKind kind)
-        {
-            switch(kind)
-            {
-                case BonusKind.DoubleDamage: return "damage";
-                case BonusKind.RapidFire: return "rapid";
-                case BonusKind.Shield: return "shield";
-                case BonusKind.Heal: return "heal";
-                case BonusKind.Magnet: return "magnet";
-                default: return "drone";
-            }
+                BonusKind.DoubleDamage => (0, "×2", "damage", new Color(1f, .54f, .24f), "Двойной урон"),
+                BonusKind.RapidFire => (1, "ТЕМП", "rapid", new Color(.34f, .83f, 1f), "Ускорение стрельбы"),
+                BonusKind.Shield => (2, "ЩИТ", "shield", new Color(.47f, .64f, 1f), "Энергощит"),
+                BonusKind.Heal => (3, "HP", "heal", new Color(.37f, .94f, .59f), "Восстановление здоровья"),
+                BonusKind.Magnet => (4, "МАГНИТ", "magnet", new Color(1f, .79f, .29f), "Магнит монет"),
+                _ => (5, "ДРОН", "drone", new Color(.78f, .58f, 1f), "Воздушная поддержка")
+            };
         }
 
         void Construct(Transform parent, BonusKind kind)
         {
-            seed = Random.Range(0f, 6.28f);
-            tint = Tint(kind);
-            accentMaterial = ZSRVisuals.Mat(tint, .35f, 1.65f);
-            Material accent = accentMaterial;
-            Material steel = ZSRVisuals.MetalWorn;
-            Material dark = ZSRVisuals.Gunmetal;
-            for (int side=-1; side<=1; side+=2)
+            var appearance = Appearance(kind);
+            accentMaterial = ZSRVisuals.Mat(appearance.tint, .38f, 1.25f);
+            for (int side = -1; side <= 1; side += 2)
             {
-                Transform pillar = ZSRVisuals.Pivot(side<0 ? "LEFT / clean bonus pillar" : "RIGHT / clean bonus pillar",
-                    parent, new Vector3(side*1.43f, 0f, 0f));
-                ZSRVisuals.Box("chamfered graphite column",pillar,
-                    new Vector3(0, 1.27f, 0), new Vector3(.25f, 2.45f, .31f),steel);
-                ZSRVisuals.Box("inner dark metallic groove",pillar,
-                    new Vector3(-side*.11f, 1.29f, -.18f), new Vector3(.045f, 2.23f, .045f),dark);
-                ZSRVisuals.Box("vertical diffused LED",pillar,
-                    new Vector3(-side*.138f, 1.28f, -.19f),new Vector3(.023f, 2.10f, .027f), accent);
-                ZSRVisuals.Box("weighted foot",pillar,new Vector3(0, .09f, 0),
-                    new Vector3(.46f, .18f, .50f),dark);
-                ZSRVisuals.Box("anodized top cap",pillar,new Vector3(0, 2.52f, 0),
-                    new Vector3(.36f, .12f, .40f),steel);
-                ZSRVisuals.Box("top edge light",pillar,new Vector3(0, 2.57f, -.22f),
-                    new Vector3(.28f, .026f, .025f),accent);
+                var pillar = ZSRVisuals.Pivot(side < 0 ? "Gate pylon left" : "Gate pylon right",
+                    parent, new Vector3(side * 1.33f, 0f, 0f));
+                ZSRVisuals.MeshPart("track_gate_pylon", "Cast steel gate pylon", pillar,
+                    Vector3.zero, Vector3.one, ZSRTrackArt.Surface);
+                ZSRVisuals.Box("Recessed status light", pillar, new Vector3(-side * .092f, 1.40f, -.166f),
+                    new Vector3(.039f, 1.53f, .021f), accentMaterial);
+                ZSRVisuals.Box("Gate head light", pillar, new Vector3(0f, 2.43f, -.201f),
+                    new Vector3(.168f, .045f, .025f), accentMaterial);
             }
 
-            // The 2D veil is a deliberately translucent in-world mesh, not an opaque portal.
-            GameObject sheet = new GameObject("TRANSPARENT COLOR VEIL",typeof(MeshFilter),typeof(MeshRenderer));
-            sheet.transform.SetParent(parent, false);
-            sheet.transform.localPosition = new Vector3(0,1.30f,-.025f);
-            sheet.transform.localScale = new Vector3(2.63f,2.34f,1f);
-            var mesh = new Mesh {name="Two-sided bonus veil"};
-            mesh.vertices = new [] {new Vector3(-.5f,-.5f,0),new Vector3(.5f,-.5f,0),
-                new Vector3(.5f,.5f,0),new Vector3(-.5f,.5f,0)};
-            mesh.uv = new [] {Vector2.zero,Vector2.right,Vector2.one,Vector2.up};
-            mesh.triangles = new [] {0,1,2,0,2,3,2,1,0,3,2,0}; // Front and back face: curtain remains visible from every camera angle.
-            mesh.RecalculateNormals();
-            veilMesh = mesh;
-            sheet.GetComponent<MeshFilter>().sharedMesh=mesh;
-            veilTransform=sheet.transform;
-            Shader shader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
-            if (shader == null) shader = Shader.Find("Sprites/Default");
-            if (shader == null) shader = Shader.Find("Unlit/Transparent");
-            if (shader == null) shader = Shader.Find("Universal Render Pipeline/Unlit");
-            veilMaterial = new Material(shader) {name="ZSR / " + kind + " transparent veil"};
-            var texture = Resources.Load<Texture2D>("Textures/Gates/veil_" + TextureName(kind));
-            if (texture != null)
+            Shader displayShader = Resources.Load<Shader>("ProductionArt/ZSRBonusGate");
+            if (displayShader == null || !displayShader.isSupported)
             {
-                if (veilMaterial.HasProperty("_BaseMap")) veilMaterial.SetTexture("_BaseMap",texture);
-                if (veilMaterial.HasProperty("_MainTex")) veilMaterial.SetTexture("_MainTex",texture);
-                veilMaterial.mainTexture = texture;
+                Debug.LogWarning("[ZSR ART] Bonus display shader unavailable for " + appearance.label);
+                BuildFallbackSign(parent, appearance.label);
+                return;
             }
-            // Transparent URP configuration. Old built-in Sprite shader stays a safe fallback.
-            if (veilMaterial.HasProperty("_Surface")) veilMaterial.SetFloat("_Surface",1f);
-            if (veilMaterial.HasProperty("_Blend")) veilMaterial.SetFloat("_Blend",0f);
-            if (veilMaterial.HasProperty("_SrcBlend")) veilMaterial.SetInt("_SrcBlend",(int)BlendMode.SrcAlpha);
-            if (veilMaterial.HasProperty("_DstBlend")) veilMaterial.SetInt("_DstBlend",(int)BlendMode.OneMinusSrcAlpha);
-            if (veilMaterial.HasProperty("_ZWrite")) veilMaterial.SetFloat("_ZWrite",0f);
-            if (veilMaterial.HasProperty("_Cull")) veilMaterial.SetFloat("_Cull",0f);
-            veilMaterial.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-            veilMaterial.renderQueue=(int)RenderQueue.Transparent;
-            var renderer=sheet.GetComponent<MeshRenderer>();
-            renderer.sharedMaterial=veilMaterial;
-            renderer.shadowCastingMode=ShadowCastingMode.Off;
-            renderer.receiveShadows=false;
 
-            // Flat, readable label above pillars. No circular glyphs or hoops.
-            var name=ZSRVisuals.WorldText(Title(kind),parent,
-                new Vector3(0,2.72f,-.22f),.54f,Color.white);
-            name.transform.localRotation=Quaternion.Euler(0,180,0);
+            var veilTexture = Resources.Load<Texture2D>("Textures/Gates/veil_" + appearance.texture);
+            veilMaterial = new Material(displayShader) { name = "Gate veil / " + appearance.texture };
+            if (veilTexture != null) veilMaterial.SetTexture("_BaseMap", veilTexture);
+            veilMaterial.SetColor("_Tint", appearance.tint);
+            veilMaterial.SetFloat("_IsVeil", 1f);
+            veilMesh = PlacePanel("Translucent bonus veil", parent, new Vector3(0f, 1.26f, -.015f),
+                new Vector2(2.38f, 2.28f), veilMaterial, new Rect(0f, 0f, 1f, 1f));
+
+            var labels = Resources.Load<Texture2D>("ProductionArt/TrackGateLabels");
+            if (labels == null)
+            {
+                BuildFallbackSign(parent, appearance.label);
+                return;
+            }
+            signMaterial = new Material(displayShader) { name = "Gate sign / " + appearance.label };
+            signMaterial.SetTexture("_BaseMap", labels);
+            signMaterial.SetFloat("_LabelCenter", .25f + .5f * (appearance.slot % 2));
+            signMaterial.renderQueue = (int)RenderQueue.Transparent + 1;
+            var uv = new Rect(appearance.slot % 2 * .5f, .75f - appearance.slot / 2 * .25f, .5f, .25f);
+            signMesh = PlacePanel("Bonus sign / " + appearance.label, parent, new Vector3(0f, 2.65f, -.26f),
+                new Vector2(2.42f, 1.20f), signMaterial, uv);
         }
 
-        void Update()
+        internal void Resolve(bool crossed, float hitX)
         {
-            if (veilMaterial==null) return;
-            if (veilTransform!=null)
-            {
-                // Gentle side-to-side energy flutter; never obscure or distort targets.
-                float shimmer=Mathf.Sin(Time.time*1.35f+seed)*.009f;
-                veilTransform.localScale=new Vector3(2.63f+shimmer,2.34f,1f);
-            }
-            float alpha=.83f + .06f*Mathf.Sin(Time.time*1.55f+seed); // Keep the road visible while making the veil readable.
-            if (veilMaterial.HasProperty("_BaseColor")) veilMaterial.SetColor("_BaseColor",new Color(1f,1f,1f,alpha));
-            if (veilMaterial.HasProperty("_Color")) veilMaterial.SetColor("_Color",new Color(1f,1f,1f,alpha));
+            resolved = true;
+            selected = crossed;
+            contactU = Mathf.Clamp01(.5f + hitX / 2.38f);
+            passageStart = ZSRGame.Instance.Elapsed;
+            if (signMaterial != null) signMaterial.SetFloat("_Visibility", crossed ? .74f : .31f);
+            if (!crossed && veilMaterial != null) veilMaterial.SetFloat("_Visibility", .25f);
         }
+
+        internal void Tick(float elapsed, float distance, float runnerOffset)
+        {
+            if (veilMaterial == null) return;
+            float contact = resolved ? contactU : Mathf.Clamp01(.5f + runnerOffset / 2.38f);
+            float pressure = Mathf.Clamp01(1f - distance / 3.2f) *
+                             Mathf.Clamp01((1.72f - Mathf.Abs(runnerOffset)) / .45f);
+            if (resolved) pressure = selected ? 1f : 0f;
+            float release = selected ? Mathf.Clamp01((elapsed - passageStart) / .32f) : 0f;
+            veilMaterial.SetVector(Drive, new Vector4(Mathf.Repeat(elapsed * .18f, 1f), contact, pressure, release));
+        }
+
+        static void BuildFallbackSign(Transform parent, string label)
+        {
+            ZSRVisuals.Box("Bonus sign backing", parent, new Vector3(0f, 2.65f, -.22f),
+                new Vector3(2.22f, .92f, .07f), ZSRVisuals.Gunmetal);
+            ZSRVisuals.WorldText(label, parent, new Vector3(0f, 2.65f, -.27f), .62f, Color.white)
+                .fontStyle = FontStyle.Bold;
+        }
+
+        static Mesh PlacePanel(string name, Transform parent, Vector3 position, Vector2 size, Material material, Rect uv)
+        {
+            var panel = new GameObject(name, typeof(MeshFilter), typeof(MeshRenderer));
+            panel.transform.SetParent(parent, false);
+            panel.transform.localPosition = position;
+            var mesh = new Mesh { name = name };
+            mesh.vertices = new[]
+            {
+                new Vector3(-size.x / 2, -size.y / 2, 0f), new Vector3(size.x / 2, -size.y / 2, 0f),
+                new Vector3(size.x / 2, size.y / 2, 0f), new Vector3(-size.x / 2, size.y / 2, 0f)
+            };
+            mesh.uv = new[] { uv.min, new Vector2(uv.xMax, uv.yMin), uv.max, new Vector2(uv.xMin, uv.yMax) };
+            mesh.triangles = new[] { 0, 2, 1, 0, 3, 2 };
+            mesh.RecalculateBounds();
+            panel.GetComponent<MeshFilter>().sharedMesh = mesh;
+            var renderer = panel.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            return mesh;
+        }
+
         void OnDestroy()
         {
-            if (veilMaterial != null) Destroy(veilMaterial);
-            if (accentMaterial != null) Destroy(accentMaterial);
-            if (veilMesh != null) Destroy(veilMesh);
+            Release(veilMaterial);
+            Release(signMaterial);
+            Release(accentMaterial);
+            Release(veilMesh);
+            Release(signMesh);
+        }
+
+        static void Release(Object art)
+        {
+            if (art == null) return;
+            if (Application.isPlaying) Destroy(art);
+            else DestroyImmediate(art);
         }
     }
 }

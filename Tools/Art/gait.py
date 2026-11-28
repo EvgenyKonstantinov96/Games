@@ -1,0 +1,94 @@
+"""Author foot, pelvis and timing targets for the baked FBX motion takes."""
+
+import math
+from mathutils import Vector,Quaternion
+
+# Forward reach, rear reach, stance share, swing clearance, right foot phase.
+PROFILES = {
+    "Max": (.31, .40, .40, .225, .50),
+    "Eva": (.29, .37, .41, .205, .50),
+    "Walker": (.29, .27, .65, .095, .53),
+    "Runner": (.40, .44, .42, .22, .48),
+    "Armored": (.29, .28, .64, .095, .52),
+    "Brute": (.32, .32, .67, .11, .54),
+    "Toxic": (.29, .29, .62, .10, .56),
+    "Crawler": (.19, .24, .70, .07, .53),
+    "Boss": (.33, .34, .66, .12, .51),
+}
+
+
+def eased_keys(keys, phase):
+    for (a, v), (b, w) in zip(keys, keys[1:]):
+        if phase <= b:
+            t = (phase-a)/(b-a)
+            return v+(w-v)*t*t*(3-2*t)
+    return keys[-1][1]
+
+
+def carry_pose(phase,walking=False,shooting=False):
+    """One rigid carry frame for both wrists and the weapon, driven by the stride."""
+    phase%=1
+    side=eased_keys(((0,-.15),(.25,1),(.5,.15),(.75,-1),(1,-.15)),phase)
+    step=eased_keys(((0,-.35),(.20,-1),(.58,1),(1,-.35)),(phase*2)%1)
+    weight=(.65 if walking else 1.)*(.65 if shooting else 1.)
+    rotation=(Quaternion((0,0,1),math.radians(side*1.6*weight)) @
+              Quaternion((1,0,0),math.radians(step*1.8*weight)) @
+              Quaternion((0,1,0),math.radians(-side*1.4*weight)))
+    return Vector((side*.008*weight,step*.004*weight,step*.010*weight)),rotation
+
+
+def foot_target(name, side, phase, ankle, walking=False):
+    """Roll over the heel and forefoot before an eased airborne recovery."""
+    front, back, stance, lift, right_phase = PROFILES[name]
+    if walking:
+        front, back, stance, lift = .24, .24, .65, .105
+    sign = -1 if side == "L" else 1
+    phase = (phase+(right_phase if sign == 1 else 0)) % 1
+    human = name in ("Max", "Eva")
+    running = human and not walking
+    if name in ("Walker", "Toxic") and side == "R":
+        front *= .71
+        back *= .86
+        lift *= .40
+
+    slope = -(front+back)/stance
+    if phase <= stance:
+        contact = phase/stance
+        travel = front+slope*phase
+        pitch = eased_keys(((0, 11), (.24, 0), (.68, -5), (1, -31 if running else -22)), contact)
+        clearance = 0
+    else:
+        recover = (phase-stance)/(1-stance)
+        t2, t3 = recover**2, recover**3
+        tangent = slope*(1-stance)
+        travel = (-back*(2*t3-3*t2+1) + front*(-2*t3+3*t2)
+                  + tangent*(2*t3-3*t2+recover))
+        pitch = eased_keys(((0, -31 if running else -22), (.23, -42 if running else -25),
+                            (.57, -3), (.82, 15), (1, 11)), recover)
+        # Fold the trailing knee early, then extend before landing. Late,
+        # symmetrical lift looks like marching rather than a running recovery.
+        keys = ((0,0),(.20,.90),(.34,1),(.62,.45),(.85,.12),(1,0)) if running else \
+               ((0,0),(.17,.41),(.40,1),(.70,.68),(1,0))
+        clearance = lift*eased_keys(keys, recover)
+
+    if name == "Crawler":
+        travel -= .31
+        pitch *= .72
+
+    # The ball of the foot stays grounded at push-off. Use the modeled sole
+    # offsets so that a rotating ankle doesn't slide the boot through the floor.
+    angle = math.radians(pitch)
+    pivot_y = -.073 if pitch >= 0 else .163
+    sole = -.085
+    rotated_y = math.cos(angle)*pivot_y - math.sin(angle)*sole
+    rotated_z = math.sin(angle)*pivot_y + math.cos(angle)*sole
+    lateral = sign*(.018 if human else .033)
+    foot = Vector((ankle.x+lateral, ankle.y+travel+pivot_y-rotated_y, .006-rotated_z+clearance))
+    toe = Vector((0, .16*math.cos(angle)+.06*math.sin(angle),
+                  .16*math.sin(angle)-.06*math.cos(angle)))
+    if human:
+        # A small, consistent toe-out follows the knee instead of parallel skis.
+        toe.x = sign*.009
+    bend = eased_keys(((0, .95), (stance*.60, .85), (stance, .10),
+                       (stance+(1-stance)*.30, .90), (1, .95)), phase)
+    return foot, toe, phase, pitch*bend

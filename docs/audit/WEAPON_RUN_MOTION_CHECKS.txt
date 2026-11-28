@@ -1,0 +1,182 @@
+Weapon run motion — 2026-11-28
+Base: d3f0906b1bc7b39447d9f4c37267693c65fcfb9e
+Game/assets/tools: 0ac1bd62892e74e967f0dd6f581af278d83a3062
+Not a Unity or Android runtime pass. API compiler warnings suppressed.
+
+=== BASELINE — expected FAIL of new threshold on old asset ===
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+WEAPON Max/run: angular travel 0.29 deg, vertical travel 65.27 mm, support-hand span 1.99 mm; old aim marker
+Traceback (most recent call last):
+  File "/workspace/Games/Tools/Art/check_weapon_motion.py", line 36, in <module>
+    assert minimum<arc<12,(name,state,'frozen or excessive weapon rotation',arc)
+           ^^^^^^^^^^^^^^
+AssertionError: ('Max', 'run', 'frozen or excessive weapon rotation', 0.2853050591202191)
+
+Error: script failed, file: 'Tools/Art/check_weapon_motion.py', exiting.
+Blender 4.3.2
+
+Blender quit
+
+=== Fixed FBX — wrist mount cycles in Blender ===
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+WEAPON Max/run: angular travel 6.94 deg, vertical travel 101.76 mm, support-hand span 1.20 mm; deforming wrist mount
+WEAPON Max/fire: angular travel 4.51 deg, vertical travel 88.98 mm, support-hand span 1.25 mm; deforming wrist mount
+WEAPON Max/walk: angular travel 4.62 deg, vertical travel 55.94 mm, support-hand span 2.80 mm; deforming wrist mount
+WEAPON Max/walk-fire: angular travel 2.93 deg, vertical travel 47.52 mm, support-hand span 1.81 mm; deforming wrist mount
+WEAPON MOTION PASS Max: all four carry cycles, angular motion, support hand and loop seams. Blender, not Unity.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+WEAPON Eva/run: angular travel 6.97 deg, vertical travel 102.61 mm, support-hand span 3.53 mm; deforming wrist mount
+WEAPON Eva/fire: angular travel 4.55 deg, vertical travel 89.83 mm, support-hand span 0.87 mm; deforming wrist mount
+WEAPON Eva/walk: angular travel 4.52 deg, vertical travel 56.67 mm, support-hand span 4.16 mm; deforming wrist mount
+WEAPON Eva/walk-fire: angular travel 3.08 deg, vertical travel 48.04 mm, support-hand span 2.74 mm; deforming wrist mount
+WEAPON MOTION PASS Eva: all four carry cycles, angular motion, support hand and loop seams. Blender, not Unity.
+Blender 4.3.2
+
+Blender quit
+
+=== API compilation — real engine/package references ===
+Game C# content digest bfdb863e3997e77790fd3f6d966f0953f2e1dfa4d837bc2535a9354d60c3610f
+Assembly-CSharp 28 PASS
+Assembly-CSharp 28 PASS
+Assembly-CSharp-Editor 18 PASS
+URP post-processing references, setup restoration at both entry points, and camera FXAA verified in source 41439944d30ece34e96484bdb6645b55
+
+=== Aim/controller/socket — explicit scene/rotation stand-ins ===
+UPPER AIM PASS 20 Hz: 20 s rapid targets, limits, turn speed, convergence, pause, passed enemy, stalled frame, neutral and restart.
+UPPER AIM PASS 30 Hz: 20 s rapid targets, limits, turn speed, convergence, pause, passed enemy, stalled frame, neutral and restart.
+UPPER AIM PASS 60 Hz: 20 s rapid targets, limits, turn speed, convergence, pause, passed enemy, stalled frame, neutral and restart.
+UPPER AIM PASS 120 Hz: 20 s rapid targets, limits, turn speed, convergence, pause, passed enemy, stalled frame, neutral and restart.
+UPPER RIG PASS 20 Hz: 60 s combined lane banking/heading/rapid aim/recoil, restored sparse tracks, bounded neck/shoulders, neutral recovery and untouched death. Scene/rotation stand-ins.
+WEAPON SOCKET PASS 20 Hz: real ApplyAim preserves running roll, wrist mount offset, no-target motion and at most one degree of fine correction. Scene/rotation stand-ins.
+UPPER RIG PASS 30 Hz: 60 s combined lane banking/heading/rapid aim/recoil, restored sparse tracks, bounded neck/shoulders, neutral recovery and untouched death. Scene/rotation stand-ins.
+WEAPON SOCKET PASS 30 Hz: real ApplyAim preserves running roll, wrist mount offset, no-target motion and at most one degree of fine correction. Scene/rotation stand-ins.
+UPPER RIG PASS 60 Hz: 60 s combined lane banking/heading/rapid aim/recoil, restored sparse tracks, bounded neck/shoulders, neutral recovery and untouched death. Scene/rotation stand-ins.
+WEAPON SOCKET PASS 60 Hz: real ApplyAim preserves running roll, wrist mount offset, no-target motion and at most one degree of fine correction. Scene/rotation stand-ins.
+UPPER RIG PASS 120 Hz: 60 s combined lane banking/heading/rapid aim/recoil, restored sparse tracks, bounded neck/shoulders, neutral recovery and untouched death. Scene/rotation stand-ins.
+WEAPON SOCKET PASS 120 Hz: real ApplyAim preserves running roll, wrist mount offset, no-target motion and at most one degree of fine correction. Scene/rotation stand-ins.
+
+=== Head/briefing regressions — scene stand-ins ===
+POSE PASS: 24000 frames, keyed and omitted head tracks, bounded steering and neutral recovery.
+BRIEFING PASS: 1000 level entries, manual speakers, blocked run clock, cancellation and clean final start. Managed scene stand-ins.
+
+=== FBX reimport — meshes/weights/normals/UV/poses ===
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Armored: [12658, 6075, 2905] triangles, one skeleton and atlas
+ANATOMY Armored 4495 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.42x, forefoot flexion 20.0/13.4 degrees
+FALL Armored: 22 poses, pavement error 0.000 m, head 1.64 to 0.40 m
+PASS Armored 51 bones, 6684 verts, 12658 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Boss: [13316, 6390, 3061] triangles, one skeleton and atlas
+ANATOMY Boss    3971 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.49x, forefoot flexion 20.2/15.0 degrees
+FALL Boss: 22 poses, pavement error 0.000 m, head 1.80 to 0.66 m
+BOSS attack reach L/R 0.769/0.769 m, ankle drift L/R 0.000/0.000 m
+PASS Boss    51 bones, 9303 verts, 13316 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Brute: [12631, 6062, 2904] triangles, one skeleton and atlas
+ANATOMY Brute   3858 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.38x, forefoot flexion 20.3/13.9 degrees
+FALL Brute: 22 poses, pavement error 0.000 m, head 1.76 to 0.51 m
+PASS Brute   51 bones, 8803 verts, 12631 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Crawler: [14854, 7128, 3416] triangles, one skeleton and atlas
+ANATOMY Crawler 1619 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.22x, forefoot flexion 14.4/12.1 degrees
+FALL Crawler: 22 poses, pavement error 0.000 m, head 0.87 to 0.21 m
+PASS Crawler 51 bones, 9644 verts, 14854 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Eva: [19000, 9120, 4318] triangles, one skeleton and atlas
+ANATOMY Eva     2263 vertices in continuous body, 71 poses, worst 99th-percentile edge stretch 1.40x, forefoot flexion 28.3/21.7 degrees
+GAIT Eva     L ankle-roll 56.2 degrees, support 0.006..0.006 m, rearward travel 0.665 m, loop error 0.0000 m
+WALK Eva     L reach 0.426 m vs 0.830 m running, 27/34 frames near the ground, match with firing variant
+GAIT Eva     R ankle-roll 56.2 degrees, support 0.006..0.006 m, rearward travel 0.665 m, loop error 0.0000 m
+WALK Eva     R reach 0.426 m vs 0.830 m running, 27/34 frames near the ground, match with firing variant
+PASS Eva     58 bones, 11668 verts, 19000 triangles, 1–289 frames, smooth custom normals, medkit, throw, walk and walk-fire poses
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Max: [23098, 11086, 5260] triangles, one skeleton and atlas
+ANATOMY Max     3880 vertices in continuous body, 71 poses, worst 99th-percentile edge stretch 1.61x, forefoot flexion 28.3/21.7 degrees
+GAIT Max     L ankle-roll 56.2 degrees, support 0.006..0.006 m, rearward travel 0.719 m, loop error 0.0000 m
+WALK Max     L reach 0.426 m vs 0.897 m running, 27/34 frames near the ground, match with firing variant
+GAIT Max     R ankle-roll 56.2 degrees, support 0.006..0.006 m, rearward travel 0.719 m, loop error 0.0000 m
+WALK Max     R reach 0.426 m vs 0.897 m running, 27/34 frames near the ground, match with firing variant
+PASS Max     56 bones, 15530 verts, 23098 triangles, 1–289 frames, smooth custom normals, medkit, throw, walk and walk-fire poses
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Runner: [11808, 5667, 2707] triangles, one skeleton and atlas
+ANATOMY Runner  1721 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.33x, forefoot flexion 19.7/17.8 degrees
+FALL Runner: 22 poses, pavement error 0.000 m, head 1.53 to 0.32 m
+GAIT Runner  ankle travel L/R 0.959/0.964 m, ankle lift L/R 0.262/0.269 m
+PASS Runner  51 bones, 6656 verts, 11808 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Toxic: [13133, 6303, 3020] triangles, one skeleton and atlas
+ANATOMY Toxic   1862 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.30x, forefoot flexion 20.3/15.3 degrees
+FALL Toxic: 22 poses, pavement error 0.000 m, head 1.52 to 0.29 m
+GAIT Toxic   ankle travel L/R 0.528/0.409 m, ankle lift L/R 0.140/0.086 m
+PASS Toxic   51 bones, 7465 verts, 13133 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Walker: [12814, 6149, 2943] triangles, one skeleton and atlas
+ANATOMY Walker  1872 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.26x, forefoot flexion 19.4/13.1 degrees
+FALL Walker: 22 poses, pavement error 0.000 m, head 1.57 to 0.27 m
+GAIT Walker  ankle travel L/R 0.510/0.387 m, ankle lift L/R 0.131/0.083 m
+PASS Walker  51 bones, 8426 verts, 12814 triangles, 1–168 frames, smooth custom normals
+Blender 4.3.2
+
+Blender quit
+
+=== Blender layered actions and reference weapon geometry ===
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+WEAPONS Max: maximum right-palm-to-grip distances {'pistol': 0.04031891810969425, 'rifle': 0.03704889719699376, 'shotgun': 0.032678888173072, 'minigun': 0.040167306219740656}; all four muzzle rings centered on authored axis.
+HERO MASK Max: 96 action/gait samples, prior maximum foot mismatch 0.907 m, layered error 0.000000 m. Hand pose relative to spine preserved.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+WEAPONS Eva: maximum right-palm-to-grip distances {'pistol': 0.03360834759261256, 'rifle': 0.03290432707159713, 'shotgun': 0.030504837714573862, 'minigun': 0.038967701687906996}; all four muzzle rings centered on authored axis.
+HERO MASK Eva: 96 action/gait samples, prior maximum foot mismatch 0.843 m, layered error 0.000000 m. Hand pose relative to spine preserved.
+Blender 4.3.2
+
+Blender quit
+
+=== Blender helper-marker carry / pack / closed knee shells ===
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+PACK Max/Max_LOD1: 247 vertices rigidly bound to Pack below Chest.
+PACK Max/Max_LOD2: 131 vertices rigidly bound to Pack below Chest.
+PACK Max/Max_LOD0: 360 vertices rigidly bound to Pack below Chest.
+GUARDS Max: closed LOD0 shells with sidewalls/back caps after UV seam welding.
+CARRY ProductionArt/Max/run: support-hand span 4.54 mm in weapon frame.
+CARRY ProductionArt/Max/fire: support-hand span 4.29 mm in weapon frame.
+CARRY ProductionArt/Max/walk: support-hand span 4.46 mm in weapon frame.
+CARRY ProductionArt/Max/walk-fire: support-hand span 4.42 mm in weapon frame.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+PACK Eva/Eva_LOD1: 232 vertices rigidly bound to Pack below Chest.
+PACK Eva/Eva_LOD2: 116 vertices rigidly bound to Pack below Chest.
+PACK Eva/Eva_LOD0: 336 vertices rigidly bound to Pack below Chest.
+GUARDS Eva: closed LOD0 shells with sidewalls/back caps after UV seam welding.
+CARRY ProductionArt/Eva/run: support-hand span 3.75 mm in weapon frame.
+CARRY ProductionArt/Eva/fire: support-hand span 4.18 mm in weapon frame.
+CARRY ProductionArt/Eva/walk: support-hand span 6.03 mm in weapon frame.
+CARRY ProductionArt/Eva/walk-fire: support-hand span 4.23 mm in weapon frame.
+Blender 4.3.2
+
+Blender quit
+
+=== Final integrity checks ===
+PREVIEW PASS: 12 frames, 704 x 396, Blender only, 2161925 bytes.
+PRESERVED PASS: 13 files: seven enemy FBX, four arsenal images, weapon profile, level plan.
+METADATA PASS: 271 unique GUIDs; every Assets file/folder has meta.
+PYTHON SYNTAX PASS: five changed/new scripts.
+C# DIGEST PASS: bfdb863e3997e77790fd3f6d966f0953f2e1dfa4d837bc2535a9354d60c3610f
+Git diff --check: exit 0.
+
+=== Native Unity attempt — BLOCKED, exit 198 ===
+No valid Unity Editor license found. Please activate your license.
+No native import, PlayMode, Game View, APK, FPS, memory or sound pass is claimed.
