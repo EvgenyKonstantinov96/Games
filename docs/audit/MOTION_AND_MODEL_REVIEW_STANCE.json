@@ -1,0 +1,675 @@
+{
+  "method": "Blender FBX; geometric AlignRig normalization; 201 virtual sole samples per stance; actual managed campaign/cadence, steady modes and zero lateral speed. Not native Unity importer/Animator/IK or rendered sliding.",
+  "samples": [
+    {
+      "model": "Max",
+      "motion": "Run",
+      "foot": "L",
+      "stance_share": 0.4,
+      "frames": 24,
+      "align_scale": 0.9993208396355255,
+      "patch_changes": 1,
+      "ankle_stance_distance_m": 0.6275074376397425,
+      "sole_virtual_contact_distance_m": 0.7079726802963919,
+      "fbx_sha256": "4c4ca5fb3840ad55e1070e8c6fc12060275e5fbad7aef25184385d48de107fe2"
+    },
+    {
+      "model": "Max",
+      "motion": "Run",
+      "foot": "R",
+      "stance_share": 0.4,
+      "frames": 24,
+      "align_scale": 0.9993208396355255,
+      "patch_changes": 1,
+      "ankle_stance_distance_m": 0.6275037802606899,
+      "sole_virtual_contact_distance_m": 0.7079688012768247,
+      "fbx_sha256": "4c4ca5fb3840ad55e1070e8c6fc12060275e5fbad7aef25184385d48de107fe2"
+    },
+    {
+      "model": "Max",
+      "motion": "Walk",
+      "foot": "L",
+      "stance_share": 0.65,
+      "frames": 34,
+      "align_scale": 0.9993208396355255,
+      "patch_changes": 1,
+      "ankle_stance_distance_m": 0.41632023858310274,
+      "sole_virtual_contact_distance_m": 0.475839424240804,
+      "fbx_sha256": "4c4ca5fb3840ad55e1070e8c6fc12060275e5fbad7aef25184385d48de107fe2"
+    },
+    {
+      "model": "Max",
+      "motion": "Walk",
+      "foot": "R",
+      "stance_share": 0.65,
+      "frames": 34,
+      "align_scale": 0.9993208396355255,
+      "patch_changes": 1,
+      "ankle_stance_distance_m": 0.4163427539534376,
+      "sole_virtual_contact_distance_m": 0.4758618847988114,
+      "fbx_sha256": "4c4ca5fb3840ad55e1070e8c6fc12060275e5fbad7aef25184385d48de107fe2"
+    },
+    {
+      "model": "Eva",
+      "motion": "Run",
+      "foot": "L",
+      "stance_share": 0.41,
+      "frames": 24,
+      "align_scale": 0.9992135114196887,
+      "patch_changes": 1,
+      "ankle_stance_distance_m": 0.5791438392939839,
+      "sole_virtual_contact_distance_m": 0.6597841448299884,
+      "fbx_sha256": "866595bc038981e14558136893bbcd69a5c45a5363e0742838689544e2ad3589"
+    },
+    {
+      "model": "Eva",
+      "motion": "Run",
+      "foot": "R",
+      "stance_share": 0.41,
+      "frames": 24,
+      "align_scale": 0.9992135114196887,
+      "patch_changes": 1,
+      "ankle_stance_distance_m": 0.5791440042410787,
+      "sole_virtual_contact_distance_m": 0.6597843095390132,
+      "fbx_sha256": "866595bc038981e14558136893bbcd69a5c45a5363e0742838689544e2ad3589"
+    },
+    {
+      "model": "Eva",
+      "motion": "Walk",
+      "foot": "L",
+      "stance_share": 0.65,
+      "frames": 34,
+      "align_scale": 0.9992135114196887,
+      "patch_changes": 1,
+      "ankle_stance_distance_m": 0.4165998392141926,
+      "sole_virtual_contact_distance_m": 0.4760160096613216,
+      "fbx_sha256": "866595bc038981e14558136893bbcd69a5c45a5363e0742838689544e2ad3589"
+    },
+    {
+      "model": "Eva",
+      "motion": "Walk",
+      "foot": "R",
+      "stance_share": 0.65,
+      "frames": 34,
+      "align_scale": 0.9992135114196887,
+      "patch_changes": 1,
+      "ankle_stance_distance_m": 0.4166000747698113,
+      "sole_virtual_contact_distance_m": 0.4760162996400792,
+      "fbx_sha256": "866595bc038981e14558136893bbcd69a5c45a5363e0742838689544e2ad3589"
+    }
+  ],
+  "results": [
+    {
+      "level": 1,
+      "model": "Max",
+      "mode": "Run",
+      "road_speed": 11.7,
+      "runtime_cadence": 1.0,
+      "foot": "L",
+      "stance_s": 0.32000000000000006,
+      "sole_virtual_travel_mm": 707.9726802963919,
+      "pavement_travel_mm": 3744.0000000000005,
+      "residual_sole_mm": 3036.0273197036086
+    },
+    {
+      "level": 1,
+      "model": "Max",
+      "mode": "Surge",
+      "road_speed": 14.507999,
+      "runtime_cadence": 1.1135529,
+      "foot": "L",
+      "stance_s": 0.2873684761630993,
+      "sole_virtual_travel_mm": 707.9726802963919,
+      "pavement_travel_mm": 4169.141564805768,
+      "residual_sole_mm": 3461.1688845093763
+    },
+    {
+      "level": 15,
+      "model": "Max",
+      "mode": "Run",
+      "road_speed": 17.08,
+      "runtime_cadence": 1.2082338,
+      "foot": "L",
+      "stance_s": 0.2648494024914715,
+      "sole_virtual_travel_mm": 707.9726802963919,
+      "pavement_travel_mm": 4523.6277945543325,
+      "residual_sole_mm": 3815.655114257941
+    },
+    {
+      "level": 15,
+      "model": "Max",
+      "mode": "Surge",
+      "road_speed": 21.1792,
+      "runtime_cadence": 1.3454323,
+      "foot": "L",
+      "stance_s": 0.23784177026224218,
+      "sole_virtual_travel_mm": 707.9726802963919,
+      "pavement_travel_mm": 5037.29842073808,
+      "residual_sole_mm": 4329.325740441687
+    },
+    {
+      "level": 1000,
+      "model": "Max",
+      "mode": "Run",
+      "road_speed": 21.68,
+      "runtime_cadence": 1.3612463,
+      "foot": "L",
+      "stance_s": 0.2350786922249119,
+      "sole_virtual_travel_mm": 707.9726802963919,
+      "pavement_travel_mm": 5096.506047436091,
+      "residual_sole_mm": 4388.533367139699
+    },
+    {
+      "level": 1000,
+      "model": "Max",
+      "mode": "Surge",
+      "road_speed": 26.8832,
+      "runtime_cadence": 1.5158199,
+      "foot": "L",
+      "stance_s": 0.21110687358043,
+      "sole_virtual_travel_mm": 707.9726802963919,
+      "pavement_travel_mm": 5675.228303837415,
+      "residual_sole_mm": 4967.255623541023
+    },
+    {
+      "level": 1,
+      "model": "Max",
+      "mode": "Run",
+      "road_speed": 11.7,
+      "runtime_cadence": 1.0,
+      "foot": "R",
+      "stance_s": 0.32000000000000006,
+      "sole_virtual_travel_mm": 707.9688012768247,
+      "pavement_travel_mm": 3744.0000000000005,
+      "residual_sole_mm": 3036.031198723176
+    },
+    {
+      "level": 1,
+      "model": "Max",
+      "mode": "Surge",
+      "road_speed": 14.507999,
+      "runtime_cadence": 1.1135529,
+      "foot": "R",
+      "stance_s": 0.2873684761630993,
+      "sole_virtual_travel_mm": 707.9688012768247,
+      "pavement_travel_mm": 4169.141564805768,
+      "residual_sole_mm": 3461.1727635289435
+    },
+    {
+      "level": 15,
+      "model": "Max",
+      "mode": "Run",
+      "road_speed": 17.08,
+      "runtime_cadence": 1.2082338,
+      "foot": "R",
+      "stance_s": 0.2648494024914715,
+      "sole_virtual_travel_mm": 707.9688012768247,
+      "pavement_travel_mm": 4523.6277945543325,
+      "residual_sole_mm": 3815.658993277508
+    },
+    {
+      "level": 15,
+      "model": "Max",
+      "mode": "Surge",
+      "road_speed": 21.1792,
+      "runtime_cadence": 1.3454323,
+      "foot": "R",
+      "stance_s": 0.23784177026224218,
+      "sole_virtual_travel_mm": 707.9688012768247,
+      "pavement_travel_mm": 5037.29842073808,
+      "residual_sole_mm": 4329.329619461255
+    },
+    {
+      "level": 1000,
+      "model": "Max",
+      "mode": "Run",
+      "road_speed": 21.68,
+      "runtime_cadence": 1.3612463,
+      "foot": "R",
+      "stance_s": 0.2350786922249119,
+      "sole_virtual_travel_mm": 707.9688012768247,
+      "pavement_travel_mm": 5096.506047436091,
+      "residual_sole_mm": 4388.537246159266
+    },
+    {
+      "level": 1000,
+      "model": "Max",
+      "mode": "Surge",
+      "road_speed": 26.8832,
+      "runtime_cadence": 1.5158199,
+      "foot": "R",
+      "stance_s": 0.21110687358043,
+      "sole_virtual_travel_mm": 707.9688012768247,
+      "pavement_travel_mm": 5675.228303837415,
+      "residual_sole_mm": 4967.259502560591
+    },
+    {
+      "level": 1,
+      "model": "Max",
+      "mode": "Walk",
+      "road_speed": 5.499,
+      "runtime_cadence": 1.0,
+      "foot": "L",
+      "stance_s": 0.7366666666666667,
+      "sole_virtual_travel_mm": 475.839424240804,
+      "pavement_travel_mm": 4050.9300000000003,
+      "residual_sole_mm": 3575.0905757591963
+    },
+    {
+      "level": 15,
+      "model": "Max",
+      "mode": "Walk",
+      "road_speed": 8.0276,
+      "runtime_cadence": 1.2082338,
+      "foot": "L",
+      "stance_s": 0.6097053953189082,
+      "sole_virtual_travel_mm": 475.839424240804,
+      "pavement_travel_mm": 4894.471031462067,
+      "residual_sole_mm": 4418.631607221263
+    },
+    {
+      "level": 1000,
+      "model": "Max",
+      "mode": "Walk",
+      "road_speed": 10.1896,
+      "runtime_cadence": 1.3612463,
+      "foot": "L",
+      "stance_s": 0.5411707393927658,
+      "sole_virtual_travel_mm": 475.839424240804,
+      "pavement_travel_mm": 5514.313366116527,
+      "residual_sole_mm": 5038.473941875723
+    },
+    {
+      "level": 1,
+      "model": "Max",
+      "mode": "Walk",
+      "road_speed": 5.499,
+      "runtime_cadence": 1.0,
+      "foot": "R",
+      "stance_s": 0.7366666666666667,
+      "sole_virtual_travel_mm": 475.86188479881145,
+      "pavement_travel_mm": 4050.9300000000003,
+      "residual_sole_mm": 3575.068115201189
+    },
+    {
+      "level": 15,
+      "model": "Max",
+      "mode": "Walk",
+      "road_speed": 8.0276,
+      "runtime_cadence": 1.2082338,
+      "foot": "R",
+      "stance_s": 0.6097053953189082,
+      "sole_virtual_travel_mm": 475.86188479881145,
+      "pavement_travel_mm": 4894.471031462067,
+      "residual_sole_mm": 4418.609146663256
+    },
+    {
+      "level": 1000,
+      "model": "Max",
+      "mode": "Walk",
+      "road_speed": 10.1896,
+      "runtime_cadence": 1.3612463,
+      "foot": "R",
+      "stance_s": 0.5411707393927658,
+      "sole_virtual_travel_mm": 475.86188479881145,
+      "pavement_travel_mm": 5514.313366116527,
+      "residual_sole_mm": 5038.451481317716
+    },
+    {
+      "level": 1,
+      "model": "Eva",
+      "mode": "Run",
+      "road_speed": 11.7,
+      "runtime_cadence": 1.07,
+      "foot": "L",
+      "stance_s": 0.30654205607476637,
+      "sole_virtual_travel_mm": 659.7841448299883,
+      "pavement_travel_mm": 3586.542056074766,
+      "residual_sole_mm": 2926.7579112447775
+    },
+    {
+      "level": 1,
+      "model": "Eva",
+      "mode": "Surge",
+      "road_speed": 14.507999,
+      "runtime_cadence": 1.1915017,
+      "foot": "L",
+      "stance_s": 0.27528286363334603,
+      "sole_virtual_travel_mm": 659.7841448299883,
+      "pavement_travel_mm": 3993.8035103097204,
+      "residual_sole_mm": 3334.019365479732
+    },
+    {
+      "level": 15,
+      "model": "Eva",
+      "mode": "Run",
+      "road_speed": 17.08,
+      "runtime_cadence": 1.2928103,
+      "foot": "L",
+      "stance_s": 0.2537108499212916,
+      "sole_virtual_travel_mm": 659.7841448299883,
+      "pavement_travel_mm": 4333.38131665566,
+      "residual_sole_mm": 3673.597171825672
+    },
+    {
+      "level": 15,
+      "model": "Eva",
+      "mode": "Surge",
+      "road_speed": 21.1792,
+      "runtime_cadence": 1.4396127,
+      "foot": "L",
+      "stance_s": 0.22783905699081428,
+      "sole_virtual_travel_mm": 659.7841448299883,
+      "pavement_travel_mm": 4825.448955819854,
+      "residual_sole_mm": 4165.664810989866
+    },
+    {
+      "level": 1000,
+      "model": "Eva",
+      "mode": "Run",
+      "road_speed": 21.68,
+      "runtime_cadence": 1.4565337,
+      "foot": "L",
+      "stance_s": 0.2251921805860036,
+      "sole_virtual_travel_mm": 659.7841448299883,
+      "pavement_travel_mm": 4882.166475104558,
+      "residual_sole_mm": 4222.3823302745695
+    },
+    {
+      "level": 1000,
+      "model": "Eva",
+      "mode": "Surge",
+      "road_speed": 26.8832,
+      "runtime_cadence": 1.6219274,
+      "foot": "L",
+      "stance_s": 0.20222853378024197,
+      "sole_virtual_travel_mm": 659.7841448299883,
+      "pavement_travel_mm": 5436.550119321,
+      "residual_sole_mm": 4776.7659744910125
+    },
+    {
+      "level": 1,
+      "model": "Eva",
+      "mode": "Run",
+      "road_speed": 11.7,
+      "runtime_cadence": 1.07,
+      "foot": "R",
+      "stance_s": 0.30654205607476637,
+      "sole_virtual_travel_mm": 659.7843095390133,
+      "pavement_travel_mm": 3586.542056074766,
+      "residual_sole_mm": 2926.757746535753
+    },
+    {
+      "level": 1,
+      "model": "Eva",
+      "mode": "Surge",
+      "road_speed": 14.507999,
+      "runtime_cadence": 1.1915017,
+      "foot": "R",
+      "stance_s": 0.27528286363334603,
+      "sole_virtual_travel_mm": 659.7843095390133,
+      "pavement_travel_mm": 3993.8035103097204,
+      "residual_sole_mm": 3334.0192007707074
+    },
+    {
+      "level": 15,
+      "model": "Eva",
+      "mode": "Run",
+      "road_speed": 17.08,
+      "runtime_cadence": 1.2928103,
+      "foot": "R",
+      "stance_s": 0.2537108499212916,
+      "sole_virtual_travel_mm": 659.7843095390133,
+      "pavement_travel_mm": 4333.38131665566,
+      "residual_sole_mm": 3673.5970071166466
+    },
+    {
+      "level": 15,
+      "model": "Eva",
+      "mode": "Surge",
+      "road_speed": 21.1792,
+      "runtime_cadence": 1.4396127,
+      "foot": "R",
+      "stance_s": 0.22783905699081428,
+      "sole_virtual_travel_mm": 659.7843095390133,
+      "pavement_travel_mm": 4825.448955819854,
+      "residual_sole_mm": 4165.664646280841
+    },
+    {
+      "level": 1000,
+      "model": "Eva",
+      "mode": "Run",
+      "road_speed": 21.68,
+      "runtime_cadence": 1.4565337,
+      "foot": "R",
+      "stance_s": 0.2251921805860036,
+      "sole_virtual_travel_mm": 659.7843095390133,
+      "pavement_travel_mm": 4882.166475104558,
+      "residual_sole_mm": 4222.382165565545
+    },
+    {
+      "level": 1000,
+      "model": "Eva",
+      "mode": "Surge",
+      "road_speed": 26.8832,
+      "runtime_cadence": 1.6219274,
+      "foot": "R",
+      "stance_s": 0.20222853378024197,
+      "sole_virtual_travel_mm": 659.7843095390133,
+      "pavement_travel_mm": 5436.550119321,
+      "residual_sole_mm": 4776.765809781988
+    },
+    {
+      "level": 1,
+      "model": "Eva",
+      "mode": "Walk",
+      "road_speed": 5.499,
+      "runtime_cadence": 1.07,
+      "foot": "L",
+      "stance_s": 0.6884735202492211,
+      "sole_virtual_travel_mm": 476.0160096613216,
+      "pavement_travel_mm": 3785.9158878504672,
+      "residual_sole_mm": 3309.8998781891455
+    },
+    {
+      "level": 15,
+      "model": "Eva",
+      "mode": "Walk",
+      "road_speed": 8.0276,
+      "runtime_cadence": 1.2928103,
+      "foot": "L",
+      "stance_s": 0.569818067404527,
+      "sole_virtual_travel_mm": 476.0160096613216,
+      "pavement_travel_mm": 4574.271517896581,
+      "residual_sole_mm": 4098.255508235259
+    },
+    {
+      "level": 1000,
+      "model": "Eva",
+      "mode": "Walk",
+      "road_speed": 10.1896,
+      "runtime_cadence": 1.4565337,
+      "foot": "L",
+      "stance_s": 0.5057669909502723,
+      "sole_virtual_travel_mm": 476.0160096613216,
+      "pavement_travel_mm": 5153.5633309868945,
+      "residual_sole_mm": 4677.547321325573
+    },
+    {
+      "level": 1,
+      "model": "Eva",
+      "mode": "Walk",
+      "road_speed": 5.499,
+      "runtime_cadence": 1.07,
+      "foot": "R",
+      "stance_s": 0.6884735202492211,
+      "sole_virtual_travel_mm": 476.0162996400792,
+      "pavement_travel_mm": 3785.9158878504672,
+      "residual_sole_mm": 3309.8995882103877
+    },
+    {
+      "level": 15,
+      "model": "Eva",
+      "mode": "Walk",
+      "road_speed": 8.0276,
+      "runtime_cadence": 1.2928103,
+      "foot": "R",
+      "stance_s": 0.569818067404527,
+      "sole_virtual_travel_mm": 476.0162996400792,
+      "pavement_travel_mm": 4574.271517896581,
+      "residual_sole_mm": 4098.255218256501
+    },
+    {
+      "level": 1000,
+      "model": "Eva",
+      "mode": "Walk",
+      "road_speed": 10.1896,
+      "runtime_cadence": 1.4565337,
+      "foot": "R",
+      "stance_s": 0.5057669909502723,
+      "sole_virtual_travel_mm": 476.0162996400792,
+      "pavement_travel_mm": 5153.5633309868945,
+      "residual_sole_mm": 4677.547031346816
+    }
+  ],
+  "code_commit": "efbe00894d1089219aaffb832eb4a856a39e39f2",
+  "cadence_inputs": [
+    {
+      "level": 1,
+      "model": "Max",
+      "mode": "Run",
+      "road_speed": 11.7,
+      "runtime_cadence": 1.0
+    },
+    {
+      "level": 1,
+      "model": "Max",
+      "mode": "Surge",
+      "road_speed": 14.507999,
+      "runtime_cadence": 1.1135529
+    },
+    {
+      "level": 1,
+      "model": "Max",
+      "mode": "Walk",
+      "road_speed": 5.499,
+      "runtime_cadence": 1.0
+    },
+    {
+      "level": 1,
+      "model": "Eva",
+      "mode": "Run",
+      "road_speed": 11.7,
+      "runtime_cadence": 1.07
+    },
+    {
+      "level": 1,
+      "model": "Eva",
+      "mode": "Surge",
+      "road_speed": 14.507999,
+      "runtime_cadence": 1.1915017
+    },
+    {
+      "level": 1,
+      "model": "Eva",
+      "mode": "Walk",
+      "road_speed": 5.499,
+      "runtime_cadence": 1.07
+    },
+    {
+      "level": 15,
+      "model": "Max",
+      "mode": "Run",
+      "road_speed": 17.08,
+      "runtime_cadence": 1.2082338
+    },
+    {
+      "level": 15,
+      "model": "Max",
+      "mode": "Surge",
+      "road_speed": 21.1792,
+      "runtime_cadence": 1.3454323
+    },
+    {
+      "level": 15,
+      "model": "Max",
+      "mode": "Walk",
+      "road_speed": 8.0276,
+      "runtime_cadence": 1.2082338
+    },
+    {
+      "level": 15,
+      "model": "Eva",
+      "mode": "Run",
+      "road_speed": 17.08,
+      "runtime_cadence": 1.2928103
+    },
+    {
+      "level": 15,
+      "model": "Eva",
+      "mode": "Surge",
+      "road_speed": 21.1792,
+      "runtime_cadence": 1.4396127
+    },
+    {
+      "level": 15,
+      "model": "Eva",
+      "mode": "Walk",
+      "road_speed": 8.0276,
+      "runtime_cadence": 1.2928103
+    },
+    {
+      "level": 1000,
+      "model": "Max",
+      "mode": "Run",
+      "road_speed": 21.68,
+      "runtime_cadence": 1.3612463
+    },
+    {
+      "level": 1000,
+      "model": "Max",
+      "mode": "Surge",
+      "road_speed": 26.8832,
+      "runtime_cadence": 1.5158199
+    },
+    {
+      "level": 1000,
+      "model": "Max",
+      "mode": "Walk",
+      "road_speed": 10.1896,
+      "runtime_cadence": 1.3612463
+    },
+    {
+      "level": 1000,
+      "model": "Eva",
+      "mode": "Run",
+      "road_speed": 21.68,
+      "runtime_cadence": 1.4565337
+    },
+    {
+      "level": 1000,
+      "model": "Eva",
+      "mode": "Surge",
+      "road_speed": 26.8832,
+      "runtime_cadence": 1.6219274
+    },
+    {
+      "level": 1000,
+      "model": "Eva",
+      "mode": "Walk",
+      "road_speed": 10.1896,
+      "runtime_cadence": 1.4565337
+    }
+  ],
+  "final_fbx_sha256": {
+    "Armored.fbx": "a93fc93dde25ee4caee3213ccf398ee5a2fc1ca61bef39f6e0cc11b19fa6d182",
+    "Boss.fbx": "1b7994c1052f3b38285facf23057daafa794d1646a8495e3ce8c624a5bef0251",
+    "Brute.fbx": "03ea22785f4fc297985294139aaf8f65a92671fa1e621670674210bfe62832f1",
+    "Crawler.fbx": "335447e9718131288aec265f996b848ccfc72aa43fae7efa447a485a86a29155",
+    "Eva.fbx": "866595bc038981e14558136893bbcd69a5c45a5363e0742838689544e2ad3589",
+    "Max.fbx": "4c4ca5fb3840ad55e1070e8c6fc12060275e5fbad7aef25184385d48de107fe2",
+    "Runner.fbx": "ec8c350f21b793f83e3372eef46ff633e6fea3fd3424cf359ed209c3d9260729",
+    "Toxic.fbx": "282db876e1053febce18db9b1e9ab37d48b53cfc2ceed957d71c716e2ca512e2",
+    "Walker.fbx": "80ce6407c6fce96be3a0b98c90e85e6d8832a3d0a1c071a08967452f68d611be"
+  }
+}
