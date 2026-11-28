@@ -7,6 +7,7 @@ from makehuman_body import smooth
 def append_field_gear(actor):
     h,w=actor.h,actor.shoulder
     body=[Vector(p) for p in actor.vertices]
+    actor.knee_mounts={}
 
     def surface(x,z,back=False):
         # Use the already fitted body/garment and exclude limbs beyond the
@@ -131,8 +132,10 @@ def append_field_gear(actor):
             actor.panel((x+sign*.032,y+.068,z+.013),(.048,.004,.010),16,'Thigh'+side)
             actor.panel((x+sign*.032,y+.069,z+.013),(.010,.004,.048),16,'Thigh'+side)
         first=len(actor.vertices)
-        near=sorted(body,key=lambda p:(p.x-knee.x)**2+(p.z-knee.z)**2)[:16]
-        y=sum(sorted(p.y for p in near)[-4:])/4+.006
+        near=sorted(range(len(body)),key=lambda i:(body[i].x-knee.x)**2+(body[i].z-knee.z)**2)[:16]
+        mount=sorted(near,key=lambda i:body[i].y)[-4:]
+        y=sum(body[i].y for i in mount)/4+.006
+        actor.knee_mounts[side]=(mount,Vector((knee.x,y+.004,knee.z-.006)))
         actor.panel((knee.x,y,knee.z-.006),(.129,.015,.149),3,'Shin'+side)
         # A curved rigid shell over a soft backing, rather than stacked boxes.
         start=len(actor.vertices);nu,nv=6,6
@@ -142,7 +145,7 @@ def append_field_gear(actor):
                 u=i/nu*2-1
                 x=knee.x+u*.059*math.sqrt(1-.20*vz*vz)
                 z=knee.z-.006+vz*.065
-                dome=.023*math.sqrt(max(0,1-u*u))+.009*(1-vz*vz)
+                dome=.015*math.sqrt(max(0,1-u*u))+.005*(1-vz*vz)
                 actor.vertices.append((x,y+.011+dome,z))
                 actor.weights.append({'KneeGuard'+side:1.})
         for j in range(nv):
@@ -173,6 +176,8 @@ def append_field_gear(actor):
             rings=[(Vector((knee.x,knee.y,z+dz)),.078,.077,{'Shin'+side:1.}) for dz in (-.007,.007)]
             actor.loft(rings,[3],12,0)
         for index in range(first,len(actor.vertices)):
-            if start<=index<shell_end:continue
+            if index<shell_end:
+                actor.weights[index]={'KneeGuard'+side:1.}
+                continue
             t=smooth(knee.z-.065,knee.z+.070,actor.vertices[index][2])*.65
             actor.weights[index]={'Shin'+side:1-t,'Thigh'+side:t}

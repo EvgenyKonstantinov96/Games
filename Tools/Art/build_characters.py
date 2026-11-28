@@ -427,6 +427,24 @@ class Character:
             angle = math.radians(toe_pitch)
             self.aim_bone(forefoot.name,forefoot.head.copy(),v(0,math.cos(angle),math.sin(angle)))
 
+    def fit_knee_guard(self,side):
+        """Attach the rigid padding to the actual skinned cloth, not a guessed pivot offset."""
+        indices,back=self.knee_mounts[side]
+        rest=sum((Vector(self.vertices[i]) for i in indices),v(0,0,0))/len(indices)
+        cloth=v(0,0,0)
+        for i in indices:
+            point=Vector(self.vertices[i])
+            for name,weight in self.weights[i].items():
+                bone=self.rig.pose.bones[name]
+                cloth+=(bone.matrix@bone.bone.matrix_local.inverted()@point)*weight/len(indices)
+        guard=self.rig.pose.bones['KneeGuard'+side]
+        delta=guard.matrix.to_quaternion()@guard.bone.matrix_local.to_quaternion().inverted()
+        target=cloth+delta@(back-rest)
+        current=guard.matrix@guard.bone.matrix_local.inverted()@back
+        placed=guard.matrix.copy();placed.translation+=target-current
+        guard.matrix=placed
+        bpy.context.view_layer.update()
+
     def rest_limb(self, name, heading, height, weight):
         bone = self.rig.pose.bones[name]
         direction = bone.tail - bone.head
@@ -632,6 +650,7 @@ class Character:
                         shin=self.rig.pose.bones['Shin'+side]
                         direction=(thigh.tail-thigh.head).normalized().lerp((shin.tail-shin.head).normalized(),.74)
                         self.aim_bone('KneeGuard'+side,shin.head.copy(),direction)
+                        self.fit_knee_guard(side)
                     if not self.hero:
                         arm=self.rig.pose.bones["UpperArm"+side]
                         origin=arm.head.copy()

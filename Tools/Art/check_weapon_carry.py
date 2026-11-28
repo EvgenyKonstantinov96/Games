@@ -37,7 +37,9 @@ def measure(folder,name,validate):
         for step in range(count+1):
             bpy.context.scene.frame_set(start+step)
             if validate:
-                assert all((rig.pose.bones['KneeGuard'+side].head-rig.pose.bones['Shin'+side].head).length<.003
+                # The fitted pad slides with the patella cloth instead of
+                # rotating around an offset suspended in front of the shin.
+                assert all((rig.pose.bones['KneeGuard'+side].head-rig.pose.bones['Shin'+side].head).length<.12
                            for side in ('L','R')),(name,state,step,'detached guard pivot')
             hand=rig.pose.bones['HandL'].head
             points.append(rig.pose.bones['WeaponGrip'].matrix.inverted()@hand)
