@@ -216,7 +216,7 @@ namespace ZombieSurvivalRun
         public float DistanceZ => transform.position.z;
         public float X => transform.position.x;
         internal Vector3 TravelVelocity { get; private set; }
-        public Vector3 AimPoint => transform.position + Vector3.up * (Kind == ZombieType.Boss ? 3.2f : Kind == ZombieType.Brute ? 2.6f : Kind==ZombieType.Crawler ? 0.85f:1.55f);
+        public Vector3 AimPoint => transform.position + Vector3.up * (Kind == ZombieType.Boss ? 3.2f : Kind == ZombieType.Brute ? 2.05f : Kind==ZombieType.Crawler ? 0.85f:1.55f);
 
         Transform body, torso, armL, armR, legL, legR, head;
         ZSRSkinnedArt rigged;
@@ -230,7 +230,7 @@ namespace ZombieSurvivalRun
         public void Construct(ZombieType type)
         {
             Kind=type;gameObject.name="INFECTED / "+type;
-            float scale=type==ZombieType.Boss?2.60f:type==ZombieType.Brute?1.55f:type==ZombieType.Armored?1.14f:
+            float scale=type==ZombieType.Boss?2.60f:type==ZombieType.Brute?1.22f:type==ZombieType.Armored?1.14f:
                 type==ZombieType.Runner?.97f:type==ZombieType.Crawler?.70f:type==ZombieType.Toxic?1.09f:1f;
             transform.localScale=Vector3.one*scale;
             production = ZSRProductionArt.CreateZombie(transform, type);
@@ -506,7 +506,7 @@ namespace ZombieSurvivalRun
             }
             // Enemies that missed the player must leave the active list and return to the pool.
             // Without this, after a few waves the 44-enemy cap stopped all subsequent spawns.
-            if (Kind != ZombieType.Boss && p.z < -8f)
+            if (Kind != ZombieType.Boss && p.z < -2.2f)
                 ZSRGame.Instance.RecycleZombie(this);
         }
 

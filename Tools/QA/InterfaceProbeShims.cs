@@ -68,7 +68,7 @@ namespace ZombieSurvivalRun {
  public enum ZSRDamageKind{Bite,Claw,Acid,Collision,Slam}
  public enum ZombieType{Walker,Runner,Armored,Brute,Toxic,Crawler,Boss}
  public enum WeaponType{Pistol,Rifle,Shotgun,Minigun} public enum ItemType{Medkit,Grenade,Drone,Armor} public enum BonusKind{DoubleDamage,RapidFire,Shield,Heal,Magnet,Turret}
- public class HeroModel{public int Health=112,MaxHealth=112;public float PositionX=0;}
+ public class HeroModel{public int Health=112,MaxHealth=112;public float PositionX=0;public bool IsUsingItem;}
  public class ZSRGame {
    public static ZSRGame Instance=new(); public const int MaxLevels=1000; public const int GateHealAmount=45; public const float RapidFireInterval=.62f,MagnetRadius=3.6f; public const int MaxUpgradeLevel=20;
    public int ClearedLevel=1,Payout=421; public bool Replaying=>Level<=ClearedLevel;
@@ -103,7 +103,9 @@ namespace ZombieSurvivalRun {
    public void GoMenu()=>State=ZSRState.Menu;public void GoHeroes()=>State=ZSRState.Heroes;public void GoArsenal()=>State=ZSRState.Arsenal;public void GoBonuses()=>State=ZSRState.Bonuses;public void GoItems()=>State=ZSRState.Items;public void GoLevels()=>State=ZSRState.Levels;
    public void TogglePause()=>State=State==ZSRState.Playing?ZSRState.Paused:ZSRState.Playing;public void Retry()=>StartLevel(Level);public void NextLevel()=>StartLevel(Level+1);public void UnlockForTesting()=>UnlockedLevel=1000;
    public int ItemLevel(ItemType i)=>items.GetValueOrDefault(i,1);public int ItemUpgradeCost(ItemType i)=>(i switch {ItemType.Medkit=>950,ItemType.Grenade=>1100,ItemType.Drone=>1350,_=>1500})*ItemLevel(i);public string ItemDescription(ItemType i)=>"Уровень модуля";public void UpgradeItem(ItemType i){Coins-=ItemUpgradeCost(i);items[i]=ItemLevel(i)+1;} public void UpgradeWeapon(){} public bool WeaponLevelUnlocked(WeaponType w)=>UnlockedLevel>=WeaponUnlockLevel(w); public bool WeaponOwned(WeaponType w)=>ownedWeapons.Contains(w); public int WeaponUnlockLevel(WeaponType w)=>ZSRWeaponProfile.For(w).UnlockLevel; public int WeaponPrice(WeaponType w)=>ZSRWeaponProfile.For(w).Price;
-   public void CycleMusic()=>MusicLabel="МУЗЫКА ВЫКЛ";public void UseMedkit(){}public void ThrowGrenade(){}public void UseDrone(){}
+   public int MedkitCalls,GrenadeCalls,DroneCalls;
+   public void CycleMusic()=>MusicLabel="МУЗЫКА ВЫКЛ";
+   public void UseMedkit(){MedkitCalls++;}public void ThrowGrenade(){GrenadeCalls++;}public void UseDrone(){DroneCalls++;}
  }
  public static class ZSRVeilGateView {
   public static (int slot,string label,string texture,Color tint,string title) Appearance(BonusKind kind)=> kind switch {

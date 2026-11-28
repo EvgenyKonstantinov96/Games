@@ -23,7 +23,7 @@ hero_frame = 239 if walking else 42
 chapter = int(sys.argv[sys.argv.index("--chapter")+1]) if "--chapter" in sys.argv else 0
 landmark, horizon, guide_color, sun_key, sky_color = (
     ("ruins", "Horizon.jpg", (1.,.57,.19), (1.,.66,.41), (.22,.29,.43)),
-    ("industrial", "Horizon_Industrial.jpg", (1.,.31,.12), (1.,.52,.29), (.44,.21,.19)),
+    ("industrial", "Horizon_Industrial.jpg", (1.,.31,.12), (1.,.65,.44), (.44,.21,.19)),
     ("evacuation", "Horizon_Evacuation.jpg", (.28,.85,.90), (1.,.74,.52), (.22,.29,.38)),
 )[chapter]
 
@@ -83,12 +83,14 @@ def cube(name, loc, scale, mat):
 
 def mesh_asset(name, position, material, yaw=0, scale=1):
     path=MESHES/(name+".obj")
-    verts,texcoords,faces=[],[],[]
+    verts,texcoords,normals,faces=[],[],[],[]
     for line in path.read_text().splitlines():
         if line.startswith("v "):
             x,y,z=map(float,line.split()[1:4]);verts.append((x,z,y))
         if line.startswith("vt "):
             texcoords.append(tuple(map(float,line.split()[1:3])))
+        if line.startswith("vn "):
+            x,y,z=map(float,line.split()[1:4]);normals.append((x,z,y))
         if line.startswith("f "):
             faces.append([i.split("/") for i in line.split()[1:]][::-1])
     mesh=bpy.data.meshes.new(name)
@@ -99,6 +101,12 @@ def mesh_asset(name, position, material, yaw=0, scale=1):
             for loop,corner in zip(polygon.loop_indices,face):
                 if len(corner)>1 and corner[1]:
                     uv_layer.data[loop].uv=texcoords[int(corner[1])-1]
+    if normals:
+        split=[]
+        for polygon,face in zip(mesh.polygons,faces):
+            polygon.use_smooth=True
+            split.extend(normals[int(corner[2])-1] for corner in face)
+        mesh.normals_split_custom_set(split)
     o=bpy.data.objects.new(name,mesh)
     bpy.context.collection.objects.link(o)
     o.data.materials.append(material)
@@ -154,6 +162,7 @@ if (ART/"Highway_surface.png").exists():
 
 amber=paint("Chapter marker lights",guide_color,emissive=True)
 props=paint("Track prop atlas",(1,1,1),ART/"TrackPropAtlas.png",.64)
+combat=paint("Reference combat kit",(1,1,1),ART/"CombatAtlas.png",.56)
 shoulder_glow = paint("Soft bridge reflector spill",guide_color,emissive=True)
 nodes, links = shoulder_glow.node_tree.nodes, shoulder_glow.node_tree.links
 soft = nodes.new("ShaderNodeTexImage")
@@ -257,6 +266,8 @@ else:
     character("Walker",(-.8,11.4,0),math.pi)
     character("Runner",(2.65,16.7,0),math.pi,.97)
     character("Armored",(-2.7,19.5,0),math.pi,1.14)
+    if "--contact-review" in sys.argv:
+        character("Brute",(1.85,8.5,0),math.pi,1.22)
 mesh_asset("track_wreck",(2.9,13,0),props,.13,1.14)
 mesh_asset("track_spikes",(-2.9,8.5,0),props,-.06,1.13)
 mesh_asset("track_barrier",(2.9,31,0),props,.04,1.18)
@@ -332,22 +343,26 @@ if walking and "--boss" not in sys.argv:
                 bone.matrix_basis = matrix
 scene.frame_set(hero_frame)
 bpy.context.view_layer.update()
-grip=eva.matrix_world@eva.pose.bones["WeaponGrip"].head
-forward=eva.matrix_world@eva.pose.bones["WeaponForward"].head-grip
+active_hero=max_rig if "--max" in sys.argv else eva
+if "--max" in sys.argv:
+    max_skin.hide_render=False
+    eva_skin.hide_render=True
+grip=active_hero.matrix_world@active_hero.pose.bones["WeaponGrip"].head
+forward=active_hero.matrix_world@active_hero.pose.bones["WeaponForward"].head-grip
 gun_yaw=math.atan2(-forward.x,forward.y)
 for part in ("lux_weapon_rifle", "lux_weapon_rifle_steel"):
     weapon = mesh_asset(part,grip+Vector((0,0,.065)),metal,gun_yaw)
     weapon.scale = (.51,)*3
 
 if "--combat" in sys.argv:
-    mesh_asset("combat_drone",(-.65,1.48,2.31),props)
+    mesh_asset("combat_drone",(-.65,1.48,2.31),combat)
     for x in (-1,1):
         for y in (-1,1):
-            mesh_asset("combat_rotor",(-.65+x*.45,1.48+y*.38,2.418),props,(x+y)*.42)
+            mesh_asset("combat_rotor",(-.65+x*.45,1.48+y*.38,2.418),combat,(x+y)*.42)
     beacon=paint("Drone lamps",(.1,.70,1),emissive=True)
     cube("Rear beacon",(-.65,1.131,2.327),(.19,.022,.032),beacon)
     cube("Port beacon",(-1.10,.987,2.34),(.058,.026,.038),beacon)
-    grenade=mesh_asset("combat_grenade",(.91,5.6,2.40),props,.2)
+    grenade=mesh_asset("combat_grenade",(.91,5.6,2.40),combat,.2)
     grenade.rotation_euler.x=.72
     fuse=paint("Grenade fuse",(1,.43,.1),emissive=True)
     cube("Fuse",(.91,5.55,2.49),(.045,.045,.037),fuse)
@@ -407,6 +422,7 @@ check_framing()
 if "--check-only" in sys.argv:
     sys.exit(0)
 eva.parent.location.x=0
+max_rig.parent.location.x=0
 scene.frame_set(hero_frame)
 frame_camera(0,390,844)
 
@@ -415,8 +431,16 @@ def sun(rotation, energy, color):
     lamp=bpy.context.object
     lamp.data.energy=energy;lamp.data.color=color;lamp.data.angle=.07
 
-sun((36,-30,145),1.56,sun_key)
-sun((55,20,12),.84,(.58,.70,1))
+def unity_sun(pitch,yaw,energy,color):
+    # Convert Unity's directional forward ray (Y-up) into Blender Z-up.
+    pitch,yaw=math.radians(pitch),math.radians(yaw)
+    direction=Vector((math.sin(yaw)*math.cos(pitch),math.cos(yaw)*math.cos(pitch),-math.sin(pitch)))
+    bpy.ops.object.light_add(type='SUN')
+    lamp=bpy.context.object;lamp.rotation_euler=direction.to_track_quat('-Z','Y').to_euler()
+    lamp.data.energy=energy;lamp.data.color=color;lamp.data.angle=.07
+
+unity_sun(29,-136,1.45 if chapter==1 else 1.36,sun_key)
+unity_sun(31,27,1.10,(.72,.76,.91) if chapter==1 else (.53,.70,1.))
 scene.world=bpy.data.worlds.new("Blue hour")
 scene.world.use_nodes=True
 background=scene.world.node_tree.nodes.get("Background")

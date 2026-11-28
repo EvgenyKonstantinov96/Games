@@ -57,7 +57,8 @@ namespace ZombieSurvivalRun.EditorTools
             }
 
             foreach (string name in new[] { "CharacterAtlas", "CharacterAtlas_normal", "CharacterAtlas_surface", "CharacterAtlas_emission", "Highway", "Highway_normal", "Horizon",
-                         "Horizon_Industrial", "Horizon_Evacuation", "Highway_surface", "ParticleSoft" })
+                         "Horizon_Industrial", "Horizon_Evacuation", "Highway_surface", "ParticleSoft",
+                         "CombatAtlas", "CombatAtlas_normal", "CombatAtlas_surface" })
                 if (Resources.Load<Texture2D>("ProductionArt/" + name) == null)
                     errors.Add(name + ": Texture2D missing");
 
@@ -77,7 +78,7 @@ namespace ZombieSurvivalRun.EditorTools
             foreach (string name in new[] { "max", "eva" })
                 if (Resources.Load<Texture2D>("UI/dialogue_face_" + name) == null)
                     errors.Add(name + ": dialogue avatar missing");
-            foreach (string name in new[] { "survivors_cover", "hero_max", "hero_eva" })
+            foreach (string name in new[] { "survivors_cover", "hero_max", "hero_eva", "kit_medkit", "kit_grenade", "kit_drone" })
                 if (Resources.Load<Texture2D>("UI/" + name) == null)
                     errors.Add(name + ": production menu art missing");
             foreach (string name in new[] { "Menu", "Run", "Pistol", "Rifle", "Shotgun", "Minigun", "Drone", "Blast", "Bite", "Claw", "AcidHit", "Spit" })

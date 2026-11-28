@@ -189,6 +189,11 @@ namespace ZombieSurvivalRun
         {
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
             Instance = this;
+            // URP's runtime debug shortcut creates an opaque [Debug Canvas]
+            // over Game View. Normal play starts with both debug panels closed.
+            DebugManager.instance.displayRuntimeUI = false;
+            DebugManager.instance.displayPersistentRuntimeUI = false;
+            DebugManager.instance.enableRuntimeUI = false;
             // Conservative mobile fallback: high-end phones keep 60 FPS, low-memory devices use 30.
             QualitySettings.vSyncCount = 0;
             bool lowMemoryPhone = Application.isMobilePlatform &&
@@ -314,8 +319,9 @@ namespace ZombieSurvivalRun
             cool.transform.SetParent(worldRoot.transform, false);
             cool.type = LightType.Directional;
             chapterFill = cool;
-            cool.intensity = .76f;
-            cool.color = new Color(.50f, .66f, 1f);
+            cool.intensity = 1.10f;
+            cool.color = new Color(.70f, .79f, 1f);
+            cool.shadows = LightShadows.None;
             cool.transform.rotation = Quaternion.Euler(31, 27, 0);
 
             camera3D = Camera.main;
@@ -373,11 +379,11 @@ namespace ZombieSurvivalRun
             bloom.intensity.Override(.26f);
             bloom.scatter.Override(.62f);
             var grade=profile.Add<ColorAdjustments>(true);
-            grade.contrast.Override(13f);
-            grade.saturation.Override(7f);
-            grade.postExposure.Override(.05f);
+            grade.contrast.Override(7f);
+            grade.saturation.Override(-5f);
+            grade.postExposure.Override(.18f);
             var vignette=profile.Add<Vignette>(true);
-            vignette.intensity.Override(.18f);
+            vignette.intensity.Override(.12f);
             vignette.smoothness.Override(.48f);
             volume.sharedProfile=profile;
         }

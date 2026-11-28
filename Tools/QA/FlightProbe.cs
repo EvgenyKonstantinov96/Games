@@ -29,7 +29,7 @@ namespace ZombieSurvivalRun
         public LineRenderer Trail = new();
         public LineRenderer GrenadeTrail(Transform parent) => Trail;
     }
-    static class ZSRTrackArt { public static object Surface => null; }
+    static class ZSRCombatArt { public static object Surface => null; }
     static class ZSRVisuals
     {
         public static object OrangeGlow => null;

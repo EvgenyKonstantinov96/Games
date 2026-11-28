@@ -84,6 +84,21 @@ static class Program
   game.State=ZSRState.Victory;Draw();Assert(HasText(game.StoryBeat.After),"Victory shows the aftermath");
   game.UnlockedLevel=1000;game.ClearedLevel=999;game.StartLevel(1000);Draw();
   Assert(HasText("УРОВЕНЬ 1000 / 1000")&&!game.HasStoryBeat,"Final boss HUD and no out-of-cadence story");
+  foreach(string item in new[]{"medkit","grenade","drone"})
+    Assert(Active(host.transform).Any(o=>o.GetComponent<RawImage>()?.texture?.path=="UI/kit_"+item),"Rendered field-kit image "+item);
+  game.Hero.Health=80;Draw();
+  Assert(Find("АПТЕЧКА").interactable&&Find("ГРАНАТА").interactable&&Find("ДРОН").interactable,"Available items accept input");
+  Find("АПТЕЧКА").onClick.Invoke();Find("ГРАНАТА").onClick.Invoke();Find("ДРОН").onClick.Invoke();
+  Assert(game.MedkitCalls==1&&game.GrenadeCalls==1&&game.DroneCalls==1,"Field-kit controls preserve exactly one callback");
+  game.Medkits=game.Grenades=game.Drones=0;Draw();
+  Assert(!Find("АПТЕЧКА").interactable&&!Find("ГРАНАТА").interactable&&!Find("ДРОН").interactable,"Empty stocks disable their controls");
+  game.Medkits=2;game.Grenades=1;game.Drones=1;game.Hero.Health=112;Draw();
+  Assert(!Find("АПТЕЧКА").interactable,"Full health preserves the medical charge");
+  Dump(Path.Combine(Output,"hud.json"));
+  game.Hero.Health=64;game.DamageFlash=.65f;game.LastDamageKind=ZSRDamageKind.Acid;game.CurrentNotice="КИСЛОТА  -6 HP";Draw();
+  Assert(HasText("ЗДОРОВЬЕ 64")&&Active(host.transform).Any(o=>o.name=="notice contrast panel"),"Damage notice remains readable on its dark panel");
+  Dump(Path.Combine(Output,"hud-damage.json"));
+  game.CurrentNotice="";game.DamageFlash=0;game.Hero.Health=112;
   game.SetWeaponRank(WeaponType.Rifle,18);game.Coins=12000;game.State=ZSRState.Defeat;Draw();Dump(Path.Combine(Output,"defeat.json"));
   Assert(Active(host.transform).Any(o=>o.GetComponent<Text>()?.text.StartsWith("До улучшения оружия") == true),"Replay tips are based on the current upgrade shortfall");
   Tap("ЗАРАБОТАТЬ МОНЕТЫ  •  УР. 999");
@@ -135,6 +150,7 @@ static class Program
   }
   Assert(dialoguePages==92, "Opening plus 45 scheduled scenes");
   Console.WriteLine("DIALOGUE UI PASS: 92 speaker pages with matching face and complete line.");
+  Console.WriteLine("FIELD KIT UI PASS: three rendered icons, one callback per item, 72×80 controls, ammo and high-contrast damage notice.");
   Console.WriteLine("UI PASS: 27 portrait layouts and 44×44 minimum design-space inputs, all 40 pages with 25 entries, level 1000, rank locks, bold button font, manual dialogue with face portraits and replay callback.");
  }
 }

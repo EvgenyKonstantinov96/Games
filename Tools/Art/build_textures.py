@@ -177,7 +177,7 @@ for slot,(source,tint) in skin_sources.items():
 surface_draw = ImageDraw.Draw(surface_atlas)
 for metal in (3,4,5,23):
     x,y,right,bottom=box(metal)
-    surface_draw.rectangle((x,y,right-1,bottom-1),fill=(132,0,0,136))
+    surface_draw.rectangle((x,y,right-1,bottom-1),fill=(38,0,0,90) if metal==4 else (132,0,0,136))
 colors = {"Max":(74,80,58),"Eva":(117,32,29),"Walker":(98,85,70),
           "Runner":(86,43,35),"Toxic":(57,69,43),"Crawler":(65,66,83)}
 with ZipFile(args.skin_pack) as pack:

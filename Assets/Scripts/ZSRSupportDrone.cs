@@ -28,21 +28,21 @@ namespace ZombieSurvivalRun
         void Construct()
         {
             ZSRVisuals.MeshPart("combat_drone", "Composite flight shell", transform,
-                Vector3.zero, Vector3.one, ZSRTrackArt.Surface);
+                Vector3.zero, Vector3.one, ZSRCombatArt.Surface);
             int index = 0;
             for (int x = -1; x <= 1; x += 2)
             for (int z = -1; z <= 1; z += 2)
             {
                 var pivot = ZSRVisuals.Pivot("Rotor mount", transform, new Vector3(.45f * x, .108f, .38f * z));
-                ZSRVisuals.MeshPart("combat_rotor", "Two-blade rotor", pivot, Vector3.zero, Vector3.one, ZSRTrackArt.Surface);
+                ZSRVisuals.MeshPart("combat_rotor", "Two-blade rotor", pivot, Vector3.zero, Vector3.one, ZSRCombatArt.Surface);
                 rotors[index++] = pivot;
             }
-            ZSRVisuals.Box("Rear status strip", transform, new Vector3(0, .017f, -.349f),
+            ZSRVisuals.Box("Rear status strip", transform, new Vector3(0, .017f, -.259f),
                 new Vector3(.19f, .032f, .021f), ZSRVisuals.BlueGlow);
             for (int side = -1; side <= 1; side += 2)
-                ZSRVisuals.Sphere("Flight position lamp", transform, new Vector3(side * .45f, .03f, -.493f),
+                ZSRVisuals.Sphere("Flight position lamp", transform, new Vector3(side * .45f, .07f, -.438f),
                     new Vector3(.058f, .038f, .026f), side < 0 ? ZSRVisuals.BlueGlow : ZSRVisuals.OrangeGlow);
-            ZSRVisuals.Sphere("Camera lens", transform, new Vector3(0, -.02f, .397f),
+            ZSRVisuals.Sphere("Camera lens", transform, new Vector3(0, -.06f, .303f),
                 new Vector3(.092f, .074f, .026f), ZSRVisuals.BlueGlow);
             gimbal = ZSRVisuals.Pivot("Stabilized turret", transform, new Vector3(0, -.128f, .23f));
             ZSRVisuals.Box("Gun housing", gimbal, new Vector3(0, 0, .115f),

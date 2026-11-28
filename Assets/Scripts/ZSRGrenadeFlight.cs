@@ -20,7 +20,7 @@ namespace ZombieSurvivalRun
         public ZSRGrenadeFlight(Transform parent, ZSRCombatEffects effects, Vector3 hand, int itemLevel)
         {
             ItemLevel = itemLevel;
-            model = ZSRVisuals.MeshPart("combat_grenade", "Live grenade", parent, Vector3.zero, Vector3.one, ZSRTrackArt.Surface);
+            model = ZSRVisuals.MeshPart("combat_grenade", "Live grenade", parent, Vector3.zero, Vector3.one, ZSRCombatArt.Surface);
             model.transform.position = hand;
             ZSRVisuals.Sphere("Fuse indicator", model.transform, new Vector3(0, .106f, 0),
                 new Vector3(.035f, .027f, .035f), ZSRVisuals.OrangeGlow);

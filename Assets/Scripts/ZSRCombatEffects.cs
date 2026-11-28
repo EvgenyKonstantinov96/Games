@@ -229,10 +229,8 @@ namespace ZombieSurvivalRun
                 if (medkit == null)
                 {
                     medkit = ZSRVisuals.MeshPart("combat_medkit", "Field medkit", transform,
-                        Vector3.zero, Vector3.one, ZSRTrackArt.Surface);
-                    var white = ZSRVisuals.White;
-                    ZSRVisuals.Box("Medical cross", medkit.transform, new Vector3(0, .057f, 0), new Vector3(.11f, .005f, .032f), white);
-                    ZSRVisuals.Box("Medical cross stem", medkit.transform, new Vector3(0, .058f, 0), new Vector3(.032f, .005f, .10f), white);
+                        Vector3.zero, Vector3.one, ZSRCombatArt.Surface);
+
                 }
                 medkit.SetActive(true);
                 medkitLeft = .76f;

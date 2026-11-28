@@ -32,6 +32,8 @@ namespace ZombieSurvivalRun
         readonly Texture2D[] heroCovers = new Texture2D[2];
         readonly Texture2D[] chapterSkies = new Texture2D[3];
         readonly Texture2D[] weaponArts = new Texture2D[4];
+        readonly Texture2D[] itemArts = new Texture2D[3];
+        readonly UnityEngine.UI.Button[] itemButtons = new UnityEngine.UI.Button[3];
         static readonly string[] WeaponNames = { "ПИСТОЛЕТ", "АВТОМАТ", "ДРОБОВИК", "ПУЛЕМЁТ" };
         Sprite primarySprite, secondarySprite, mutedSprite, panelSprite;
         ZSRState lastState = (ZSRState)(-1);
@@ -52,7 +54,7 @@ namespace ZombieSurvivalRun
         const float H = 844f;
         UnityEngine.UI.Image damageLeft, damageRight;
         Text hudAmmo, hudCoins, hudHealth, hudMessage, hudGrenade, hudMed, hudDrone;
-        RectTransform hpFill, hpTrail, progressFill, bossFill, bossBackdrop;
+        RectTransform hpFill, hpTrail, progressFill, bossFill, bossBackdrop, noticeBackdrop;
         float shownHealth = 1f;
         Text hudBoss, hudPace;
         RectTransform paceFill;
@@ -64,6 +66,9 @@ namespace ZombieSurvivalRun
             artMax = Resources.Load<Texture2D>("UI/hero_max") ?? Resources.Load<Texture2D>("Artwork/max");
             artEva = Resources.Load<Texture2D>("UI/hero_eva") ?? Resources.Load<Texture2D>("Artwork/eva");
             survivorsArt = Resources.Load<Texture2D>("UI/survivors_cover");
+            itemArts[0] = Resources.Load<Texture2D>("UI/kit_medkit");
+            itemArts[1] = Resources.Load<Texture2D>("UI/kit_grenade");
+            itemArts[2] = Resources.Load<Texture2D>("UI/kit_drone");
             artRifle = Resources.Load<Texture2D>("Artwork/rifle");
             string[] weaponFiles = { "pistol", "rifle", "shotgun", "minigun" };
             for (int i=0; i<weaponFiles.Length; i++)
@@ -420,7 +425,7 @@ namespace ZombieSurvivalRun
             AnimatePage(0f);
 
             hudAmmo = hudCoins = hudHealth = hudMessage = hudGrenade = hudMed = hudDrone = null;
-            hpFill = progressFill = bossFill = bossBackdrop = null; hudBoss = null;
+            hpFill = hpTrail = progressFill = bossFill = bossBackdrop = noticeBackdrop = null; hudBoss = null;
             if (g.State == ZSRState.Briefing)
             {
                 Dialogue(g);
@@ -668,7 +673,9 @@ namespace ZombieSurvivalRun
                 Block("item card", x, y, 173, 258, Color.Lerp(Panel, tint, .13f));
                 Accent(x, y, 173, tint);
                 Block("item mark", x + 13, y + 13, 147, 42, Color.Lerp(Panel, tint, .25f));
-                Icon((Symbol)((int)Symbol.Medkit + i), x + 68, y + 15, 37, tint);
+                if (i<itemArts.Length && itemArts[i]!=null)
+                    Image(itemArts[i],x+47,y-2,80,66,false);
+                else Icon((Symbol)((int)Symbol.Medkit + i), x + 68, y + 15, 37, tint);
                 Label(names[i], x + 6, y + 63, 161, 24, 15, Color.white);
                 Label("РАНГ " + level + " / " + max, x + 7, y + 88, 159, 22, 12, tint);
                 Label(ItemStats(item, level, next), x + 8, y + 115, 157, 61, 13, Color.white,
@@ -779,29 +786,35 @@ namespace ZombieSurvivalRun
             // The boss background and health bar appear only during the three boss encounters.
             bossBackdrop = Block("boss hp backdrop", 35, 158, 320, 9, new Color(.24f,.08f,.10f,.85f));
             bossFill = Block("boss health red", 35, 158, 320, 9, new Color(.91f, .12f, .13f, 1));
-            hudMessage = Label("", 8, 172, 374, 27, 15, Gold);
+            noticeBackdrop = Block("notice contrast panel", 36, 169, 318, 32, new Color(.025f,.043f,.064f,.91f));
+            hudMessage = Label("", 40, 172, 310, 27, 14, Gold);
             lastPaceSeconds = -1;
             float bottom = H - 107;
             Block("HUD bottom", 0, bottom - 15, W, 122, new Color(.026f, .041f, .061f, .85f));
             Accent(9, bottom - 15, 372, Orange);
-            hudAmmo = Label("", 16, bottom - 10, 358, 25, 17, Color.white, TextAnchor.MiddleLeft);
-            hudPace = Label("", 16, bottom + 14, 358, 17, 11, Cyan, TextAnchor.MiddleLeft);
-            paceFill = Block("pace ready", 287, bottom + 21, 84, 3, Cyan);
-            Ability(Symbol.Medkit, "АПТЕЧКА", 11, bottom + 33, 115, Cyan, g.UseMedkit, g.IsRunning);
-            Ability(Symbol.Grenade, "ГРАНАТА", 138, bottom + 33, 114, Orange, g.ThrowGrenade, g.IsRunning);
-            Ability(Symbol.Drone, "ДРОН", 264, bottom + 33, 114, Cyan, g.UseDrone, g.IsRunning);
-            hudMed = Label("", 78, bottom + 37, 43, 17, 12, Gold);
-            hudGrenade = Label("", 205, bottom + 37, 43, 17, 12, Gold);
-            hudDrone = Label("", 302, bottom + 37, 71, 17, 10, Gold);
+            hudPace = Label("", 14, bottom - 7, 260, 17, 10, Cyan, TextAnchor.MiddleLeft);
+            paceFill = Block("pace ready", 289, bottom + 2, 84, 3, Cyan);
+            Block("weapon HUD card",6,bottom+16,146,80,new Color(.07f,.10f,.13f,.98f));
+            ButtonCaption(WeaponNames[(int)g.Weapon],13,bottom+17,133,18,10,TextMuted,TextAnchor.MiddleLeft,content);
+            Image(weaponArts[(int)g.Weapon],13,bottom+34,130,38,false);
+            hudAmmo = ButtonCaption("",13,bottom+69,134,23,15,Color.white,TextAnchor.MiddleLeft,content);
+            hudMed = Ability(ItemType.Medkit,"АПТЕЧКА",158,bottom+16,72,Cyan,g.UseMedkit,g.IsRunning);
+            hudGrenade = Ability(ItemType.Grenade,"ГРАНАТА",236,bottom+16,72,Orange,g.ThrowGrenade,g.IsRunning);
+            hudDrone = Ability(ItemType.Drone,"ДРОН",314,bottom+16,72,Cyan,g.UseDrone,g.IsRunning);
             UpdateHUD(g);
         }
 
-        void Ability(Symbol symbol, string caption, float x, float y, float width, Color tint,
+        Text Ability(ItemType item, string caption, float x, float y, float width, Color tint,
             Action action, bool enabled)
         {
-            var button = ButtonSurface(caption, x, y, width, 64, tint, action, enabled, false);
-            Icon(symbol, 13, 8, 29, Color.white, button.transform);
-            ButtonCaption(caption, 5, 41, width - 10, 19, 11, Color.white, TextAnchor.MiddleCenter, button.transform);
+            var button = ButtonSurface(caption,x,y,width,80,tint,action,enabled,false,
+                skinTint:new Color(.10f,.15f,.19f));
+            itemButtons[(int)item] = button;
+            if (itemArts[(int)item]!=null) Image(itemArts[(int)item],1,6,width-2,57,false,button.transform);
+            else Icon((Symbol)((int)Symbol.Medkit+(int)item),22,20,28,Color.white,button.transform);
+            Block("item quantity badge",width-29,3,26,18,new Color(.025f,.043f,.060f,.95f),button.transform);
+            ButtonCaption(caption,2,61,width-4,16,9,Color.white,TextAnchor.MiddleCenter,button.transform);
+            return Label("",width-29,2,26,19,11,Gold,parent:button.transform);
         }
 
         void UpdateHUD(ZSRGame g)
@@ -809,7 +822,7 @@ namespace ZombieSurvivalRun
             if (hudAmmo == null) return;
             hudCoins.text = "● " + g.Earned;
             hudHealth.text = "ЗДОРОВЬЕ " + g.Hero.Health;
-            hudAmmo.text = WeaponNames[(int)g.Weapon] + "   " + g.Ammo + " / " + g.Magazine + (g.IsReloading ? "  •  ПЕРЕЗАРЯДКА" : "");
+            hudAmmo.text = g.IsReloading ? "ПЕРЕЗАРЯДКА" : g.Ammo + " / " + g.Magazine;
             hudMessage.text = g.CurrentNotice;
             bool acidHit = g.LastDamageKind == ZSRDamageKind.Acid;
             Color damageColor = acidHit ? new Color(.66f, .9f, .17f) : new Color(1f, .21f, .12f);
@@ -817,8 +830,9 @@ namespace ZombieSurvivalRun
             damageColor.a = intensity * .85f;
             damageLeft.color = g.DamageSourceX <= g.Hero.PositionX ? damageColor : new Color(0, 0, 0, 0);
             damageRight.color = g.DamageSourceX >= g.Hero.PositionX ? damageColor : new Color(0, 0, 0, 0);
-            hudHealth.color = Color.Lerp(Color.white, damageColor, intensity);
-            hudMessage.color = intensity > 0f ? damageColor : Gold;
+            hudHealth.color = Color.white;
+            hudMessage.color = intensity > 0f ? acidHit ? new Color(.84f,1f,.44f) : new Color(1f,.83f,.64f) : Gold;
+            if (noticeBackdrop!=null) noticeBackdrop.gameObject.SetActive(!string.IsNullOrEmpty(g.CurrentNotice));
             int rechargeSeconds = Mathf.CeilToInt(g.PaceRecharge);
             if (g.Pace != lastPace || rechargeSeconds != lastPaceSeconds)
             {
@@ -852,11 +866,12 @@ namespace ZombieSurvivalRun
                 bossFill.gameObject.SetActive(g.BossAlive);
                 bossFill.sizeDelta = new Vector2(320f * g.BossHealthFraction, 9f);
             }
-            hudMed.text = "× " + g.Medkits;
-            hudGrenade.text = "× " + g.Grenades;
-            hudDrone.text = g.DroneSeconds > 0f
-                ? "× " + g.Drones + "   •   " + Mathf.CeilToInt(g.DroneSeconds) + " СЕК"
-                : "× " + g.Drones;
+            hudMed.text = g.Medkits.ToString();
+            hudGrenade.text = g.Grenades.ToString();
+            hudDrone.text = g.DroneSeconds > 0f ? Mathf.CeilToInt(g.DroneSeconds) + "с" : g.Drones.ToString();
+            itemButtons[0].interactable = g.IsRunning && g.Medkits>0 && g.Hero.Health<g.Hero.MaxHealth && !g.Hero.IsUsingItem;
+            itemButtons[1].interactable = g.IsRunning && g.Grenades>0 && !g.Hero.IsUsingItem;
+            itemButtons[2].interactable = g.IsRunning && g.Drones>0;
             if (progressFill != null) progressFill.sizeDelta = new Vector2(289 * g.Progress, 8);
             float health = g.Hero.Health / (float)Mathf.Max(1, g.Hero.MaxHealth);
             if (health >= shownHealth) shownHealth = health;

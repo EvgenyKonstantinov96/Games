@@ -105,3 +105,10 @@ duo = Image.new('RGB',(970,1039),'#111b29')
 for i,img in enumerate(faces):
     duo.paste(img.resize((480,1039),Image.Resampling.LANCZOS),(490*i,0))
 duo.save(args.layout/'production-dialogue-preview.jpg',quality=92,optimize=True)
+
+if (args.layout/'hud.json').exists():
+    pages=[render(name) for name in ('hud','hud-damage')]
+    sheet=Image.new('RGB',(830,898),'#111b29')
+    for i,page in enumerate(pages):sheet.paste(page.resize((415,898),Image.Resampling.LANCZOS),(415*i,0))
+    sheet.save(args.layout/'field-kit-hud-layout.jpg',quality=94,optimize=True)
+    pages[0].crop((0,pixels(713),pixels(390),pixels(844))).save(args.layout/'field-kit-hud-strip.png',optimize=True)
