@@ -16,6 +16,7 @@ def extract():
         block(source, "enum Motion"),
         *[line for line in source.splitlines() if "static readonly int[]" in line],
         block(source, "void RestoreSampledPose()"),
+        block(source, "void RestoreSupportPose()"),
         block(source, "void Sample()"),
         "void Steer() { " + source[start:end] + " }",
     ]

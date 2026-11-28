@@ -44,6 +44,9 @@ namespace PoseCheck
         const float Fps = 30f;
         readonly Transform spine = new(), head, transform = new();
         Quaternion sampledSpine, sampledHead;
+        Transform supportUpper, supportLower, supportHand;
+        Quaternion sampledSupportUpper, sampledSupportLower, sampledSupportHand;
+        bool sampledSupport;
         bool sampledUpperBody, walking;
         float steeringRoll, steeringHeading, aimTime = .19f, gaitPhase, age, blend, blendDuration = .1f;
         float walkBlend, legWeight;

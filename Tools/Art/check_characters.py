@@ -179,7 +179,9 @@ for path in sorted(ROOT.glob("*.fbx")):
             scene.frame_set(57)
             loop_error=(loop_start-rig.pose.bones[foot_name].head).length
             assert loop_error<.015, (path,side,loop_error)
-            assert travel[0].y-travel[9].y>.65, (path,side,travel[0],travel[9])
+            # Armed running now uses a shorter recovery instead of a high-knee
+            # sprint. Require rearward contact travel, not the old >65 cm reach.
+            assert .45<travel[0].y-travel[9].y<.80, (path,side,travel[0],travel[9])
             assert max((a-b).length for a,b in zip(travel,travel[1:]))<.24, (path,side)
             print(f"GAIT {path.stem:7} {side} ankle-roll {max(pitches)-min(pitches):.1f} degrees, "
                   f"support {min(support[:10]):.3f}..{max(support[:10]):.3f} m, "
@@ -195,7 +197,7 @@ for path in sorted(ROOT.glob("*.fbx")):
             walk_reach = max(p.y for p in walk)-min(p.y for p in walk)
             run_reach = max(p.y for p in travel)-min(p.y for p in travel)
             stance = sum(-.035 < height < .055 for height in walk_support[:34])
-            assert .37 < walk_reach < .72 * run_reach, (path, side, walk_reach, run_reach)
+            assert .37 < walk_reach < .85 * run_reach, (path, side, walk_reach, run_reach)
             assert stance >= 21 and max(walk_support) > .065, (path, side, walk_support)
             assert (walk[-1]-walk[0]).length < .015, (path, side, walk[0], walk[-1])
             print(f"WALK {path.stem:7} {side} reach {walk_reach:.3f} m vs {run_reach:.3f} m running, "

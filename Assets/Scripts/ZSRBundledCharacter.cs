@@ -37,6 +37,11 @@ namespace ZombieSurvivalRun
         Vector3 aimPoint;
         Quaternion socketRest;
         Vector3 socketPosition;
+        Transform supportUpper, supportLower, supportHand;
+        Vector3 supportPoint;
+        Quaternion supportRotation, sampledSupportUpper, sampledSupportLower, sampledSupportHand;
+        float supportWeight;
+        bool sampledSupport;
         Quaternion sampledSpine, sampledHead;
         bool sampledUpperBody;
         readonly ZSRUpperBodyAim upperAim = new();
@@ -231,17 +236,35 @@ namespace ZombieSurvivalRun
             weaponSocket = socket;
             socket.rotation = Quaternion.LookRotation(barrel.position - grip.position, transform.up);
             socketRest = socket.localRotation;
-            kick = weapon switch
-            {
-                WeaponType.Pistol => .043f, WeaponType.Shotgun => .105f,
-                WeaponType.Minigun => .025f, _ => .057f
-            };
             Vector3 referenceScale = transform.lossyScale;
             Vector3 socketScale = socket.lossyScale;
             socket.localScale = new Vector3(
                 referenceScale.x / Mathf.Max(.0001f, Mathf.Abs(socketScale.x)),
                 referenceScale.y / Mathf.Max(.0001f, Mathf.Abs(socketScale.y)),
                 referenceScale.z / Mathf.Max(.0001f, Mathf.Abs(socketScale.z)));
+            supportUpper = FindBone(transform,"UpperArmL");
+            supportLower = FindBone(transform,"ForearmL");
+            supportHand = FindBone(transform,"HandL");
+            if (supportHand != null)
+            {
+                supportPoint = socket.InverseTransformPoint(supportHand.position);
+                supportRotation = Quaternion.Inverse(socket.rotation)*supportHand.rotation;
+                // Each weapon has its own support location. A pistol is held
+                // with joined hands; its support hand must not reach past the muzzle.
+                if (weapon == WeaponType.Pistol)
+                {
+                    supportPoint += new Vector3(.035f,-.015f,-.250f);
+                    supportRotation = Quaternion.LookRotation(new Vector3(.03f,-1f,.22f),new Vector3(1f,.03f,0f)) *
+                        Quaternion.Inverse(Quaternion.LookRotation(new Vector3(1f,.08f,.12f),new Vector3(-.08f,1f,0f))) * supportRotation;
+                }
+                else if (weapon == WeaponType.Shotgun) supportPoint += new Vector3(0f,0f,.030f);
+                else if (weapon == WeaponType.Minigun) supportPoint += new Vector3(-.010f,0f,.040f);
+            }
+            kick = weapon switch
+            {
+                WeaponType.Pistol => .043f, WeaponType.Shotgun => .105f,
+                WeaponType.Minigun => .025f, _ => .057f
+            };
             var gun = ZSRVisuals.Rifle(socket, weapon);
             float weaponScale = weapon switch
             {
@@ -355,6 +378,7 @@ namespace ZombieSurvivalRun
             upperAim.Reset();
             breathPhase = 0f;
             rate = desiredRate = 1f;
+            supportWeight = 0f;
             HideFlash();
         }
 
@@ -485,6 +509,32 @@ namespace ZombieSurvivalRun
                 else if (previousStep < .5f && gaitPhase >= .5f) game.Footstep(footRight.position);
             }
             ApplyAim();
+            ApplySupportGrip(dt);
+        }
+
+        void RestoreSupportPose()
+        {
+            if (!sampledSupport) return;
+            supportUpper.localRotation = sampledSupportUpper;
+            supportLower.localRotation = sampledSupportLower;
+            supportHand.localRotation = sampledSupportHand;
+        }
+
+        void ApplySupportGrip(float dt)
+        {
+            if (supportUpper == null || supportLower == null || supportHand == null || weaponSocket == null) return;
+            if (motion == Motion.Death) { supportWeight = 0f; return; }
+            bool carry = motion == Motion.Idle || IsGait(motion) || IsShooting(motion);
+            supportWeight = Mathf.MoveTowards(supportWeight,carry ? 1f : 0f,dt/.12f);
+            if (supportWeight <= 0f) return;
+            Vector3 shoulder = supportUpper.position, elbow = supportLower.position, wrist = supportHand.position;
+            Vector3 target = Vector3.Lerp(wrist,weaponSocket.TransformPoint(supportPoint),supportWeight);
+            Quaternion rotation = Quaternion.Slerp(supportHand.rotation,weaponSocket.rotation*supportRotation,supportWeight);
+            if (!ZSRArmReach.Solve(shoulder,elbow,wrist,target,out var joint,out var end)) return;
+            supportUpper.rotation = Quaternion.FromToRotation(elbow-shoulder,joint-shoulder)*supportUpper.rotation;
+            supportLower.rotation = Quaternion.FromToRotation(supportHand.position-supportLower.position,
+                end-supportLower.position)*supportLower.rotation;
+            supportHand.rotation = rotation;
         }
 
         void ApplyAim()
@@ -540,8 +590,16 @@ namespace ZombieSurvivalRun
                 lowerBody.SetInputWeight(1, walkBlend);
                 heroLayers.SetInputWeight(1, legWeight);
             }
+            RestoreSupportPose();
             RestoreSampledPose();
             graph.Evaluate(0f);
+            if (supportUpper != null && supportLower != null && supportHand != null)
+            {
+                sampledSupportUpper = supportUpper.localRotation;
+                sampledSupportLower = supportLower.localRotation;
+                sampledSupportHand = supportHand.localRotation;
+                sampledSupport = true;
+            }
             if (spine != null && head != null)
             {
                 sampledSpine = spine.localRotation;
@@ -556,7 +614,7 @@ namespace ZombieSurvivalRun
             if (muzzleFlash != null) muzzleFlash.gameObject.SetActive(false);
         }
 
-        void OnDisable() { RestoreSampledPose(); HideFlash(); }
+        void OnDisable() { RestoreSupportPose(); RestoreSampledPose(); HideFlash(); }
 
         void OnDestroy()
         {

@@ -126,7 +126,7 @@ def append_field_gear(actor):
         x=hip.x+sign*.060
         z=h*.476
         y=surface(x,z)+.030
-        pouch((x,y,z),(.113,.050,.148),0,'Thigh'+side)
+        pouch((x,y,z),(.103,.036,.137),0,'Thigh'+side)
         if actor.name=='Eva' and side=='L':
             pouch((x+sign*.032,y+.042,z+.013),(.086,.042,.090),1,'Thigh'+side)
             actor.panel((x+sign*.032,y+.068,z+.013),(.048,.004,.010),16,'Thigh'+side)
@@ -136,17 +136,17 @@ def append_field_gear(actor):
         mount=sorted(near,key=lambda i:body[i].y)[-4:]
         y=sum(body[i].y for i in mount)/4+.006
         actor.knee_mounts[side]=(mount,Vector((knee.x,y+.004,knee.z-.006)))
-        actor.panel((knee.x,y,knee.z-.006),(.129,.015,.149),3,'Shin'+side)
+        actor.panel((knee.x,y,knee.z-.006),(.115,.012,.132),3,'Shin'+side)
         # A curved rigid shell over a soft backing, rather than stacked boxes.
         start=len(actor.vertices);nu,nv=6,6
         for j in range(nv+1):
             vz=j/nv*2-1
             for i in range(nu+1):
                 u=i/nu*2-1
-                x=knee.x+u*.059*math.sqrt(1-.20*vz*vz)
-                z=knee.z-.006+vz*.065
-                dome=.015*math.sqrt(max(0,1-u*u))+.005*(1-vz*vz)
-                actor.vertices.append((x,y+.011+dome,z))
+                x=knee.x+u*.052*math.sqrt(1-.20*vz*vz)
+                z=knee.z-.006+vz*.058
+                dome=.010*math.sqrt(max(0,1-u*u))+.004*(1-vz*vz)
+                actor.vertices.append((x,y+.009+dome,z))
                 actor.weights.append({'KneeGuard'+side:1.})
         for j in range(nv):
             for i in range(nu):

@@ -3,6 +3,47 @@ import math
 from mathutils import Vector
 
 
+def fitted_bib(actor,width,bottom,top,tile):
+    """A garment/vest panel sampled from the actual chest, with a rolled closed edge."""
+    first=len(actor.vertices);nu,nv=10,8
+    for layer in range(2):
+        for j in range(nv+1):
+            t=j/nv;z=actor.h*(bottom+(top-bottom)*t)
+            for i in range(nu+1):
+                u=i/nu*2-1;x=u*width*(1-.15*t)
+                y=actor.body.chest_surface(x,z)+(.024 if layer==0 else .007)
+                y+=.010*math.sin(math.pi*t)*(1-u*u)
+                actor.vertices.append((x,y,z))
+                weight=max(0,min(1,(z/actor.h-.65)/.13))
+                actor.weights.append({'Spine':1-weight,'Chest':weight})
+    count=(nu+1)*(nv+1)
+    for layer in range(2):
+        for j in range(nv):
+            for i in range(nu):
+                a=first+layer*count+j*(nu+1)+i
+                face=(a,a+1,a+nu+2,a+nu+1)
+                actor.faces.append(face[::-1] if layer==0 else face)
+                coords=((i/nu,j/nv),((i+1)/nu,j/nv),((i+1)/nu,(j+1)/nv),(i/nu,(j+1)/nv))
+                actor.tiles.append((tile,coords[::-1] if layer==0 else coords))
+    border=list(range(nu+1))+[j*(nu+1)+nu for j in range(1,nv+1)]
+    border += [nv*(nu+1)+i for i in range(nu-1,-1,-1)]+[j*(nu+1) for j in range(nv-1,0,-1)]
+    for a,b in zip(border,border[1:]+border[:1]):
+        actor.faces.append((first+a,first+b,first+b+count,first+a+count))
+        actor.tiles.append((3,((0,0),(1,0),(1,1),(0,1))))
+
+def tank_harness(actor):
+    h=actor.h
+    fitted_bib(actor,.20,.55,.70,20)
+    # One surviving overall strap, its diagonal broken counterpart and seams.
+    for sign,upper in ((-1,.83),(1,.74)):
+        x=sign*.15
+        points=[Vector((x,actor.body.chest_surface(x,h*z)+.027,h*z)) for z in (.57,.66,.74,upper)]
+        for a,b in zip(points,points[1:]):
+            if (a-b).length<.001:continue
+            actor.surface(a,b,[(0,.024,.009),(.5,.025,.010),(1,.023,.008)],20,'Chest',8)
+        p=points[2]
+        actor.panel(p+Vector((0,.014,0)),(.054,.012,.063),4,'Chest')
+
 def append_infected_details(actor,pack):
     h,w=actor.h,actor.shoulder
     if actor.name in ('Walker','Crawler'):

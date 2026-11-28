@@ -7,6 +7,23 @@ static class UpperAimProbe
     static void Need(bool ok,string text){if(!ok)throw new Exception(text);}
     static void Main()
     {
+        for(int i=0;i<4000;i++)
+        {
+            float t=i*.017f;
+            var shoulder=new Vector3(.2f,1.5f,0f);
+            var elbow=shoulder+new Vector3(.10f,-.24f,-.03f);
+            var wrist=elbow+new Vector3(-.15f,.10f,.19f);
+            var target=shoulder+new Vector3(MathF.Sin(t)*.65f,MathF.Cos(t*.73f)*.50f,MathF.Sin(t*.37f)*.43f);
+            Need(ZSRArmReach.Solve(shoulder,elbow,wrist,target,out var joint,out var end),"Arm solves nondegenerate target");
+            float upper=(elbow-shoulder).magnitude,lower=(wrist-elbow).magnitude;
+            Need(Math.Abs((joint-shoulder).magnitude-upper)<.0001f&&Math.Abs((end-joint).magnitude-lower)<.0001f,"Arm segment lengths preserved");
+            var direction=(end-shoulder).normalized;
+            Need(Vector3.Dot(Vector3.ProjectOnPlane(joint-shoulder,direction),Vector3.ProjectOnPlane(elbow-shoulder,direction))>-.0001f,"Elbow remains on sampled bend side");
+            if((target-shoulder).magnitude<upper+lower-.0051f&&(target-shoulder).magnitude>Math.Abs(upper-lower)+.0081f)
+                Need((end-target).magnitude<.0001f,"Reachable grip target reached");
+        }
+        Need(!ZSRArmReach.Solve(Vector3.zero,Vector3.zero,Vector3.zero,Vector3.one,out _,out _),"Reject zero-length arm");
+        Console.WriteLine("ARM REACH PASS: 4000 moving/reachable/unreachable targets, fixed segment lengths, sampled elbow side and degenerate arm guard. Actual production vector math.");
         foreach(int hz in new[]{20,30,60,120})
         {
             var aim=new ZSRUpperBodyAim();float dt=1f/hz;

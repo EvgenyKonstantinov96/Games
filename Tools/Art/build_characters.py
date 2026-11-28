@@ -257,13 +257,23 @@ class Character:
         if self.name=="Armored":
             from infected_detail import append_fitted_helmet
             append_fitted_helmet(self)
-            self.panel((0,.143,h*.745),(w*.72,.092,.267),4,"Chest")
-            self.panel((0,.184,h*.699),(w*.63,.038,.095),3,"Chest")
-            self.panel((0,.202,h*.681),(w*.50,.018,.060),4,"Chest")
+            from infected_detail import fitted_bib
+            fitted_bib(self,.195,.655,.815,4)
+            for row in range(3):
+                z=h*(.69+row*.032)
+                for sign in (-1,1):
+                    x=sign*.093
+                    front=self.body.chest_surface(x,z)+.042
+                    self.panel((x,front,z),(.14,.012,.015),3,'Chest')
             for s in (-1,1):
-                self.panel((s*w*.48,.031,h*.807),(.148,.165,.098),4,"Chest",s*.28)
-                self.panel((s*w*.51,.135,h*.775),(.115,.027,.054),3,"Chest",s*.28)
-                self.panel((s*w*.50,.156,h*.818),(.083,.012,.026),5,"Chest",s*.24)
+                side='L' if s<0 else 'R'
+                shoulder=self.bones['UpperArm'+side][0];elbow=self.bones['Forearm'+side][0]
+                # Rounded shoulder shell follows the upper arm, not a block on the torso.
+                self.surface(shoulder,shoulder.lerp(elbow,.38),
+                    [(0,.074,.068),(.15,.097,.090),(.72,.091,.082),(1,.079,.070)],4,'UpperArm'+side,14)
+                z=h*.79;x=s*.10
+                self.surface(v(x,self.body.chest_surface(x,z)+.030,z),v(x,-.10,h*.836),
+                    [(0,.020,.010),(.5,.023,.011),(1,.020,.009)],3,'Chest',8)
         elif self.tank:
             for side,sign in SIDES:
                 for digit in range(1,6):
@@ -278,19 +288,29 @@ class Character:
                 for side, sign in SIDES:
                     shoulder = self.bones["UpperArm"+side][0]
                     for i in range(3):
-                        start = shoulder + v(sign*(.018+.035*i),.035,.015+i*.012)
-                        end = start + v(sign*(.10+i*.021),.018,.115+i*.025)
-                        self.surface(start,end,[(0,.047,.041),(.27,.039,.033),
-                                                (.66,.021,.019),(1,.001,.001)],19,"Chest",8)
+                        start=shoulder+v(sign*(.015+.060*i),-.07+.085*i,.004)
+                        rings=[]
+                        for t,rx,ry in ((0,.047,.040),(.22,.044,.035),(.55,.029,.026),(.82,.014,.012),(1,.001,.001)):
+                            point=start+v(sign*(.14+.020*i)*t*t,.026*t,.14*t-.030*t*t)
+                            rings.append((point,rx,ry,{'Chest':1.}))
+                        self.loft(rings,[14,15,19,19],10,.025)
                 core_z = h*.733
                 core_front = self.body.chest_surface(0,core_z)
-                self.volume((0,core_front+.006,core_z),(.114,.040,.136),15,"Chest",10)
-                self.volume((0,core_front+.034,core_z),(.048,.023,.069),22,"Chest",10)
-                for side, sign in SIDES:
-                    start = v(sign*.019,core_front+.038,core_z)
-                    end = v(sign*.152,self.body.chest_surface(sign*.152,core_z+.085)+.021,core_z+.085)
-                    self.surface(start,end,[(0,.007,.004),(.48,.005,.004),(1,.001,.001)],22,"Chest",7)
+                # Fitted branching fissures replace the floating round chest badge.
+                for sign in (-1,1):
+                    last=v(0,core_front+.009,core_z)
+                    for i,(x,dz) in enumerate(((.036,.016),(.078,.049),(.108,.040),(.151,.078))):
+                        x*=sign;z=core_z+dz
+                        point=v(x,self.body.chest_surface(x,z)+.009,z)
+                        self.surface(last,point,[(0,.010-i*.002,.003),(1,.007-i*.001,.002)],22,'Chest',7)
+                        last=point
+                    last=v(sign*.017,self.body.chest_surface(sign*.017,core_z)+.009,core_z)
+                    for x,dz in ((.035,-.043),(.018,-.086),(.055,-.125)):
+                        x*=sign;z=core_z+dz;point=v(x,self.body.chest_surface(x,z)+.009,z)
+                        self.surface(last,point,[(0,.006,.003),(1,.004,.002)],22,'Chest',6);last=point
             else:
+                from infected_detail import tank_harness
+                tank_harness(self)
                 region = self.bones["Chest"][0] + v(-.167,.106,.205)
                 for i in range(3):
                     self.volume(region+v(-i*.021,i*.006,-i*.041),(.045,.035,.047),14,"Chest",9)
@@ -461,7 +481,7 @@ class Character:
         # slightly, and settles with the full skinned surface touching the road.
         roll, pitch = {"Walker": (98, -23), "Runner": (-81, -47),
                        "Armored": (105, 6), "Brute": (-99, -12),
-                       "Toxic": (-95, -26), "Crawler": (62, -16),
+                       "Toxic": (-95, -26), "Crawler": (108, -30),
                        "Boss": (97, -18)}[self.name]
         fall = eased_keys(((0, 0), (.24, .035), (.48, .29), (.76, 1.),
                            (.87, .945), (1., .975)), t)
@@ -519,52 +539,102 @@ class Character:
         action=max(care,abs(toss),reload,hit,death)
         weight=max(0,1-min(1,action))
         rotation=Quaternion().slerp(rotation,weight);offset*=weight
-        pivot=v(.113,.285,self.h*.735+rise)
+        pivot=v(.075,.310,self.h*.730+rise)
+        pivot+=v(.004*swing,.004*abs(swing)-fire*.008-hit*.09,death*-.29+hit*.043)
         for side, sign in SIDES:
             right = side == "R"
             active_hand = 0 if right else 1
-            wrist = v(.113 if right else .075, .285 if right else .430,
-                      self.h*.735+rise+.012*swing+(0 if right else .045))
-            # Both hands carry one weapon. Opposite vertical wrist phases made
-            # the support palm drift away from the fore-end on every stride.
-            wrist += v(.006*swing,.007*abs(swing),0)
+            # The firing palm lies beside the pistol grip. The support palm is
+            # UP beneath the fore-end; fingers cross the barrel, not point along it.
+            wrist = pivot+v(.045 if right else -.080,-.035 if right else .215,.040 if right else .045)
             wrist += v(sign*.15*reload*active_hand,
-                       -fire*.008-hit*.09-reload*.13*active_hand-.20*care*active_hand+.13*toss*active_hand,
-                       death*-.29+hit*.043-reload*.17*active_hand-.19*care*active_hand+.40*toss*active_hand)
+                       -reload*.13*active_hand-.20*care*active_hand+.13*toss*active_hand,
+                       -reload*.17*active_hand-.19*care*active_hand+.40*toss*active_hand)
             wrist=pivot+rotation@(wrist-pivot)+offset
             pole = v(sign*.65,-.42,-1+.56*max(0,toss)*active_hand)
             end = self.bend_chain("UpperArm"+side,"Forearm"+side,wrist,pole)
-            # Keep the support hand under the fore-end, and the firing palm around the grip.
-            self.aim_bone("Hand"+side,end,v(-.09 if right else .10,.86,-.35 if right else -.10+.33*toss*active_hand),
-                          -.17 if right else .40)
-            hand=self.rig.pose.bones['Hand'+side]
-            carried=rotation.to_matrix().to_4x4()@hand.matrix
-            carried.translation=end
-            hand.matrix=carried
-            bpy.context.view_layer.update()
-        wrist = self.rig.pose.bones["HandR"].head
+            direction=v(-.10,.30,-1) if right else v(1,.12,.08+.65*toss)
+            palm=v(-1,0,.10) if right else v(-.08,0,1)
+            self.orient_hand(side,end,rotation@direction,rotation@palm)
         aim = rotation@v(.03*hit,1,.025*fire+.32*hit-.49*death).normalized()
-        grip = wrist+rotation@v(.001,.037,.022)
+        grip = pivot+offset
         self.aim_bone("WeaponGrip",grip,aim)
         self.aim_bone("WeaponForward",grip+aim*.32,aim)
+
+    def palm_normal(self,side):
+        forward=(self.bones['Hand'+side][1]-self.bones['Hand'+side][0]).normalized()
+        across=(self.bones['Finger2'+side][0]-self.bones['Finger5'+side][0]).normalized()
+        normal=forward.cross(across).normalized()
+        if normal.z>0:normal.negate()
+        return forward,normal
+
+    def orient_hand(self,side,origin,forward,palm):
+        """Map anatomical palm axes, rather than an arbitrary bone roll, onto the grip."""
+        old_f,old_n=self.palm_normal(side)
+        forward=forward.normalized();palm=(palm-forward*palm.dot(forward)).normalized()
+        old=Matrix((old_f.cross(old_n),old_f,old_n)).transposed()
+        new=Matrix((forward.cross(palm),forward,palm)).transposed()
+        hand=self.rig.pose.bones['Hand'+side]
+        posed=(new@old.inverted()).to_4x4()@hand.bone.matrix_local
+        posed.translation=origin
+        hand.matrix=posed
+        bpy.context.view_layer.update()
 
     def grip_fingers(self, side, curl):
         hand = self.rig.pose.bones["Hand"+side]
         wrist_rotation = hand.matrix.to_quaternion() @ hand.bone.matrix_local.to_quaternion().inverted()
-        index = self.bones["Finger2"+side][0]
-        little = self.bones["Finger5"+side][0]
-        across = (index-little).normalized()
-        forward = (self.bones[hand.name][1]-self.bones[hand.name][0]).normalized()
-        palm = forward.cross(across).normalized()
-        if palm.z > 0:
-            palm.negate()
-        palm = wrist_rotation @ palm
+        _,palm=self.palm_normal(side)
+        palm=wrist_rotation@palm
         for digit in range(1,6):
-            for suffix,factor in (('',1.),('Middle',.72),('Tip',.46)):
+            first=self.bones[f'Finger{digit}{side}']
+            direction=wrist_rotation@(first[1]-first[0]).normalized()
+            axis=direction.cross(palm).normalized()
+            amount=0
+            for suffix,degrees in (('',48),('Middle',70),('Tip',38)):
                 bone = self.rig.pose.bones[f"Finger{digit}{suffix}{side}"]
-                direction = (bone.tail-bone.head).normalized()
-                strength = curl*factor*(.37 if digit == 1 else .79 if digit == 2 else 1.)
-                self.aim_bone(bone.name,bone.head.copy(),direction+palm*strength)
+                factor=.66 if digit==1 else .63 if self.hero and side=='R' and digit==2 else 1.
+                amount+=math.radians(degrees*curl*factor)
+                start,end,_=self.bones[bone.name]
+                direction=Quaternion(axis,amount)@(wrist_rotation@(end-start))
+                self.aim_bone(bone.name,bone.head.copy(),direction)
+
+    def infected_arm(self,side,sign,phase,moving,attack,death,boss_strike):
+        arm=self.rig.pose.bones['UpperArm'+side];origin=arm.head.copy()
+        swing=math.cos(math.tau*(phase+.14)) if moving else -.06*sign
+        if boss_strike:
+            # Keep the telegraphed two-arm strike and its established contact time.
+            self.aim_bone(arm.name,origin,v(sign*(.45-.20*attack),.34+.91*attack,-.79+.48*attack))
+            forearm=self.rig.pose.bones['Forearm'+side]
+            self.aim_bone(forearm.name,forearm.head.copy(),v(sign*.13,.39+.72*attack,-.88+.39*attack))
+            return
+        if self.crawler:
+            support=(phase+.5)%1
+            if support<.67:
+                reach=.65-.18*support/.67;lift=0
+            else:
+                t=(support-.67)/.33;t=t*t*(3-2*t)
+                reach=.47+.18*t;lift=.10*math.sin(math.pi*t)
+            target=v(sign*self.shoulder*.58,reach+.17*max(0,attack),.035+lift)
+            end=self.bend_chain(arm.name,'Forearm'+side,target,v(sign*.9,-.4,-.2))
+            self.orient_hand(side,end,v(0,1,.04),v(0,.04,-1))
+            return
+        # Reach targets and elbow poles are independent. Extending an arm no
+        # longer straightens its elbow into the same stiff soldier-like swing.
+        if self.name=='Runner':
+            offset=v(sign*.06,.12+.21*swing,-.36+.045*swing)
+        elif self.name=='Toxic':
+            offset=v(-sign*.025,.30+.07*swing if side=='R' else .055+.04*swing,
+                     -.27 if side=='R' else -.47)
+        elif self.name in ('Brute','Boss'):
+            offset=v(sign*.065,.10+.11*swing,-.54)
+        elif self.name=='Armored':
+            offset=v(sign*.05,.16+.07*swing,-.43)
+        else:
+            offset=v(sign*.025,.26+.09*swing if side=='L' else .06+.10*swing,
+                     -.36 if side=='L' else -.48)
+        offset+=v(sign*.08*death,.38*max(0,attack),.16*max(0,attack)-.09*death)
+        end=self.bend_chain(arm.name,'Forearm'+side,origin+offset,v(sign*.15,-1,-.4))
+        self.orient_hand(side,end,v(-sign*.08,.14+.70*max(0,attack),-1),v(-sign,.10,0))
 
     def animate(self):
         # Contact, compression, passing and extension poses. Feet are solved against
@@ -597,13 +667,13 @@ class Character:
                 reload=eased_keys([(0,0),(.24,1),(.67,1),(1,0)],t) if state=="Reload" else 0
                 care=eased_keys([(0,0),(.24,1),(.70,1),(1,0)],t) if state=="Medkit" else 0
                 swing_throw=eased_keys([(0,0),(.17,-.38),(.31,-1),(.42,.85),(.61,.64),(1,0)],t) if state=="Throw" else 0
-                crouch=.47 if self.crawler else .054 if walking else .098 if moving else .045
+                crouch=.55 if self.crawler else .035 if walking else .058 if moving and self.hero else .098 if moving else .025
                 crouch += (1 if self.tank else .70)*.59*death
                 if boss_strike: crouch += .085*max(0.,attack) - .041*min(0.,attack)
                 swing = eased_keys(((0,0),(.23,.96),(.50,0),(.73,-.96),(1,0)),f) if moving else 0.
                 # The pelvis yields under the new support leg and rises
                 # through push-off. Counter-rotation keeps the chest balanced.
-                contact=eased_keys(((0,-.008),(.19,-.034),(.63,.019),(1,-.008)),(f*2)%1) if moving else 0
+                contact=eased_keys(((0,-.003),(.17,-.018),(.59,.017),(1,-.003)),(f*2)%1) if moving else 0
                 if walking: contact *= .46
                 pelvis=self.bones["Pelvis"][0]+v(.025*swing,.015-.17*death,-crouch+contact)
                 placements = {}
@@ -611,7 +681,9 @@ class Character:
                     foot=self.bones["Foot"+side][0].copy()
                     toe_pitch=0
                     if moving:
-                        foot.x -= s*(.050 if walking else .060 if self.hero else .027)
+                        if self.hero:
+                            foot.x=self.bones['Thigh'+side][0].x*(.85 if walking else .76)
+                        else:foot.x-=s*.027
                         foot,toe,phase,toe_pitch=foot_target(self.name,side,f,foot,walking)
                         hip,knee,_=self.bones["Thigh"+side]
                         ankle=self.bones["Shin"+side][1]
@@ -629,13 +701,15 @@ class Character:
                     placements[side]=(foot,toe,phase,toe_pitch)
                 pelvis_roll = .068*swing if self.hero else .17*swing
                 tilt=.014*math.sin(math.tau*(f*2-.12)) if self.hero and moving else 0
-                self.aim_bone("Pelvis",pelvis,v(pelvis_roll+.037*attack,.047+tilt+.47*death,.99),.067*swing)
-                pitch={"Crawler":1.22,"Runner":.31,"Walker":.24,"Brute":.18,
+                pelvis_axis=v(pelvis_roll,1.8,.50) if self.crawler else v(pelvis_roll+.037*attack,.047+tilt+.47*death,.99)
+                self.aim_bone("Pelvis",pelvis,pelvis_axis,.067*swing)
+                pitch={"Crawler":3.0,"Runner":.31,"Walker":.24,"Brute":.18,
                        "Toxic":.28,"Boss":.13,"Armored":.155}.get(self.name,.11)
                 droop = .14 if self.name in ("Walker","Toxic") else 0
                 spine = self.rig.pose.bones["Spine"]
                 spine_direction = (spine.tail-spine.head).normalized()
-                self.aim_bone("Spine",spine.head.copy(),spine_direction+v(droop*.33,.10*pitch+.19*death,0),.026*swing)
+                spine_target=v(0,1.9,1) if self.crawler else spine_direction+v(droop*.33,.10*pitch+.19*death,0)
+                self.aim_bone("Spine",spine.head.copy(),spine_target,.026*swing)
                 chest=self.rig.pose.bones["Chest"].head.copy()
                 if walking: pitch *= .54
                 self.aim_bone("Chest",chest,v(droop-.067*swing+.085*rear,
@@ -643,6 +717,9 @@ class Character:
                 if droop and not death:
                     head=self.rig.pose.bones["Head"]
                     self.aim_bone("Head",head.head.copy(),v(-.20+.045*swing,.21+.082*swing,.99))
+                elif not self.hero and not death:
+                    head=self.rig.pose.bones['Head']
+                    self.aim_bone('Head',head.head.copy(),v(.045*swing,.80 if self.crawler else .17,1))
                 if self.hero:
                     # Shoulder girdle yields slightly under the rifle/backpack.
                     # Solve wrists after this adjustment so the weapon stays gripped.
@@ -656,7 +733,7 @@ class Character:
                                    f if moving else 0,walking,state in ('Fire','WalkFire'))
                 for side,s in SIDES:
                     foot,toe,phase,toe_pitch=placements[side]
-                    self.leg_pose(side,foot,v(s*.08,1,0),toe,toe_pitch)
+                    self.leg_pose(side,foot,v(s*.08,1,.24 if self.crawler else 0),toe,toe_pitch)
                     if self.hero:
                         thigh=self.rig.pose.bones['Thigh'+side]
                         shin=self.rig.pose.bones['Shin'+side]
@@ -664,34 +741,17 @@ class Character:
                         self.aim_bone('KneeGuard'+side,shin.head.copy(),direction)
                         self.fit_knee_guard(side)
                     if not self.hero:
-                        arm=self.rig.pose.bones["UpperArm"+side]
-                        origin=arm.head.copy()
-                        reach_swing=math.cos(math.tau*(phase+.14)) if moving else -.06*s
-                        if self.crawler:
-                            hand=v(s*self.shoulder*.72,.34+.21*reach_swing,.14+.17*max(0.,reach_swing))
-                            self.aim_bone(arm.name,origin,(hand-origin)+v(s*.12,0,-.14))
-                            elbow=self.rig.pose.bones["Forearm"+side].head.copy()
-                            self.aim_bone("Forearm"+side,elbow,hand-elbow)
-                        elif boss_strike:
-                            self.aim_bone(arm.name,origin,v(s*(.45-.20*attack),.34+.91*attack,-.79+.48*attack))
-                            forearm=self.rig.pose.bones["Forearm"+side]
-                            self.aim_bone(forearm.name,forearm.head.copy(),v(s*.13,.39+.72*attack,-.88+.39*attack))
-                        else:
-                            reach={"Boss":1.1,"Brute":.93,"Toxic":.28}.get(self.name,.78)
-                            lead = {"Walker":.68 if side=="L" else .12,
-                                    "Runner":.51 if side=="L" else .23,
-                                    "Toxic":.64 if side=="R" else .11}.get(self.name,.31)
-                            self.aim_bone(arm.name,origin,
-                                v(s*(.17+.36*death+.25*attack),lead+.34*reach_swing+reach*attack,-.79+.43*attack))
-                            if self.name in ("Walker","Runner","Toxic") and not death:
-                                forearm=self.rig.pose.bones["Forearm"+side]
-                                elbow=forearm.head.copy()
-                                self.aim_bone(forearm.name,elbow,v(s*.15,lead+.34+.2*reach_swing,
-                                                                 -.81+.24*reach_swing+.47*attack))
-                    curl = .54 if self.hero else .15+.50*max(0.,attack)
+                        self.infected_arm(side,s,phase,moving,attack,death,boss_strike)
+                    curl = (1. if side=='R' else .8) if self.hero else 0. if self.crawler else .27+.45*max(0.,attack)
                     if self.hero and side == "L":
-                        curl += .16*care-.29*max(0.,swing_throw)
+                        curl -= .65*care+.80*max(0.,swing_throw)
                     self.grip_fingers(side,curl)
+                    if self.crawler:
+                        # A planted palm has an abducted thumb on the ground
+                        # plane; the neutral grasp's thumb points below it.
+                        for suffix,z in (('',.10),('Middle',.05),('Tip',.02)):
+                            thumb=self.rig.pose.bones['Finger1'+suffix+side]
+                            self.aim_bone(thumb.name,thumb.head.copy(),v(-s*.85,.50,z))
                 if state == "Death" and not self.hero:
                     self.settle_infected(t)
                 for bone in self.rig.pose.bones:

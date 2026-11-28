@@ -178,6 +178,13 @@ def append_garment(actor, pack):
                 fold=zone*(.005+.005*math.cos((p.z-knee.z)*76+(p.x-knee.x)*15))
                 slack=.008*math.exp(-((p.z-(knee.z+.19))/.16)**2)
                 p+=radial.normalized()*(fold+slack)
+        if actor.hero and leg>.70 and .145<p.z<.39:
+            # Gather the trouser hem into the field boot instead of a wide,
+            # rigid bell around the ankle. Keep the leg joints unchanged.
+            ankle=actor.bones['Foot'+side][0]
+            taper=.20*math.exp(-((p.z-.215)/.105)**2)
+            p.x+=(ankle.x-p.x)*taper
+            p.y+=(ankle.y-p.y)*taper
         elbow=actor.bones['Forearm'+side][0]
         arm=entries.get('UpperArm'+side,0)+entries.get('Forearm'+side,0)
         if actor.hero and arm>.7:

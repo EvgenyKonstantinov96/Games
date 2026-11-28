@@ -29,6 +29,13 @@ namespace UnityEngine
             var m=new N.Matrix4x4(r.X,r.Y,r.Z,0,u.X,u.Y,u.Z,0,f.X,f.Y,f.Z,0,0,0,0,1);
             return new(){V=N.Quaternion.CreateFromRotationMatrix(m)};
         }
+        public static Quaternion FromToRotation(Vector3 from,Vector3 to)
+        {
+            var a=from.normalized;var b=to.normalized;float dot=Vector3.Dot(a,b);
+            if(dot>.999999f)return identity;
+            if(dot<-.999999f){var axis=Vector3.Cross(a,Vector3.up);if(axis.sqrMagnitude<.001f)axis=Vector3.Cross(a,Vector3.right);return AngleAxis(180,axis.normalized);}
+            var cross=Vector3.Cross(a,b);return new(){V=N.Quaternion.Normalize(new N.Quaternion(cross.x,cross.y,cross.z,1+dot))};
+        }
     }
     public sealed class Transform
     {
@@ -43,6 +50,7 @@ namespace UnityEngine
         }
         public Vector3 up=>rotation*Vector3.up;
         public Vector3 forward=>rotation*Vector3.forward;
+        public Vector3 TransformPoint(Vector3 p)=>position+rotation*p;
     }
 }
 namespace ZombieSurvivalRun
@@ -58,6 +66,11 @@ namespace ZombieSurvivalRun
         Vector3 aimPoint;
         Vector3 socketPosition;
         Quaternion socketRest=Quaternion.identity,sampledSpine=Quaternion.identity,sampledHead=Quaternion.identity;
+        Transform supportUpper,supportLower,supportHand;
+        Vector3 supportPoint;
+        Quaternion supportRotation,sampledSupportUpper,sampledSupportLower,sampledSupportHand;
+        float supportWeight;
+        bool sampledSupport;
         static bool IsShooting(Motion value)=>value==Motion.Fire||value==Motion.WalkFire;
         static void Need(bool ok,string message){if(!ok)throw new Exception(message);}
         public void Check(int hz)
@@ -117,9 +130,42 @@ namespace ZombieSurvivalRun
             }
             Console.WriteLine($"WEAPON SOCKET PASS {hz} Hz: real ApplyAim preserves running roll, wrist mount offset, no-target motion and at most one degree of fine correction. Scene/rotation stand-ins.");
         }
+        public void CheckSupport(int hz)
+        {
+            supportUpper=new Transform{localPosition=new(-.20f,1.50f,.12f)};
+            supportLower=new Transform{parent=supportUpper,localPosition=new(0,-.28f,0)};
+            supportHand=new Transform{parent=supportLower,localPosition=new(0,-.26f,0)};
+            weaponSocket.parent=null;supportRotation=Quaternion.AngleAxis(25,Vector3.forward);
+            float dt=1f/hz;
+            foreach(var point in new[]{new Vector3(-.045f,.030f,-.035f),new Vector3(-.080f,.045f,.215f),new Vector3(-.080f,.045f,.245f),new Vector3(-.090f,.045f,.255f)})
+            {
+                supportPoint=point;supportWeight=0;motion=Motion.Fire;
+                for(int frame=0;frame<hz*3;frame++)
+                {
+                    RestoreSupportPose();
+                    float t=frame/(float)hz;
+                    supportUpper.localRotation=Quaternion.AngleAxis(-20,Vector3.forward);
+                    supportLower.localRotation=Quaternion.AngleAxis(-105,Vector3.right);
+                    supportHand.localRotation=Quaternion.identity;
+                    sampledSupportUpper=supportUpper.localRotation;sampledSupportLower=supportLower.localRotation;sampledSupportHand=supportHand.localRotation;sampledSupport=true;
+                    weaponSocket.localPosition=new(.08f,1.35f,.25f);
+                    weaponSocket.localRotation=Quaternion.AngleAxis(MathF.Sin(t*8)*2f,Vector3.forward);
+                    ApplySupportGrip(dt);
+                    Need(Math.Abs((supportLower.position-supportUpper.position).magnitude-.28f)<.0001f&&Math.Abs((supportHand.position-supportLower.position).magnitude-.26f)<.0001f,"Grip IK preserves arm lengths");
+                    if(frame>hz/2)Need((supportHand.position-weaponSocket.TransformPoint(point)).magnitude<.002f,"Four support targets track weapon motion");
+                }
+                motion=Motion.Medkit;
+                for(int i=0;i<hz;i++){RestoreSupportPose();ApplySupportGrip(dt);}
+                Need(supportWeight==0,"Item frees the support hand");
+                Need(Quaternion.Angle(supportUpper.localRotation,sampledSupportUpper)<.08f,"Released arm returns to sampled pose");
+                motion=Motion.Fire;ApplySupportGrip(dt);motion=Motion.Death;RestoreSupportPose();ApplySupportGrip(dt);
+                Need(supportWeight==0&&Quaternion.Angle(supportLower.localRotation,sampledSupportLower)<.08f,"Death never constrained to gun");
+            }
+            Console.WriteLine($"SUPPORT GRIP PASS {hz} Hz: real ApplySupportGrip, four targets, wrist following, fixed lengths, restored pose, item release and immediate death release. Scene/rotation stand-ins, unit scale.");
+        }
     }
 }
 static class UpperRigProbe
 {
-    static void Main(){foreach(int hz in new[]{20,30,60,120}){new ZombieSurvivalRun.AimRig().Check(hz);new ZombieSurvivalRun.AimRig().CheckSocket(hz);}}
+    static void Main(){foreach(int hz in new[]{20,30,60,120}){new ZombieSurvivalRun.AimRig().Check(hz);new ZombieSurvivalRun.AimRig().CheckSocket(hz);new ZombieSurvivalRun.AimRig().CheckSupport(hz);}}
 }

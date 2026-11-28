@@ -5,10 +5,10 @@ from mathutils import Vector,Quaternion
 
 # Forward reach, rear reach, stance share, swing clearance, right foot phase.
 PROFILES = {
-    "Max": (.42, .46, .42, .315, .50),
-    "Eva": (.40, .42, .42, .295, .50),
+    "Max": (.31, .40, .40, .225, .50),
+    "Eva": (.29, .37, .41, .205, .50),
     "Walker": (.29, .27, .65, .095, .53),
-    "Runner": (.48, .43, .43, .23, .48),
+    "Runner": (.40, .44, .42, .22, .48),
     "Armored": (.29, .28, .64, .095, .52),
     "Brute": (.32, .32, .67, .11, .54),
     "Toxic": (.29, .29, .62, .10, .56),
@@ -31,10 +31,10 @@ def carry_pose(phase,walking=False,shooting=False):
     side=eased_keys(((0,-.15),(.25,1),(.5,.15),(.75,-1),(1,-.15)),phase)
     step=eased_keys(((0,-.35),(.20,-1),(.58,1),(1,-.35)),(phase*2)%1)
     weight=(.65 if walking else 1.)*(.65 if shooting else 1.)
-    rotation=(Quaternion((0,0,1),math.radians(side*2.2*weight)) @
-              Quaternion((1,0,0),math.radians(step*2.8*weight)) @
-              Quaternion((0,1,0),math.radians(-side*2.4*weight)))
-    return Vector((side*.014*weight,step*.005*weight,step*.017*weight)),rotation
+    rotation=(Quaternion((0,0,1),math.radians(side*1.6*weight)) @
+              Quaternion((1,0,0),math.radians(step*1.8*weight)) @
+              Quaternion((0,1,0),math.radians(-side*1.4*weight)))
+    return Vector((side*.008*weight,step*.004*weight,step*.010*weight)),rotation
 
 
 def foot_target(name, side, phase, ankle, walking=False):
@@ -67,7 +67,7 @@ def foot_target(name, side, phase, ankle, walking=False):
                             (.57, -3), (.82, 15), (1, 11)), recover)
         # Fold the trailing knee early, then extend before landing. Late,
         # symmetrical lift looks like marching rather than a running recovery.
-        keys = ((0,0),(.20,.78),(.38,1),(.69,.48),(1,0)) if running else \
+        keys = ((0,0),(.20,.90),(.34,1),(.62,.45),(.85,.12),(1,0)) if running else \
                ((0,0),(.17,.41),(.40,1),(.70,.68),(1,0))
         clearance = lift*eased_keys(keys, recover)
 

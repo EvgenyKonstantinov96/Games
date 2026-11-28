@@ -2,6 +2,30 @@ using UnityEngine;
 
 namespace ZombieSurvivalRun
 {
+    /// <summary>Two fixed-length arm segments, preserving the sampled elbow's bend plane.</summary>
+    internal static class ZSRArmReach
+    {
+        internal static bool Solve(Vector3 shoulder, Vector3 elbow, Vector3 wrist, Vector3 target,
+            out Vector3 joint, out Vector3 end)
+        {
+            joint = elbow; end = wrist;
+            float upper = (elbow-shoulder).magnitude, lower = (wrist-elbow).magnitude;
+            Vector3 offset = target-shoulder;
+            if (upper < .001f || lower < .001f || offset.sqrMagnitude < .000001f) return false;
+            Vector3 direction = offset.normalized;
+            float distance = Mathf.Clamp(offset.magnitude, Mathf.Abs(upper-lower)+.008f, upper+lower-.005f);
+            Vector3 pole = Vector3.ProjectOnPlane(elbow-shoulder,direction);
+            if (pole.sqrMagnitude < .000001f)
+                pole = Vector3.ProjectOnPlane(Vector3.down,direction);
+            if (pole.sqrMagnitude < .000001f)
+                pole = Vector3.ProjectOnPlane(Vector3.right,direction);
+            float along = (upper*upper + distance*distance - lower*lower)/(2f*distance);
+            joint = shoulder + direction*along + pole.normalized*Mathf.Sqrt(Mathf.Max(0f,upper*upper-along*along));
+            end = shoulder + direction*distance;
+            return true;
+        }
+    }
+
     /// <summary>Bounded shoulder aiming shared by the generic survivor rigs.</summary>
     internal sealed class ZSRUpperBodyAim
     {

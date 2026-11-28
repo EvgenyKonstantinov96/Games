@@ -22,6 +22,8 @@ with tempfile.TemporaryDirectory() as folder:
     end=source.index('            ApplyUpperBodyAim(dt);',start)
     code.write_text('using UnityEngine; namespace ZombieSurvivalRun { partial class AimRig {'+
         block(source,'enum Motion')+block(source,'void RestoreSampledPose()')+block(source,'void ApplyUpperBodyAim(float dt)')+block(source,'void ApplyAim()')+
+        block(source,'void RestoreSupportPose()')+block(source,'void ApplySupportGrip(float dt)')+
+        next(line.strip() for line in source.splitlines() if line.strip().startswith('static bool IsGait(Motion value)'))+
         'void ApplySteering(){'+source[start:end]+'}}}')
     rig=folder/'UpperRigProbe.dll';shutil.copy(exe.with_suffix('.runtimeconfig.json'),rig.with_suffix('.runtimeconfig.json'))
     subprocess.run([runtime/'dotnet',data/'DotNetSdkRoslyn/csc.dll','-nologo','-noconfig','-nostdlib','-langversion:10',
