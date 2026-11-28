@@ -143,6 +143,8 @@ namespace ZombieSurvivalRun
         float shootUntil;
         int currentState = 0;
         float lateralLean, strideHeading;
+        public Vector3 MouthPosition => bundled != null && bundled.Mouth != null
+            ? bundled.Mouth.position : transform.position + transform.up*1.55f;
         public Transform WeaponAnchor { get; private set; }
 
         public static ZSRProductionArt CreateHero(Transform parent, int selected, WeaponType gun)

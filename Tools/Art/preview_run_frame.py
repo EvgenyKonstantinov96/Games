@@ -24,7 +24,7 @@ chapter = int(sys.argv[sys.argv.index("--chapter")+1]) if "--chapter" in sys.arg
 landmark, horizon, guide_color, sun_key, sky_color = (
     ("ruins", "Horizon.jpg", (1.,.57,.19), (1.,.66,.41), (.22,.29,.43)),
     ("industrial", "Horizon_Industrial.jpg", (1.,.31,.12), (1.,.52,.29), (.44,.21,.19)),
-    ("evacuation", "Horizon_Evacuation.jpg", (.28,.85,.90), (.63,.90,1.), (.19,.41,.47)),
+    ("evacuation", "Horizon_Evacuation.jpg", (.28,.85,.90), (1.,.74,.52), (.22,.29,.38)),
 )[chapter]
 
 
@@ -185,6 +185,11 @@ for direction in (-1,1):
             glow.scale = (1.14,2.36,1)
             glow.data.materials.append(shoulder_glow)
         lamp_z = center + (-10.35 if direction < 0 else 11.65)
+        mesh_asset("track_streetlamp",(direction*6.37,lamp_z,0),props,
+                   math.pi if direction<0 else 0)
+        cube("Lamp lens",(direction*5.28,lamp_z,5.943),(.29,.18,.018),amber)
+        mesh_asset("track_maintenance",(direction*7.9,center+(-8.5 if direction<0 else 13),0),
+                   props,math.radians(direction*11))
         bpy.ops.mesh.primitive_plane_add(size=1, location=(x-direction*1.04, lamp_z, -.015))
         lamp_spill = bpy.context.object
         lamp_spill.scale = (2.26,5.36,1)
@@ -220,7 +225,10 @@ def character(name, pos, yaw, scale=1):
     bpy.ops.import_scene.fbx(filepath=str(ART/(name+".fbx")))
     parts=set(bpy.data.objects)-old
     rig,=[o for o in parts if o.type=="ARMATURE"]
-    skin,=[o for o in parts if o.type=="MESH"]
+    skins=[o for o in parts if o.type=="MESH"]
+    skin=next((o for o in skins if o.name.endswith("_LOD0")),skins[0])
+    for lod in skins:
+        if lod != skin: lod.hide_render=True
     skin.data.materials.clear()
     skin.data.materials.append(atlas)
     pivot=bpy.data.objects.new(name+" actor",None)

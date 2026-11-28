@@ -130,14 +130,54 @@ with ZipFile(args.skin_pack) as pack:
         origin=(i*256,384)
         atlas.paste(Image.fromarray(footwear),origin)
         normals_atlas.paste(normal_tile(skin_relief(source,.18)),origin)
+# Preserve the original skin/gear texel density and give fitted clothing its own atlas islands.
+from survivor_clothing import WARDROBE
+legacy_atlas, legacy_normals = atlas, normals_atlas
+atlas = Image.new("RGB",(2048,2048),"#252a2c")
+normals_atlas = Image.new("RGB",atlas.size,(128,128,255))
+surface_atlas = Image.new("RGBA",atlas.size,(0,0,0,75))
+atlas.paste(legacy_atlas,(0,0))
+normals_atlas.paste(legacy_normals,(0,0))
+surface_draw = ImageDraw.Draw(surface_atlas)
+for metal in (3,4,5,23):
+    origin = ((metal%8)*128,(metal//8)*128)
+    surface_draw.rectangle((*origin,origin[0]+127,origin[1]+127),fill=(132,0,0,136))
+colors = {"Max":(74,80,58),"Eva":(117,32,29),"Walker":(98,85,70),
+          "Runner":(86,43,35),"Toxic":(57,69,43),"Crawler":(65,66,83)}
+with ZipFile(args.skin_pack) as pack:
+    for name,(garment,slot) in WARDROBE.items():
+        size = 1024 if slot<42 else 512
+        source = Image.open(BytesIO(pack.read(f"clothes/{garment}/{garment}_diffuse.png"))).convert("RGB")
+        source = source.resize((size,size),Image.Resampling.LANCZOS)
+        pixels = np.asarray(source,dtype=float)/255
+        gray = pixels@np.array([.26,.58,.16])
+        denim = (pixels[:,:,2]>pixels[:,:,0]*1.12)&(pixels[:,:,2]>pixels[:,:,1]*1.03)
+        cloth = gray[:,:,None]*np.array(colors[name])[None,None,:]*2.0
+        trousers = gray[:,:,None]*np.array([39,46,48])[None,None,:]*2.1
+        paint = np.where(denim[:,:,None],trousers,cloth)
+        yy,xx=np.mgrid[:size,:size]
+        wear = np.maximum(0,np.sin(xx*.043+yy*.017)*np.cos(yy*.029-xx*.011))
+        paint += wear[:,:,None]*(3 if name in ("Max","Eva") else 13)
+        image = Image.fromarray(np.uint8(np.clip(paint,0,255)))
+        if slot==40:origin=(1024,0)
+        elif slot==41:origin=(0,1024)
+        else:origin=(1024+(slot-42)%2*512,1024+(slot-42)//2*512)
+        atlas.paste(image,origin)
+        normal_key=f"clothes/{garment}/{garment}_normal.png"
+        if normal_key in pack.namelist():
+            normal = Image.open(BytesIO(pack.read(normal_key))).convert("RGB").resize((size,size),Image.Resampling.LANCZOS)
+        else:
+            normal = normal_tile(skin_relief(source,.20))
+        normals_atlas.paste(normal,origin)
 atlas.save(OUT/"CharacterAtlas.png",optimize=True)
 normals_atlas.save(OUT/"CharacterAtlas_normal.png",optimize=True)
-emission = Image.new("RGB", atlas.size)
+surface_atlas.save(OUT/"CharacterAtlas_surface.png",optimize=True)
+emission = Image.new("RGB",atlas.size)
 y,x = np.mgrid[:128,:128]
 heat = .28 + .72*np.exp(-((x-64)/51)**2-((y-63)/45)**2)
 fracture = .67+.33*np.maximum(0,np.sin(x*.29+y*.14)*np.cos(y*.22-x*.19))
 tile = np.uint8((heat*fracture)[:,:,None]*np.array([252,174,92]))
-emission.paste(Image.fromarray(tile), (6*128,2*128))
+emission.paste(Image.fromarray(tile),(6*128,2*128))
 emission.save(OUT/"CharacterAtlas_emission.png",optimize=True)
 if args.characters_only:
     raise SystemExit(0)

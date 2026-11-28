@@ -123,40 +123,19 @@ namespace ZombieSurvivalRun
                 float z=side<0 ? -8.5f : 13f;
                 var area=ZSRVisuals.Pivot("crash debris scene",transform,
                     new Vector3(side*7.90f,0f,z));
-                ZSRVisuals.Box("burnt metal equipment box",area,new Vector3(0,.50f,0),
-                    new Vector3(1.0f,.85f,.90f),ZSRVisuals.MetalWorn,
-                    new Vector3(0,side*11,side*7));
-                ZSRVisuals.Box("angled warning stripe",area,new Vector3(0,.74f,-.49f),
-                    new Vector3(.70f,.08f,.02f),chapter==2?ZSRVisuals.BlueGlow:ZSRVisuals.Yellow,
-                    new Vector3(0,0,-15));
-                for(int j=0;j<4;j++)
-                    ZSRVisuals.Box("roadside broken asphalt chunk",area,
-                        new Vector3(side*(-.22f+j*.39f),.14f,-1f+j*.28f),
-                        new Vector3(.38f,.22f,.37f),ZSRVisuals.ConcreteDark,
-                        new Vector3(j*9,j*25,j*13));
-                ZSRVisuals.Box("rusted roadside signal pole",area,
-                    new Vector3(side*.65f,2.2f,1.40f),new Vector3(.08f,4.4f,.08f),ZSRVisuals.Steel);
-                ZSRVisuals.Box("weathered safety placard",area,
-                    new Vector3(side*.65f,3.65f,1.36f),new Vector3(.65f,.55f,.09f),
-                    chapter==1?ZSRVisuals.Blood:ZSRVisuals.Gunmetal);
-                ZSRVisuals.Box("placard upper reflector",area,
-                    new Vector3(side*.65f,3.85f,1.29f),new Vector3(.58f,.055f,.025f),
-                    chapter==2?ZSRVisuals.BlueGlow:ZSRVisuals.Yellow);
+                ZSRVisuals.MeshPart("track_maintenance", "Abandoned maintenance cases", area,
+                    Vector3.zero, Vector3.one, ZSRTrackArt.Surface, new Vector3(0,side*11f,0));
+
             }
         }
 
         void BuildLamp(int side, float z)
         {
-            ZSRVisuals.Cylinder("street light pole", transform, new Vector3(side * 6.37f, 3.08f, z),
-                new Vector3(.09f, 3.1f, .09f), ZSRVisuals.MetalWorn);
-            ZSRVisuals.Box("street light pedestal", transform, new Vector3(side * 6.37f, .14f, z),
-                new Vector3(.28f, .28f, .28f), ZSRVisuals.ConcreteDark);
-            ZSRVisuals.Box("lamp arm", transform, new Vector3(side * 5.88f, 6.08f, z),
-                new Vector3(1.1f, .086f, .10f), ZSRVisuals.Steel);
-            ZSRVisuals.Box("street lamp housing", transform, new Vector3(side * 5.28f, 6.04f, z),
-                new Vector3(.36f, .17f, .25f), ZSRVisuals.Gunmetal);
-            ZSRVisuals.Box("street lamp lens", transform, new Vector3(side * 5.28f, 5.946f, z),
-                new Vector3(.29f, .018f, .18f), ZSRTrackArt.GuideLight(chapter));
+            ZSRVisuals.MeshPart("track_streetlamp","Weathered street fixture",transform,
+                new Vector3(side*6.37f,0,z),Vector3.one,ZSRTrackArt.Surface,
+                new Vector3(0,side<0?180f:0f,0));
+            ZSRVisuals.Box("street lamp lens",transform,new Vector3(side*5.28f,5.943f,z),
+                new Vector3(.29f,.018f,.18f),ZSRTrackArt.GuideLight(chapter));
         }
 
         public void Tick(float travel)

@@ -87,6 +87,34 @@ def inspect_highway():
           'PBR maps registered, two shoulder drains and feathered lamp mask.')
 
 
+def inspect_street_meshes():
+    source = (ROOT/'Assets/Scripts/ZSRGame.cs').read_text()
+    usable = float(re.search(r'RunLaneLimit\s*=\s*([\d.]+)f',source)[1])+.55
+    for name,offset,yaw,budget in (('track_streetlamp',6.37,0,500),
+                                   ('track_maintenance',7.9,11,1800)):
+        positions=[]
+        normals=uvs=triangles=0
+        for line in (RESOURCES/'Meshes'/(name+'.obj')).read_text().splitlines():
+            if line.startswith('v '):
+                positions.append(tuple(map(float,line.split()[1:])))
+            elif line.startswith('vn '):
+                normals+=1
+                assert abs(math.hypot(*map(float,line.split()[1:]))-1) < .001
+            elif line.startswith('vt '):
+                uvs+=1
+            elif line.startswith('f '):
+                corners=[tuple(map(int,c.split('/'))) for c in line.split()[1:]]
+                assert all(0<i<=len(positions) and 0<u<=uvs and 0<n<=normals for i,u,n in corners)
+                face=np.array([positions[i-1] for i,u,n in corners])
+                assert np.linalg.norm(np.cross(face,np.roll(face,-1,axis=0)).sum(axis=0)) > 1e-8
+                triangles+=len(corners)-2
+        points=np.array(positions)
+        angle=math.radians(yaw)
+        road_edge=offset+min(points[:,0]*math.cos(angle)+points[:,2]*math.sin(angle))
+        assert road_edge > usable and 0 < triangles < budget, (name,road_edge,triangles)
+        print(f'STREET PASS {name}: {triangles} triangles, normals/UVs, {road_edge-usable:.3f} m beyond hero corridor.')
+
+
 
 def inspect_chapter_textures():
     hues = {}
@@ -96,7 +124,7 @@ def inspect_chapter_textures():
             middle = np.asarray(image,dtype=float)[192:383,220:800]
             hues[name] = middle.mean(axis=(0,1))
     warm,cool=hues['Industrial'],hues['Evacuation']
-    assert warm[0] > warm[1]+12 and cool[1] > cool[0]+12
+    assert warm[0] > warm[1]+12 and cool[2] > cool[0]+12 and cool[2] > cool[1]
     with Image.open(RESOURCES/'ProductionArt/Highway_surface.png') as road:
         alpha=np.asarray(road.getchannel('A'))
         assert road.size == (512,512) and alpha.min() < 70 and alpha.max() > 220
@@ -112,4 +140,5 @@ def inspect_chapter_textures():
 if __name__ == '__main__':
     inspect_landmarks()
     inspect_highway()
+    inspect_street_meshes()
     inspect_chapter_textures()

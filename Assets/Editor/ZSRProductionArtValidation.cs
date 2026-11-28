@@ -25,9 +25,16 @@ namespace ZombieSurvivalRun.EditorTools
                     continue;
                 }
 
-                var skin = asset.GetComponentInChildren<SkinnedMeshRenderer>(true);
-                if (skin == null || skin.sharedMesh == null || skin.bones.Length < 13)
-                    errors.Add(name + ": skinned mesh or bones missing");
+                var skins = asset.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+                if (skins.Length != 3) errors.Add(name+": expected three distance models");
+                for (int lod = 0; lod < 3; lod++)
+                {
+                    bool found = false;
+                    foreach (var skin in skins)
+                        if (skin.name.EndsWith("_LOD"+lod) && skin.sharedMesh != null && skin.bones.Length >= 13)
+                            found = true;
+                    if (!found) errors.Add(name+": distance model "+lod+" or its bones missing");
+                }
 
                 var bones = new HashSet<string>();
                 foreach (var child in asset.GetComponentsInChildren<Transform>(true))
@@ -49,13 +56,14 @@ namespace ZombieSurvivalRun.EditorTools
                 else CheckGameplayRig(name, errors);
             }
 
-            foreach (string name in new[] { "CharacterAtlas", "CharacterAtlas_emission", "Highway", "Highway_normal", "Horizon",
+            foreach (string name in new[] { "CharacterAtlas", "CharacterAtlas_normal", "CharacterAtlas_surface", "CharacterAtlas_emission", "Highway", "Highway_normal", "Horizon",
                          "Horizon_Industrial", "Horizon_Evacuation", "Highway_surface", "ParticleSoft" })
                 if (Resources.Load<Texture2D>("ProductionArt/" + name) == null)
                     errors.Add(name + ": Texture2D missing");
 
             foreach (string name in new[] { "combat_drone", "combat_rotor", "combat_grenade", "combat_medkit", "track_guardrail",
-                         "track_chapter_ruins", "track_chapter_industrial", "track_chapter_evacuation" })
+                         "track_chapter_ruins", "track_chapter_industrial", "track_chapter_evacuation",
+                         "track_maintenance", "track_streetlamp" })
             {
                 var model = Resources.Load<GameObject>("Meshes/" + name);
                 if (model == null || model.GetComponentInChildren<MeshFilter>() == null)
@@ -69,6 +77,9 @@ namespace ZombieSurvivalRun.EditorTools
             foreach (string name in new[] { "max", "eva" })
                 if (Resources.Load<Texture2D>("UI/dialogue_face_" + name) == null)
                     errors.Add(name + ": dialogue avatar missing");
+            foreach (string name in new[] { "survivors_cover", "hero_max", "hero_eva" })
+                if (Resources.Load<Texture2D>("UI/" + name) == null)
+                    errors.Add(name + ": production menu art missing");
             foreach (string name in new[] { "Menu", "Run", "Pistol", "Rifle", "Shotgun", "Minigun", "Drone", "Blast", "Bite", "Claw", "AcidHit", "Spit" })
                 if (Resources.Load<AudioClip>("Audio/" + name) == null)
                     errors.Add(name + ": audio clip missing");
@@ -96,7 +107,7 @@ namespace ZombieSurvivalRun.EditorTools
                     return;
                 }
 
-                var skin = rig.GetComponentInChildren<SkinnedMeshRenderer>();
+                var skin = rig.PrimarySkin;
                 skin.BakeMesh(baked);
                 Vector3 lo = Vector3.one * float.PositiveInfinity;
                 Vector3 hi = Vector3.one * float.NegativeInfinity;

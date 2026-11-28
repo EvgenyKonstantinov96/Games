@@ -39,7 +39,10 @@ namespace UnityEngine
     }
     public sealed class LineRenderer
     {
-        public readonly Vector3[] Points = new Vector3[2];
+        public readonly Vector3[] Points;
+        public LineRenderer(int count=2) { Points = new Vector3[count]; }
+        public bool loop;
+        public float widthMultiplier;
         public bool enabled;
         public float startWidth, endWidth;
         public Color startColor, endColor;
@@ -85,6 +88,7 @@ namespace ZombieSurvivalRun
     }
     sealed class ZSRProductionArt
     {
+        public Vector3 MouthPosition => ZSRGame.Instance.First.AimPoint;
         public int Attacks;
         public void Attack() => Attacks++;
         public void Tick(bool running, float cadence) {}
@@ -122,12 +126,14 @@ namespace ZombieSurvivalRun
         public Vector3 Head => spits[0].Head;
         public Vector3 Tail => spits[0].Line.Points[0];
         public float Age => spits[0].Age;
+        public Vector3[] Footprint => spits[0].Mark.Points;
+        public bool MarkVisible => spits[0].Mark.enabled;
         public bool Paused => particles.isPaused;
         public void HideSource() => lineMaterial = null;
         LineRenderer MakeLine(string name, int count)
         {
-            Allocated++;
-            return new LineRenderer();
+            if (name == "Toxic spit") Allocated++;
+            return new LineRenderer(count);
         }
         public void ToxicBurst(Vector3 at) {}
         public void PlayerHit(Vector3 at, float sourceX, bool acid) {}
@@ -161,6 +167,8 @@ namespace ZombieSurvivalRun
         public float Elapsed { get; private set; }
         int ItemLevel(ItemType item) => 1;
         float ArmorReduction(int level) => 0f;
+        static void Destroy(GameObject obj) => obj.SetActive(false);
+        public int Retained => pools.Values.Sum(queue => queue.Count);
         static bool ExpiredRunObject(GameObject obj) => !obj.active;
         void CancelGesture() {}
         void HandleInput(float dt) {}
@@ -229,6 +237,10 @@ static class ToxicSpitProbe
         for (int i = 0; i < hz && fx.Active == 0; i++) Step();
         Require(fx.Active == 1 && fx.Age == 0 && fx.Tail == fx.Head && game.Hero.Health == 200,
             "One shot released, no advancement or damage on launch frame");
+        Require(fx.MarkVisible && Math.Abs(fx.Footprint[0].x+.83f)<.0001f &&
+            Math.Abs(fx.Footprint[2].x-.83f)<.0001f &&
+            Math.Abs(fx.Footprint[0].z-(game.RunSpeed*.48f-.95f))<.0001f,
+            "Ground footprint initialized at the damage width and road-relative landing on release");
         float releaseTime = game.Elapsed;
         if (paceDodge) Require(game.pace.TryChange(ZSRPace.Walk), "Walk pace entered");
         for (int i = 0; i < hz && fx.Age < .12f; i++) Step();
@@ -238,6 +250,8 @@ static class ToxicSpitProbe
         for (int i = 0; i < hz && fx.Active > 0; i++) Step();
         Require(fx.Active == 0 && Math.Abs(fx.Head.x) < .0001f && fx.Age > .479f,
             "Completed flight aims at the lane chosen during wind-up");
+        Require(!fx.MarkVisible && Math.Abs(fx.Footprint[0].z-(fx.Head.z-.95f))<.0001f,
+            "Footprint follows the road and clears on impact");
         Require(paceDodge ? Math.Abs(fx.Head.z) > .95f : Math.Abs(fx.Head.z) < .001f, "Road-relative landing");
         int expected = lateralDodge || paceDodge ? 200 : 200 - Mathf.RoundToInt(8 * game.Plan.IncomingDamage);
         Require(game.Hero.Health == expected, "Exactly one hit on a stationary target, no hit after evasion");
@@ -269,6 +283,8 @@ static class ToxicSpitProbe
         Require(game.Live == 44 && reused.gameObject.active && reused.transform.position.z == 38f,
             "Ordinary levels honor cap and reactivate a pooled enemy");
 
+        while (game.Live > 0) game.RecycleZombie(game.First);
+        Require(game.Retained == 12, "Bound inactive high-detail actor pool");
         var fx = game.combatEffects;
         var from = new Vector3(0, 1.5f, 11f);
         for (int i = 0; i < 8; i++) fx.LaunchSpit(from, 0f, game.RunSpeed);

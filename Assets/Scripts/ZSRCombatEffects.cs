@@ -15,7 +15,7 @@ namespace ZombieSurvivalRun
         const float SpitSeconds = .48f;
         struct SpitSlot
         {
-            public LineRenderer Line;
+            public LineRenderer Line, Mark;
             public Vector3 From, Landing, Head;
             public float Age, Scroll;
             public int LaunchFrame;
@@ -270,20 +270,39 @@ namespace ZombieSurvivalRun
                 {
                     slot.Line = MakeLine("Toxic spit", 2);
                     slot.Line.startWidth = .026f;
-                    slot.Line.endWidth = .13f;
+                    slot.Line.endWidth = .19f;
                     slot.Line.startColor = new Color(.49f, .60f, .16f, .12f);
                     slot.Line.endColor = new Color(.77f, .96f, .21f, .92f);
                     slot.Line.numCapVertices = 3;
                 }
+                if (slot.Mark == null)
+                {
+                    slot.Mark = MakeLine("Toxic ground footprint",4);
+                    slot.Mark.loop = true;
+                    slot.Mark.widthMultiplier = .038f;
+                    slot.Mark.startColor = slot.Mark.endColor = new Color(.70f,.91f,.19f,.65f);
+                }
                 slot.From = slot.Head = from;
                 slot.Landing = new Vector3(lane, .16f, SpitSeconds * speed);
                 slot.Age = slot.Scroll = 0f;
+                SetSpitMark(slot);
+                slot.Mark.enabled = true;
                 slot.LaunchFrame = Time.frameCount;
                 slot.Line.SetPosition(0, from);
                 slot.Line.SetPosition(1, from);
                 slot.Line.enabled = true;
                 return;
             }
+        }
+
+        static void SetSpitMark(SpitSlot shot)
+        {
+            Vector3 ground = shot.Landing + Vector3.back*shot.Scroll;
+            ground.y = .031f;
+            shot.Mark.SetPosition(0,ground+new Vector3(-.83f,0f,-.95f));
+            shot.Mark.SetPosition(1,ground+new Vector3(-.83f,0f,.95f));
+            shot.Mark.SetPosition(2,ground+new Vector3(.83f,0f,.95f));
+            shot.Mark.SetPosition(3,ground+new Vector3(.83f,0f,-.95f));
         }
 
         public void TickSpits(float dt, float speed)
@@ -296,6 +315,7 @@ namespace ZombieSurvivalRun
                 shot.Age += step;
                 shot.Scroll += speed * step;
                 float t = shot.Age / SpitSeconds;
+                SetSpitMark(shot);
                 Vector3 previous = shot.Head;
                 shot.Head = Vector3.Lerp(shot.From, shot.Landing, t) + Vector3.back * shot.Scroll;
                 shot.Head.y += 2.8f * t * (1f - t);
@@ -305,6 +325,7 @@ namespace ZombieSurvivalRun
                 if (shot.Age < SpitSeconds) continue;
 
                 shot.Line.enabled = false;
+                shot.Mark.enabled = false;
                 ToxicBurst(shot.Head);
                 var game = ZSRGame.Instance;
                 Vector3 offset = shot.Head - game.Hero.transform.position;
@@ -403,7 +424,11 @@ namespace ZombieSurvivalRun
             UpdateShield(0f, 0f, Vector3.zero);
             ClearBossWarning();
             foreach (var trace in traces) if (trace.Line != null) trace.Line.enabled = false;
-            foreach (var shot in spits) if (shot.Line != null) shot.Line.enabled = false;
+            foreach (var shot in spits)
+            {
+                if (shot.Line != null) shot.Line.enabled = false;
+                if (shot.Mark != null) shot.Mark.enabled = false;
+            }
             foreach (var blast in blasts) if (blast.Line != null) Destroy(blast.Line.gameObject);
             blasts.Clear();
             if (particles != null) particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);

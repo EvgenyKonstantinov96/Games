@@ -111,6 +111,19 @@ def build(profile, wear):
         b.wing(-.17, .12, 1.012, 1.112, .53, .48, 9, .052)
         b.wing(-.06, .18, 1.10, 1.22, .032, .03, 11)
         b.wing(.08, .23, 1.10, 1.18, .024, .024, 11)
+    # Recessed floor edges, service balconies and roof equipment share the facade atlas.
+    if profile in (1,2):
+        for floor in range(4):
+            y=.20+floor*.14
+            for side in (-1,1):
+                x=side*.32
+                b.wing(x,-.43,y,y+.012,.21,.12,8,.008)
+                b.wing(x,-.478,y+.012,y+.044,.21,.016,9,.004)
+    for unit in range(2):
+        x=-.17+unit*.24
+        b.wing(x,.04,.98,1.035,.15,.17,11,.015)
+        b.wing(x,-.049,1.005,1.023,.11,.018,8,.006)
+    b.wing(.36,.26,.14,.84,.024,.025,9,.005)
     return b.save(wear)
 
 

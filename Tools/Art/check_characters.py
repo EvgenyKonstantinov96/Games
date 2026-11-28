@@ -31,8 +31,10 @@ def check_anatomy(skin, rig, scene, path, hero):
                     todo.append(vertex)
         if len(component) > len(largest):
             largest = component
-    assert len(largest) > len(mesh.vertices)*.64, (path, len(largest))
-    weights = {skin.vertex_groups[group.group].name for i in largest
+    # Fitted garments intentionally replace the covered body faces. Anatomical
+    # continuity is checked within each component, while binding coverage spans the skin.
+    assert len(largest) > 400, (path,len(largest))
+    weights = {skin.vertex_groups[group.group].name for i in range(len(mesh.vertices))
                for group in mesh.vertices[i].groups if group.weight > .28}
     joints = {f"{part}{side}" for part in ("Clavicle", "Thigh", "Shin", "UpperArm", "Forearm", "Hand")
               for side in ("L", "R")}
@@ -75,14 +77,25 @@ for path in sorted(ROOT.glob("*.fbx")):
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.import_scene.fbx(filepath=str(path), use_anim=True, anim_offset=0)
     rig,=[o for o in bpy.context.scene.objects if o.type=="ARMATURE"]
-    skin,=[o for o in bpy.context.scene.objects if o.type=="MESH"]
+    skins=sorted((o for o in bpy.context.scene.objects if o.type=="MESH"),key=lambda o:o.name)
+    assert len(skins)==3 and all(skin.name.endswith("_LOD"+str(i)) for i,skin in enumerate(skins)),path
+    skin=skins[0]
+    triangles=[]
+    for index,lod in enumerate(skins):
+        lod.data.calc_loop_triangles()
+        triangles.append(len(lod.data.loop_triangles))
+        assert all(1<=len(v.groups)<=4 and abs(sum(g.weight for g in v.groups)-1)<.001
+                   for v in lod.data.vertices),(path,index,"weights")
+    budget=30000 if path.stem in ("Max","Eva") else 19000
+    assert triangles[0]<budget and triangles[1]<triangles[0]*.57 and triangles[2]<triangles[0]*.31,(path,triangles)
+    print(f"LOD {path.stem}: {triangles} triangles, one skeleton and atlas",flush=True)
     names=set(rig.data.bones.keys())
     assert {"Pelvis","Spine","Chest","Head","ForwardMarker","HandL","HandR","ForefootL","ForefootR"} <= names, path
     hero=path.stem in {"Max","Eva"}
     if hero:
         assert {"WeaponGrip","WeaponForward"} <= names, path
     assert any(m.type=="ARMATURE" and m.object==rig for m in skin.modifiers), path
-    assert skin.data.uv_layers and len(skin.data.vertices) < 5500, path
+    assert skin.data.uv_layers and len(skin.data.vertices) < 16000, path
     assert skin.data.has_custom_normals and all(p.use_smooth for p in skin.data.polygons), path
     assert all(1 <= len(v.groups) <= 4 and abs(sum(g.weight for g in v.groups)-1.0) < .001
                for v in skin.data.vertices), path
@@ -91,7 +104,7 @@ for path in sorted(ROOT.glob("*.fbx")):
     assert end-start >= 166, (path,action.frame_range)
     skin.data.calc_loop_triangles()
     tri_count=len(skin.data.loop_triangles)
-    assert tri_count < 7500, (path,tri_count)
+    assert tri_count < budget, (path,tri_count)
     scene=bpy.context.scene
     points=[]
     for offset in (0,38,48,60,93,120,135,157,166):

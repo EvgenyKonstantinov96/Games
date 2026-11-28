@@ -30,7 +30,8 @@ namespace ZombieSurvivalRun
         Motion Shooting => walking ? Motion.WalkFire : Motion.Fire;
         static bool IsShooting(Motion value) => value == Motion.Fire || value == Motion.WalkFire;
         static bool IsGait(Motion value) => value == Motion.Move || value == Motion.Walk || IsShooting(value);
-        Transform muzzleFlash, weaponSocket, spine, head, footLeft, footRight;
+        Transform muzzleFlash, weaponSocket, barrelRotor, spine, head, footLeft, footRight;
+        float barrelSpeed, barrelAngle;
         float flashTime, recoil, aimTime, kick;
         Vector3 aimPoint;
         Quaternion socketRest;
@@ -46,6 +47,8 @@ namespace ZombieSurvivalRun
             head.localRotation = sampledHead;
         }
 
+        public SkinnedMeshRenderer PrimarySkin { get; private set; }
+        public Transform Mouth { get; private set; }
         public Transform Muzzle { get; private set; }
         public Transform ItemHand { get; private set; }
 
@@ -73,7 +76,10 @@ namespace ZombieSurvivalRun
             root.transform.SetParent(parent, false);
             var placement = ZSRVisuals.Pivot("Model alignment", root.transform, Vector3.zero);
             var instance = Instantiate(model, placement, false);
-            var skin = instance.GetComponentInChildren<SkinnedMeshRenderer>(true);
+            var skins = instance.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+            SkinnedMeshRenderer skin = null;
+            foreach (var candidate in skins)
+                if (skin == null || candidate.name.EndsWith("_LOD0")) skin = candidate;
             var pelvis = FindBone(instance.transform, "Pelvis");
             var forward = FindBone(instance.transform, "ForwardMarker");
             var grip = hero ? FindBone(instance.transform, "WeaponGrip") : null;
@@ -96,6 +102,13 @@ namespace ZombieSurvivalRun
                 atlasMaterial = ZSRVisuals.MatWithTexture(Color.white, ResourceRoot + "CharacterAtlas", .17f,
                     missingTextureColor: new Color(.23f, .26f, .29f));
                 atlasMaterial.name = "ZSR Character Atlas / shared";
+                var surface = Resources.Load<Texture2D>(ResourceRoot + "CharacterAtlas_surface");
+                if (surface != null && atlasMaterial.HasProperty("_MetallicGlossMap"))
+                {
+                    atlasMaterial.SetTexture("_MetallicGlossMap", surface);
+                    atlasMaterial.SetFloat("_Smoothness", 1f);
+                    atlasMaterial.EnableKeyword("_METALLICSPECGLOSSMAP");
+                }
                 var emission = Resources.Load<Texture2D>(ResourceRoot + "CharacterAtlas_emission");
                 if (emission != null && atlasMaterial.HasProperty("_EmissionMap"))
                 {
@@ -104,7 +117,8 @@ namespace ZombieSurvivalRun
                     atlasMaterial.EnableKeyword("_EMISSION");
                 }
             }
-            skin.sharedMaterial = atlasMaterial;
+            foreach (var renderer in skins) renderer.sharedMaterial = atlasMaterial;
+            ConfigureDistanceModels(instance, skins);
 
             var animator = instance.GetComponent<Animator>();
             if (animator == null) animator = instance.AddComponent<Animator>();
@@ -113,12 +127,19 @@ namespace ZombieSurvivalRun
 
             var actor = root.AddComponent<ZSRBundledCharacter>();
             actor.hero = hero;
+            actor.PrimarySkin = skin;
+            var mouth = new GameObject("Mouth / attack origin").transform;
+            mouth.SetParent(head,false);
+            mouth.position = head.position + root.transform.TransformVector(new Vector3(0,.10f,.115f));
+            actor.Mouth = mouth;
             if (hero)
             {
                 actor.spine = FindBone(instance.transform, "Spine");
                 actor.head = FindBone(instance.transform, "Head");
                 actor.footLeft = leftAnkle;
                 actor.footRight = rightAnkle;
+                ZSRSecondaryMotion.Attach(root.transform, head,
+                    FindBone(instance.transform,"HairTie"), FindBone(instance.transform,"HairTail"));
             }
             actor.hasItemClips = hero && take.length >= 7.16f;
             actor.hasWalkClips = hero && take.length >= 9.59f;
@@ -126,6 +147,25 @@ namespace ZombieSurvivalRun
             if (hero) actor.AttachWeapon(grip, barrel, weapon);
             if (Application.isPlaying) actor.CreateGraph(animator, take);
             return actor;
+        }
+
+        static void ConfigureDistanceModels(GameObject model, SkinnedMeshRenderer[] skins)
+        {
+            if (skins.Length < 3) return;
+            var levels = new LOD[3];
+            float[] coverage = { .12f, .045f, .007f };
+            for (int index = 0; index < levels.Length; index++)
+            {
+                SkinnedMeshRenderer renderer = null;
+                foreach (var candidate in skins)
+                    if (candidate.name.EndsWith("_LOD" + index)) renderer = candidate;
+                if (renderer == null) return;
+                levels[index] = new LOD(coverage[index], new Renderer[] { renderer });
+            }
+            var group = model.GetComponent<LODGroup>();
+            if (group == null) group = model.AddComponent<LODGroup>();
+            group.SetLODs(levels);
+            group.RecalculateBounds();
         }
 
         static bool AlignRig(Transform placement, string name, Transform pelvis, Transform marker,
@@ -193,6 +233,17 @@ namespace ZombieSurvivalRun
             };
             gun.localScale = Vector3.one * weaponScale;
             gun.localPosition = Vector3.up * .065f;
+            if (weapon == WeaponType.Minigun)
+            {
+                foreach (var part in gun.GetComponentsInChildren<MeshFilter>())
+                {
+                    if (part.name != "detailed steel barrel") continue;
+                    barrelRotor = ZSRVisuals.Pivot("Barrel rotor",gun,new Vector3(0,.04f,0));
+                    part.transform.SetParent(barrelRotor,false);
+                    part.transform.localPosition = new Vector3(0,-.04f,0);
+                    break;
+                }
+            }
             var muzzle = new Vector3(0f, .04f, .65f);
             float maxZ = float.NegativeInfinity;
             foreach (var filter in gun.GetComponentsInChildren<MeshFilter>(true))
@@ -200,7 +251,7 @@ namespace ZombieSurvivalRun
                 if (filter.sharedMesh == null) continue;
                 Bounds bounds = filter.sharedMesh.bounds;
                 // The rifle's tip sits on the axis authored into both barrel rings.
-                float axisY = weapon == WeaponType.Rifle ? .04f : bounds.center.y;
+                float axisY = .04f;
                 Vector3 end = filter.transform.TransformPoint(new Vector3(bounds.center.x, axisY, bounds.max.z));
                 Vector3 tip = socket.InverseTransformPoint(end);
                 if (tip.z <= maxZ) continue;
@@ -312,6 +363,7 @@ namespace ZombieSurvivalRun
             firing = true;
             flashTime = .045f;
             recoil = kick;
+            if (barrelRotor != null) barrelSpeed = 1800f;
             aimPoint = target;
             aimTime = .19f;
             ApplyAim();
@@ -368,6 +420,12 @@ namespace ZombieSurvivalRun
                 aimTime = Mathf.Max(0f, aimTime - dt);
             }
             if (!hero && motion != Motion.Death && game != null && !game.IsRunning) return;
+            if (barrelRotor != null)
+            {
+                barrelSpeed = Mathf.MoveTowards(barrelSpeed,0f,dt*2600f);
+                barrelAngle = Mathf.Repeat(barrelAngle+barrelSpeed*dt,360f);
+                barrelRotor.localRotation = Quaternion.AngleAxis(barrelAngle,Vector3.forward);
+            }
             float previousStep = gaitPhase;
             bool striding = moving && motion != Motion.Death;
             walkBlend = Mathf.MoveTowards(walkBlend, walking ? 1f : 0f, dt / .14f);

@@ -11,14 +11,14 @@ namespace ZombieSurvivalRun
         static readonly ZSRCampaignStyle[] Chapters =
         {
             new ZSRCampaignStyle("Руины мегаполиса", "Horizon", "ruins", "EAST VIADUCT",
-                new Color(1f, .69f, .30f), new Color(.31f, .37f, .47f),
+                new Color(1f, .69f, .30f), new Color(.24f, .29f, .38f),
                 new Color(1f, .68f, .44f), new Color(.53f, .70f, 1f), 1.36f, .0125f),
             new ZSRCampaignStyle("Огненный город", "Horizon_Industrial", "industrial", "PIPEWORKS",
                 new Color(1f, .39f, .24f), new Color(.48f, .27f, .22f),
                 new Color(1f, .53f, .31f), new Color(.56f, .48f, .70f), 1.57f, .0136f),
             new ZSRCampaignStyle("Эвакуационная зона", "Horizon_Evacuation", "evacuation", "EVAC 03",
-                new Color(.37f, .91f, .91f), new Color(.22f, .44f, .48f),
-                new Color(.73f, .94f, 1f), new Color(.44f, .67f, .92f), 1.42f, .0142f)
+                new Color(.37f, .91f, .91f), new Color(.22f, .29f, .38f),
+                new Color(1f, .74f, .52f), new Color(.44f, .67f, .92f), 1.42f, .0115f)
         };
 
         ZSRCampaignStyle(string title, string sky, string landmark, string roadSign, Color accent, Color fog,

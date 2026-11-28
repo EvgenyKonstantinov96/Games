@@ -25,7 +25,7 @@ namespace ZombieSurvivalRun
         Canvas canvas;
         RectTransform root, content, background;
         Font font, buttonFont;
-        Texture2D artMax, artEva, artRifle, sectionWallpaper, symbolAtlas;
+        Texture2D artMax, artEva, survivorsArt, artRifle, sectionWallpaper, symbolAtlas;
         enum Symbol { Home, Heroes, Arsenal, Pack, Map, Coin, Gate, Music, Medkit, Grenade, Drone, Armor, Chevron }
         Vector2? focusPosition;
         UnityEngine.UI.Button previousControl;
@@ -52,7 +52,8 @@ namespace ZombieSurvivalRun
         const float H = 844f;
         UnityEngine.UI.Image damageLeft, damageRight;
         Text hudAmmo, hudCoins, hudHealth, hudMessage, hudGrenade, hudMed, hudDrone;
-        RectTransform hpFill, progressFill, bossFill, bossBackdrop;
+        RectTransform hpFill, hpTrail, progressFill, bossFill, bossBackdrop;
+        float shownHealth = 1f;
         Text hudBoss, hudPace;
         RectTransform paceFill;
         ZSRPace lastPace;
@@ -60,8 +61,9 @@ namespace ZombieSurvivalRun
 
         void Awake()
         {
-            artMax = Resources.Load<Texture2D>("Artwork/max");
-            artEva = Resources.Load<Texture2D>("Artwork/eva");
+            artMax = Resources.Load<Texture2D>("UI/hero_max") ?? Resources.Load<Texture2D>("Artwork/max");
+            artEva = Resources.Load<Texture2D>("UI/hero_eva") ?? Resources.Load<Texture2D>("Artwork/eva");
+            survivorsArt = Resources.Load<Texture2D>("UI/survivors_cover");
             artRifle = Resources.Load<Texture2D>("Artwork/rifle");
             string[] weaponFiles = { "pistol", "rifle", "shotgun", "minigun" };
             for (int i=0; i<weaponFiles.Length; i++)
@@ -199,6 +201,22 @@ namespace ZombieSurvivalRun
         void Image(Texture2D tex, float x, float y, float w, float h, bool crop = true, Transform parent = null, float alpha = 1f)
         {
             if (tex == null) return;
+            if (!crop)
+            {
+                float aspect = tex.width / (float)tex.height;
+                if (aspect > w/h)
+                {
+                    float fitted = w/aspect;
+                    y += (h-fitted)*.5f;
+                    h = fitted;
+                }
+                else
+                {
+                    float fitted = h*aspect;
+                    x += (w-fitted)*.5f;
+                    w = fitted;
+                }
+            }
             var rt = Rect("painted game art", parent == null ? content : parent, x, y, w, h);
             var im = rt.gameObject.AddComponent<RawImage>();
             im.texture = tex; im.raycastTarget = false; im.color = new Color(1, 1, 1, alpha);
@@ -464,10 +482,10 @@ namespace ZombieSurvivalRun
             ButtonCaption("ZOMBIE SURVIVAL", 17, 68, 280, 49, 29, Color.white, TextAnchor.MiddleLeft, content);
             ButtonCaption("RUN", 288, 68, 85, 49, 35, style.Accent, TextAnchor.MiddleRight, content);
             Block("hero portrait frame", 15, 123, 360, 369, Color.Lerp(Dark, style.Accent, .25f));
-            Image(heroCovers[selected] ?? (selected == 0 ? artMax : artEva), 15, 123, 360, 369);
+            Image(survivorsArt ?? heroCovers[selected] ?? (selected == 0 ? artMax : artEva), 15, 123, 360, 369);
             Block("hero nameplate panel", 24, 421, 342, 61, new Color(.035f,.055f,.079f,.94f));
-            ButtonCaption(heroName, 37, 425, 147, 30, 21, Color.white, TextAnchor.MiddleLeft, content);
-            Label(selected == 0 ? "Штурмовик" : "Разведчица", 38, 452, 151, 23, 13, TextMuted, TextAnchor.MiddleLeft, false);
+            ButtonCaption("МАКС И ЕВА", 37, 425, 203, 30, 21, Color.white, TextAnchor.MiddleLeft, content);
+            Label("В забеге  •  " + heroName, 38, 452, 203, 23, 13, TextMuted, TextAnchor.MiddleLeft, false);
             Button("СМЕНИТЬ", 251, 429, 106, 45, Cyan, g.GoHeroes, 12, skinTint: new Color(.14f,.20f,.26f));
 
             Block("mission card", 15, 504, 360, 229, new Color(.068f,.093f,.119f,.99f));
@@ -540,14 +558,14 @@ namespace ZombieSurvivalRun
                 bool open = g.WeaponLevelUnlocked(chosen);
                 Color tint = Color.Lerp(Cyan, Orange, i / 3f);
                 bool inspecting = inspectedWeapon == chosen;
-                var slot = ButtonSurface(WeaponNames[i], x, 139, 83, 144, Cyan, () => inspectedWeapon = chosen,
+                var slot = ButtonSurface(WeaponNames[i], x, 348, 83, 115, Cyan, () => inspectedWeapon = chosen,
                     skinTint: Color.Lerp(Panel, tint, inspecting ? .32f : .10f));
                 Image(weaponArts[i], 4, 9, 75, 49, false, slot.transform, open ? 1f : .54f);
                 ButtonCaption(WeaponNames[i], 2, 61, 79, 23, 10, Color.white, TextAnchor.MiddleCenter, slot.transform);
                 string availability = equipped ? "ВЫБРАНО" : g.WeaponOwned(chosen) ? "В НАЛИЧИИ" :
                     open ? "● " + Money(g.WeaponPrice(chosen)) : "ОТ УР. " + g.WeaponUnlockLevel(chosen);
-                Label(availability, 2, 92, 79, 22, 10, equipped ? Gold : TextMuted, parent: slot.transform);
-                if (inspecting) Block("selected weapon", 24, 132, 35, 3, tint, slot.transform);
+                Label(availability, 2, 87, 79, 22, 10, equipped ? Gold : TextMuted, parent: slot.transform);
+                if (inspecting) Block("selected weapon", 24, 110, 35, 3, tint, slot.transform);
             }
 
             var weapon = inspectedWeapon;
@@ -559,11 +577,11 @@ namespace ZombieSurvivalRun
             int cost = g.WeaponUpgradeCost(weapon);
             int price = g.WeaponPrice(weapon);
             Color accent = Color.Lerp(Cyan, Orange, (int)weapon / 3f);
-            Block("weapon showcase", 13, 303, 364, 160, Color.Lerp(Panel, accent, .19f));
-            Accent(13, 303, 364, accent);
-            Image(weaponArts[(int)weapon] ?? (weapon == WeaponType.Rifle ? artRifle : null), 25, 307, 340, 107, false);
-            Label(WeaponNames[(int)weapon], 23, 410, 343, 29, 20, Color.white);
-            Label(data.Role, 23, 439, 343, 22, 13, accent, TextAnchor.MiddleCenter, false);
+            Block("weapon showcase", 13, 139, 364, 194, Color.Lerp(Panel, accent, .19f));
+            Accent(13, 139, 364, accent);
+            Image(weaponArts[(int)weapon] ?? (weapon == WeaponType.Rifle ? artRifle : null), 25, 166, 340, 122, false);
+            Label(WeaponNames[(int)weapon], 23, 146, 343, 29, 20, Color.white);
+            Label(data.Role, 23, 301, 343, 22, 13, accent, TextAnchor.MiddleCenter, false);
 
             Block("gun stats card", 13, 474, 364, 130, Panel);
             Label("РАНГ " + level + " / " + ZSRGame.MaxUpgradeLevel, 25, 478, 340, 25, 13, Gold, TextAnchor.MiddleLeft);
@@ -749,6 +767,8 @@ namespace ZombieSurvivalRun
             progressFill = Block("run progression", 78, 59, 1, 8, Green);
             hudHealth = Label("HP", 12, 78, 140, 30, 15, Color.white, TextAnchor.MiddleLeft);
             Block("health bar", 145, 88, 222, 10, new Color(.34f, .20f, .20f, 1));
+            hpTrail = Block("health damage trail", 145, 88, 222, 10, new Color(.96f,.30f,.16f));
+            shownHealth = g.Hero.Health / (float)Mathf.Max(1, g.Hero.MaxHealth);
             hpFill = Block("health fill", 145, 88, 1, 10, Green);
             for (int i = 0; i < hudBonuses.Length; i++)
             {
@@ -767,13 +787,21 @@ namespace ZombieSurvivalRun
             hudAmmo = Label("", 16, bottom - 10, 358, 25, 17, Color.white, TextAnchor.MiddleLeft);
             hudPace = Label("", 16, bottom + 14, 358, 17, 11, Cyan, TextAnchor.MiddleLeft);
             paceFill = Block("pace ready", 287, bottom + 21, 84, 3, Cyan);
-            Button("АПТЕЧКА", 11, bottom + 33, 115, 64, Cyan, g.UseMedkit, 13, g.IsRunning, redraw: false);
-            Button("ГРАНАТА", 138, bottom + 33, 114, 64, Orange, g.ThrowGrenade, 13, g.IsRunning, redraw: false);
-            Button("ДРОН", 264, bottom + 33, 114, 64, Cyan, g.UseDrone, 13, g.IsRunning, redraw: false);
-            hudMed = Label("", 11, bottom + 33, 115, 17, 12, Gold);
-            hudGrenade = Label("", 138, bottom + 33, 114, 17, 12, Gold);
-            hudDrone = Label("", 264, bottom + 33, 114, 17, 12, Gold);
+            Ability(Symbol.Medkit, "АПТЕЧКА", 11, bottom + 33, 115, Cyan, g.UseMedkit, g.IsRunning);
+            Ability(Symbol.Grenade, "ГРАНАТА", 138, bottom + 33, 114, Orange, g.ThrowGrenade, g.IsRunning);
+            Ability(Symbol.Drone, "ДРОН", 264, bottom + 33, 114, Cyan, g.UseDrone, g.IsRunning);
+            hudMed = Label("", 78, bottom + 37, 43, 17, 12, Gold);
+            hudGrenade = Label("", 205, bottom + 37, 43, 17, 12, Gold);
+            hudDrone = Label("", 302, bottom + 37, 71, 17, 10, Gold);
             UpdateHUD(g);
+        }
+
+        void Ability(Symbol symbol, string caption, float x, float y, float width, Color tint,
+            Action action, bool enabled)
+        {
+            var button = ButtonSurface(caption, x, y, width, 64, tint, action, enabled, false);
+            Icon(symbol, 13, 8, 29, Color.white, button.transform);
+            ButtonCaption(caption, 5, 41, width - 10, 19, 11, Color.white, TextAnchor.MiddleCenter, button.transform);
         }
 
         void UpdateHUD(ZSRGame g)
@@ -830,7 +858,12 @@ namespace ZombieSurvivalRun
                 ? "× " + g.Drones + "   •   " + Mathf.CeilToInt(g.DroneSeconds) + " СЕК"
                 : "× " + g.Drones;
             if (progressFill != null) progressFill.sizeDelta = new Vector2(289 * g.Progress, 8);
-            if (hpFill != null) hpFill.sizeDelta = new Vector2(222 * (g.Hero.Health / (float)Mathf.Max(1, g.Hero.MaxHealth)), 10);
+            float health = g.Hero.Health / (float)Mathf.Max(1, g.Hero.MaxHealth);
+            if (health >= shownHealth) shownHealth = health;
+            else if (g.DamageFlash < .43f && g.IsRunning)
+                shownHealth = Mathf.MoveTowards(shownHealth, health, Time.unscaledDeltaTime*.9f);
+            if (hpTrail != null) hpTrail.sizeDelta = new Vector2(222f*shownHealth,10);
+            if (hpFill != null) hpFill.sizeDelta = new Vector2(222f*health,10);
         }
 
         float ModalDark(float height)
@@ -845,22 +878,27 @@ namespace ZombieSurvivalRun
 
         void Dialogue(ZSRGame g)
         {
-            float top = ModalDark(490);
-            Label("УРОВЕНЬ " + g.Level + "  /  " + g.Briefing.Title, 33, top + 20, 324, 54, 19,
-                Color.white, TextAnchor.MiddleLeft);
+            BlockStretch("dialogue base", Dark, content);
+            Image(survivorsArt, 15, 12, 360, 400, true);
+            Label("УРОВЕНЬ " + g.Level + " / " + ZSRGame.MaxLevels, 26, 24, 337, 26, 13,
+                Color.white, TextAnchor.UpperRight);
+            const float top = 397f;
+            Block("dialogue panel", 15, top, 360, 432, new Color(.045f,.067f,.10f,.99f));
             int speaker = g.DialogueIndex;
             string name = speaker == 0 ? "МАКС" : "ЕВА";
             Color tint = speaker == 0 ? Orange : Cyan;
             Image(Resources.Load<Texture2D>("UI/dialogue_face_" + (speaker == 0 ? "max" : "eva")),
-                35, top + 90, 74, 74, false);
-            ButtonCaption(name, 124, top + 98, 224, 32, 22, tint, TextAnchor.MiddleLeft, content);
-            Label("БРАТ И СЕСТРА  •  " + (speaker + 1) + " / 2", 125, top + 131, 218, 23, 11,
+                31, top + 17, 68, 68, false);
+            ButtonCaption(name, 114, top + 19, 231, 32, 22, tint, TextAnchor.MiddleLeft, content);
+            Label("БРАТ И СЕСТРА  •  " + (speaker + 1) + " / 2", 115, top + 53, 226, 23, 11,
                 TextMuted, TextAnchor.MiddleLeft);
-            Label(g.Briefing.Line(speaker), 36, top + 187, 316, 155, 19,
+            Label((g.Briefing.Title ?? "").ToUpperInvariant(), 31, top + 101, 328, 27, 17,
+                Gold, TextAnchor.MiddleLeft);
+            Label(g.Briefing.Line(speaker), 31, top + 143, 328, 128, 18,
                 Color.white, TextAnchor.UpperLeft, false);
-            Button(speaker == 0 ? "ДАЛЕЕ  ›" : "НАЧАТЬ ЗАБЕГ", 35, top + 353, 320, 60,
+            Button(speaker == 0 ? "ДАЛЕЕ  ›" : "НАЧАТЬ ЗАБЕГ", 31, top + 294, 328, 60,
                 Orange, g.AdvanceDialogue, 18);
-            Button("В МЕНЮ", 35, top + 424, 320, 46, Cyan, g.GoMenu, 14);
+            Button("В МЕНЮ", 31, top + 367, 328, 46, Cyan, g.GoMenu, 14);
             if (firstButton != null && EventSystem.current != null)
                 EventSystem.current.SetSelectedGameObject(firstButton.gameObject);
         }

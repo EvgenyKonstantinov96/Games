@@ -69,7 +69,7 @@ def inspect_shared_art():
         glyphs = font.getBestCmap()
         assert all(ord(ch) in glyphs for ch in literal_text), sorted(set(ch for ch in literal_text if ord(ch) not in glyphs))
     with Image.open(ASSETS/'ProductionArt/CharacterAtlas_emission.png') as image:
-        assert image.size == (1024,1024)
+        assert image.size == (2048,2048)
         assert image.getbbox() == (768,256,896,384)
     with Image.open(ASSETS/'ProductionArt/ParticleSoft.png') as image:
         alpha = image.getchannel('A')

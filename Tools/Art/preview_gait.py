@@ -47,7 +47,10 @@ for name, position, yaw in cast:
     bpy.ops.import_scene.fbx(filepath=str(assets/(name+".fbx")))
     actors = set(bpy.data.objects)-old
     rig, = (o for o in actors if o.type == "ARMATURE")
-    skin, = (o for o in actors if o.type == "MESH")
+    skins = [o for o in actors if o.type == "MESH"]
+    skin = next((o for o in skins if o.name.endswith("_LOD0")), skins[0])
+    for lod in skins:
+        if lod != skin: lod.hide_render = True
     skin.data.materials.clear()
     skin.data.materials.append(atlas)
     placement = bpy.data.objects.new(name+" preview placement",None)

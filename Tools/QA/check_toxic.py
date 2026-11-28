@@ -51,7 +51,7 @@ def extract():
         "}",
         "sealed partial class ZSRCombatEffects {",
         fx[fx.index("readonly SpitSlot[] spits"):fx.index("int nextTrace")],
-        *[block(fx, member) for member in ("public void LaunchSpit(", "public void TickSpits(", "public void SetPaused(")],
+        *[block(fx, member) for member in ("public void LaunchSpit(", "static void SetSpitMark(", "public void TickSpits(", "public void SetPaused(")],
         fx_tick, "}",
         "sealed partial class ZSRGame {",
         *[expression(game, member) for member in (

@@ -54,6 +54,7 @@ class Character:
         self.random = random.Random(self.name)
         self.bones = {}
         self.vertices, self.faces, self.weights, self.tiles = [], [], [], []
+        self.clothing_pack = CLOTHING
         self.body = Body(self, HUMAN_DATA)
         self.rig = bpy.data.objects.new("Skeleton", bpy.data.armatures.new("Skeleton"))
         bpy.context.collection.objects.link(self.rig)
@@ -97,6 +98,10 @@ class Character:
             wrist = self.bones["HandR"][0]
             self.bone("WeaponGrip", wrist, wrist+v(0,.11,0), "HandR")
             self.bone("WeaponForward", wrist+v(0,.32,0), wrist+v(0,.40,0), "HandR")
+        if self.name == "Eva":
+            tie = v(.015,self.body.back_at(self.h*.92)-.028,self.h*.93)
+            self.bone("HairTie",tie,tie+v(.012,-.044,-.091),"Head")
+            self.bone("HairTail",tie+v(.012,-.044,-.091),tie+v(.025,-.066,-.261),"HairTie")
         bpy.context.view_layer.objects.active = self.rig
         self.rig.select_set(True)
         bpy.ops.object.mode_set(mode="EDIT")
@@ -184,6 +189,8 @@ class Character:
 
     def sculpt(self):
         self.body.append()
+        from survivor_clothing import append_garment
+        append_garment(self, CLOTHING)
         self.body.append_shoes(CLOTHING)
         for side, sign in SIDES:
             if self.name == "Armored":
@@ -195,12 +202,8 @@ class Character:
             self.volume(eye, (.012,.013,.011), 16, "Head", 7)
             self.volume(eye+v(0,.011,0), (.005,.004,.005), 17 if self.hero else self.trim, "Head", 7)
         if self.hero:
-            if self.name == "Eva":
-                end = self.h*.956
-                back = self.body.back_at(end)
-                self.surface(v(0,back-.006,end),v(.047,back-.088,self.h*.787),
-                             [(0,.027,.026),(.22,.036,.027),(.53,.031,.025),
-                              (.78,.019,.017),(1,.001,.001)],17,"Head")
+            from survivor_clothing import append_hair
+            append_hair(self,CLOTHING)
             self.hero_kit()
         else:
             self.infection()
@@ -245,17 +248,20 @@ class Character:
             self.panel((width,front+.008,height),(.060,.011,.080),3,"Chest",s*.35)
             self.panel((width,front+.015,height+.012),(.025,.004,.029),self.trim,"Chest",s*.35)
 
-        # Small fitted details follow their own limb instead of stretching with the torso.
-        for side, sign in SIDES:
-            shoulder = self.bones["UpperArm"+side][0]
-            elbow = self.bones["Forearm"+side][0]
-            cuff = shoulder.lerp(elbow, .86 if self.name == "Eva" else .73)
-            self.surface(cuff, cuff+(elbow-shoulder).normalized()*.018,
-                         [(0,.066,.065),(1,.065,.064)],3,"UpperArm"+side,8)
-            # Cloth pocket flap, worn knee pad and inset stitching on the trousers.
-            knee = self.bones["Shin"+side][0]
-            self.panel(knee+v(0,.055,.025),(.093,.027,.112),3,"Shin"+side)
-
+        for side,sign in SIDES:
+            ankle=self.bones["Foot"+side][0]
+            # A close fitting ankle boot, not a rigid mid-calf bucket. Blend
+            # the lower collar into the same ankle bend as the shoe upper.
+            rings=[]
+            for height,rx,ry,shin in ((.025,.061,.066,.52),(.064,.063,.067,.82),
+                                      (.115,.062,.061,1.),(.158,.061,.059,1.),
+                                      (.171,.062,.060,1.),(.177,.059,.057,1.)):
+                rings.append((ankle+v(0,-.006,height),rx,ry,
+                              {"Shin"+side:shin,"Foot"+side:1-shin}))
+            self.loft(rings,[3]*5,16,.006)
+            for stitch in range(4):
+                at=ankle+v(0,.057,.077+stitch*.025)
+                self.panel(at,(.049,.006,.005),8,"Shin"+side)
     def fabric_flap(self, top, low, tile, bone):
         """A double-sided irregular fabric edge draped off the skinned cloth."""
         points = tuple(top)+tuple(low)
@@ -372,13 +378,27 @@ class Character:
         uv = data.uv_layers.new(name="Atlas")
         for p,(tile,coords) in zip(data.polygons,self.tiles):
             for loop,(x,y) in zip(p.loop_indices,coords):
-                if tile < 24:
+                if tile >= 40:
+                    slot = tile-40
+                    if slot == 0:
+                        uv.data[loop].uv = (.5+x*.5, .5+y*.5)
+                    elif slot == 1:
+                        uv.data[loop].uv = (x*.5, y*.5)
+                    else:
+                        cell = slot-2
+                        uv.data[loop].uv = (.5+(cell%2+x)*.25, (1-cell//2+y)*.25)
+                elif tile < 24:
                     uv.data[loop].uv=((tile%8+.035+x*.93)/8, (7-tile//8+.035+y*.93)/8)
                 elif tile < 32:
                     slot=tile-24
                     uv.data[loop].uv=((slot%4+.013+x*.974)/4, (1-slot//4+.013+y*.974)/4)
                 else:
                     uv.data[loop].uv=((tile-32+.013+x*.974)/4, (.035+y*.93)/8+.50)
+        for polygon, (tile, _) in zip(data.polygons, self.tiles):
+            if tile < 40:
+                for loop in polygon.loop_indices:
+                    old = uv.data[loop].uv
+                    uv.data[loop].uv = (old.x*.5, .5+old.y*.5)
         groups={name:skin.vertex_groups.new(name=name) for name in self.bones}
         for i, weights in enumerate(self.weights):
             for key,weight in weights.items():
@@ -672,10 +692,45 @@ class Character:
                     bone.keyframe_insert("rotation_quaternion",frame=frame,group=bone.name)
         self.rig.animation_data.action.name=self.name+"_Motion"
 
+    def make_lods(self):
+        """Keep the detailed hero silhouette nearby and cut skinning work in distant waves."""
+        self.mesh.name = self.name+"_LOD0"
+        self.lod_meshes = [self.mesh]
+        for index, ratio in ((1,.48),(2,.23)):
+            proxy = self.mesh.copy()
+            proxy.data = self.mesh.data.copy()
+            proxy.name = self.name+"_LOD"+str(index)
+            bpy.context.collection.objects.link(proxy)
+            proxy.modifiers.clear()
+            reduction = proxy.modifiers.new("Distance topology","DECIMATE")
+            reduction.ratio = ratio
+            evaluated = proxy.evaluated_get(bpy.context.evaluated_depsgraph_get())
+            reduced = bpy.data.meshes.new_from_object(evaluated)
+            old = proxy.data
+            proxy.modifiers.clear()
+            proxy.data = reduced
+            bpy.data.meshes.remove(old)
+            for vertex in reduced.vertices:
+                entries = sorted(((g.group,g.weight) for g in vertex.groups),
+                                 key=lambda item:item[1],reverse=True)
+                total = sum(weight for _,weight in entries[:4])
+                for group,_ in entries:
+                    proxy.vertex_groups[group].remove([vertex.index])
+                for group,weight in entries[:4]:
+                    proxy.vertex_groups[group].add([vertex.index],weight/total,"REPLACE")
+            for polygon in reduced.polygons:
+                polygon.use_smooth = True
+            reduced.update()
+            reduced.normals_split_custom_set_from_vertices([v.normal for v in reduced.vertices])
+            armature = proxy.modifiers.new("Shared skeleton","ARMATURE")
+            armature.object = self.rig
+            self.lod_meshes.append(proxy)
+
     def export(self):
         bpy.ops.object.select_all(action="DESELECT")
         self.rig.select_set(True)
-        self.mesh.select_set(True)
+        for skin in self.lod_meshes:
+            skin.select_set(True)
         bpy.context.view_layer.objects.active=self.rig
         bpy.context.scene.frame_set(1)
         bpy.ops.export_scene.fbx(filepath=str(OUT/(self.name+".fbx")),use_selection=True,
@@ -701,6 +756,7 @@ def main():
         actor.skin_mesh()
         scene.frame_end=289 if actor.hero else 168
         actor.animate()
+        actor.make_lods()
         actor.export()
         roster.append(actor)
     if "--preview" in sys.argv:

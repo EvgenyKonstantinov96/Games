@@ -15,3 +15,5 @@
 *.user
 *.userprefs
 .DS_Store
+
+/Screenshots/

@@ -32,8 +32,8 @@ def sky(filename, source, mode):
         tone *= (1-.22*soot*band)[...,None]
     else:
         luminance = pixels @ np.array([.26,.57,.17])
-        tone = np.stack((luminance*.66, luminance*1.04, luminance*1.15), axis=-1)
-        tone += glow[...,None] * np.array([.009,.10,.112])
+        tone = np.stack((luminance*.78, luminance*.91, luminance*1.08), axis=-1)
+        tone += glow[...,None] * np.array([.11,.045,.025])
         tone += (pixels - luminance[...,None])*.15
     output = ASSETS/'ProductionArt'/filename
     Image.fromarray(np.uint8(np.clip(tone*255,0,255))).save(output, quality=91, optimize=True)

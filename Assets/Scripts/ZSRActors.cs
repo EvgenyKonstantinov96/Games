@@ -448,7 +448,7 @@ namespace ZombieSurvivalRun
                     spitLane = heroX;
                     attackTimer = .42f;
                     if (production != null) production.Attack();
-                    game.ToxicBurst(AimPoint);
+                    game.ToxicBurst(production != null ? production.MouthPosition : AimPoint);
                     game.Notify("ТОКСИН — СМЕНИ ПОЛОСУ", 1.25f);
                 }
                 else if (attackTelegraphed)
@@ -457,7 +457,7 @@ namespace ZombieSurvivalRun
                     if (attackTimer <= 0f)
                     {
                         contacted = true;
-                        game.LaunchToxicSpit(AimPoint, spitLane);
+                        game.LaunchToxicSpit(production != null ? production.MouthPosition : AimPoint, spitLane);
                     }
                 }
             }

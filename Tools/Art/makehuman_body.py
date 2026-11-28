@@ -241,8 +241,12 @@ class Body:
             weights.append(w)
             regions.append(region)
 
+        from survivor_clothing import hidden_body
+        hidden = hidden_body(actor, actor.clothing_pack)
         atlas_faces, tiles = [], []
         for face in self.faces:
+            if hidden and any(index in hidden for index, _ in face):
+                continue
             ids = tuple(ref[i] for i, _ in face)
             p = sum((points[i] for i in ids), Vector((0,0,0)))/len(ids)
             side = "L" if p.x < 0 else "R"
@@ -269,7 +273,7 @@ class Body:
         indices = {i:k for k,i in enumerate(used)}
         atlas_faces = [(tuple(indices[i] for i in face), coords) for face, coords in atlas_faces]
         base, first_face = append_reduced(actor, actor.name+" anatomical mesh", [points[i] for i in used],
-                                          atlas_faces, tiles, [weights[i] for i in used], .222 if actor.hero else .195)
+                                          atlas_faces, tiles, [weights[i] for i in used], .46 if actor.hero else .32)
         if actor.hero:
             self.hair(base, first_face)
 
@@ -299,7 +303,7 @@ class Body:
         if hand > .48:
             return "glove" if actor.name in ("Max","Eva","Armored") and digits < .72 else "skin"
         if upper+lower+hand > .45:
-            sleeve = {"Max":.73, "Eva":.86, "Walker":.48 if side=="R" else .13,
+            sleeve = {"Max":.64, "Eva":1.06, "Walker":.48 if side=="R" else .13,
                       "Runner":.75 if side=="L" else .14,"Armored":1.08,
                       "Brute":.04, "Toxic":.39 if side=="R" else .16,
                       "Crawler":.49 if side=="R" else .27, "Boss":.04}[actor.name]

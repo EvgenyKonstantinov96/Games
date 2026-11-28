@@ -163,6 +163,7 @@ namespace ZombieSurvivalRun
         Camera camera3D;
         Light chapterKey, chapterFill;
         ParticleSystem chapterAir;
+        VolumeProfile postProfile;
         Material chapterAirMaterial;
         AudioSource audioSource;
         AudioClip droneAudio, coinAudio, hitAudio, boomAudio, winAudio, biteAudio, clawAudio, acidAudio, spitAudio;
@@ -306,8 +307,8 @@ namespace ZombieSurvivalRun
             sun.transform.rotation = Quaternion.Euler(29, -136, 0);
             sun.shadows = LightShadows.Soft;
             sun.shadowStrength = .66f;
-            sun.shadowBias = .035f;
-            sun.shadowNormalBias = .28f;
+            sun.shadowBias = .02f;
+            sun.shadowNormalBias = .12f;
 
             var cool = new GameObject("Blue fill light").AddComponent<Light>();
             cool.transform.SetParent(worldRoot.transform, false);
@@ -366,6 +367,7 @@ namespace ZombieSurvivalRun
             volume.isGlobal=true;
             volume.priority=8;
             var profile=ScriptableObject.CreateInstance<VolumeProfile>();
+            postProfile = profile;
             var bloom=profile.Add<Bloom>(true);
             bloom.threshold.Override(1.2f);
             bloom.intensity.Override(.26f);
@@ -441,6 +443,7 @@ namespace ZombieSurvivalRun
         void OnDestroy()
         {
             if (chapterAirMaterial != null) Destroy(chapterAirMaterial);
+            if (postProfile != null) Destroy(postProfile);
         }
 
         ZSRParallaxCity parallaxCity;
@@ -1038,7 +1041,9 @@ namespace ZombieSurvivalRun
             enemies.Remove(zombie);
             zombie.gameObject.SetActive(false);
             if (!pools.ContainsKey(zombie.Kind)) pools[zombie.Kind] = new Queue<ZSRZombie>();
-            pools[zombie.Kind].Enqueue(zombie);
+            int keep = zombie.Kind == ZombieType.Boss ? 1 : 12;
+            if (pools[zombie.Kind].Count < keep) pools[zombie.Kind].Enqueue(zombie);
+            else Destroy(zombie.gameObject);
         }
 
         public void CollectCoin(int value, Vector3 at)
