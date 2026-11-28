@@ -1,0 +1,187 @@
+PRODUCTION DESIGN CHECKS — 2026-11-28
+Baseline 3f619e5c3a19f2c5798b8289a4896e61e3cb7c39
+Game/tools commit 044f20a64112f3dd930586836462942244cdf38f
+
+=== C# actual packages and DXC shader evidence ===
+Managed C# verification — Unity 6000.3.28f1, Roslyn; no package stubs.
+  com.unity.ugui 2.0.0
+  com.unity.inputsystem 1.16.0
+  com.unity.render-pipelines.universal 17.3.0
+  com.unity.render-pipelines.core 17.3.0
+  com.unity.burst 1.8.31
+  com.unity.mathematics 1.3.3
+  com.unity.collections 2.7.1
+Roslyn C# compile results (separate game and editor assemblies):
+  PASS UNITY_ANDROID (no UnityEditor refs) Assembly-CSharp.dll 26 sources
+  PASS UNITY_EDITOR Assembly-CSharp.dll 26 sources
+  PASS UNITY_EDITOR Assembly-CSharp-Editor.dll 18 sources
+  SHA256(concatenated normalized source list ordered by path, runtime then editor): bb87550bbbe2a7eb58985ef66a42207869e70361ace63a82d30df6df4279c08b
+  Renderer asset fileID 11400000, type 2, GUID 41439944d30ece34e96484bdb6645b55 matches package Runtime/Data/PostProcessData.asset.meta. Both setup entry points reach restoration. FXAA and postprocessing flags active in run camera source.
+Mobile Vulkan HLSL compilation — Microsoft DirectX Shader Compiler 1.9.2609.5 with real URP/Core 17.3.0 includes:
+  PASS ZSRBonusGate-Frag     9180 bytes (SPIR-V)
+  PASS ZSRBonusGate-Vert     8016 bytes (SPIR-V)
+  PASS ZSRCombatFX-Frag      6048 bytes (SPIR-V)
+  PASS ZSRCombatFX-Vert      8176 bytes (SPIR-V)
+  PASS ZSRPanorama-Frag      6624 bytes (SPIR-V)
+  PASS ZSRPanorama-Vert      8600 bytes (SPIR-V)
+The third-party compiler reports narrowing/overflow warnings in half-precision includes and narrowing warnings in project shaders. C# compiler warnings suppressed for this API check. No Unity package import, shader variant stripping, Unity render, PlayMode, Android build or device execution in this check.
+
+=== Character FBX roundtrip (Blender 4.3.2) ===
+FBX version: 7400
+LOD Armored: [9182, 4407, 2104] triangles, one skeleton and atlas
+ANATOMY Armored 3599 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.39x, forefoot flexion 20.0/13.4 degrees
+FALL Armored: 22 poses, pavement error 0.000 m, head 1.64 to 0.40 m
+PASS Armored 31 bones, 4731 verts, 9182 triangles, 1–168 frames, smooth custom normals
+FBX version: 7400
+LOD Boss: [9510, 4564, 2187] triangles, one skeleton and atlas
+ANATOMY Boss    3941 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.37x, forefoot flexion 20.2/15.0 degrees
+FALL Boss: 22 poses, pavement error 0.000 m, head 1.79 to 0.52 m
+BOSS attack reach L/R 0.752/0.752 m, ankle drift L/R 0.000/0.000 m
+PASS Boss    31 bones, 4945 verts, 9510 triangles, 1–168 frames, smooth custom normals
+FBX version: 7400
+LOD Brute: [8768, 4207, 2016] triangles, one skeleton and atlas
+ANATOMY Brute   3941 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.40x, forefoot flexion 20.3/13.9 degrees
+FALL Brute: 22 poses, pavement error 0.000 m, head 1.76 to 0.45 m
+PASS Brute   31 bones, 4479 verts, 8768 triangles, 1–168 frames, smooth custom normals
+FBX version: 7400
+LOD Crawler: [9313, 4470, 2141] triangles, one skeleton and atlas
+ANATOMY Crawler 1268 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.18x, forefoot flexion 14.4/12.1 degrees
+FALL Crawler: 22 poses, pavement error 0.000 m, head 0.86 to 0.21 m
+PASS Crawler 31 bones, 5174 verts, 9313 triangles, 1–168 frames, smooth custom normals
+FBX version: 7400
+LOD Eva: [16071, 7697, 3679] triangles, one skeleton and atlas
+ANATOMY Eva     2012 vertices in continuous body, 71 poses, worst 99th-percentile edge stretch 1.30x, forefoot flexion 27.7/23.4 degrees
+GAIT Eva     L ankle-roll 55.9 degrees, support 0.006..0.007 m, rearward travel 0.684 m, loop error 0.0023 m
+WALK Eva     L reach 0.429 m vs 0.854 m running, 27/34 frames near the ground, match with firing variant
+GAIT Eva     R ankle-roll 55.7 degrees, support 0.006..0.006 m, rearward travel 0.682 m, loop error 0.0022 m
+WALK Eva     R reach 0.429 m vs 0.853 m running, 27/34 frames near the ground, match with firing variant
+PASS Eva     35 bones, 9694 verts, 16071 triangles, 1–289 frames, smooth custom normals, medkit, throw, walk and walk-fire poses
+FBX version: 7400
+LOD Max: [19839, 9506, 4549] triangles, one skeleton and atlas
+ANATOMY Max     3882 vertices in continuous body, 71 poses, worst 99th-percentile edge stretch 1.57x, forefoot flexion 28.2/24.8 degrees
+GAIT Max     L ankle-roll 55.9 degrees, support 0.006..0.007 m, rearward travel 0.741 m, loop error 0.0024 m
+WALK Max     L reach 0.429 m vs 0.942 m running, 27/34 frames near the ground, match with firing variant
+GAIT Max     R ankle-roll 55.9 degrees, support 0.006..0.006 m, rearward travel 0.739 m, loop error 0.0023 m
+WALK Max     R reach 0.429 m vs 0.941 m running, 27/34 frames near the ground, match with firing variant
+PASS Max     33 bones, 13468 verts, 19839 triangles, 1–289 frames, smooth custom normals, medkit, throw, walk and walk-fire poses
+FBX version: 7400
+LOD Runner: [8496, 4078, 1945] triangles, one skeleton and atlas
+ANATOMY Runner  1313 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.23x, forefoot flexion 19.7/17.8 degrees
+FALL Runner: 22 poses, pavement error 0.000 m, head 1.53 to 0.32 m
+GAIT Runner  ankle travel L/R 0.959/0.961 m, ankle lift L/R 0.262/0.269 m
+PASS Runner  31 bones, 4698 verts, 8496 triangles, 1–168 frames, smooth custom normals
+FBX version: 7400
+LOD Toxic: [10039, 4817, 2308] triangles, one skeleton and atlas
+ANATOMY Toxic   1418 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.29x, forefoot flexion 20.3/15.3 degrees
+FALL Toxic: 22 poses, pavement error 0.000 m, head 1.52 to 0.29 m
+GAIT Toxic   ankle travel L/R 0.527/0.409 m, ankle lift L/R 0.140/0.086 m
+PASS Toxic   31 bones, 5623 verts, 10039 triangles, 1–168 frames, smooth custom normals
+FBX version: 7400
+LOD Walker: [8490, 4074, 1944] triangles, one skeleton and atlas
+ANATOMY Walker  1486 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.26x, forefoot flexion 19.4/13.1 degrees
+FALL Walker: 22 poses, pavement error 0.000 m, head 1.57 to 0.27 m
+GAIT Walker  ankle travel L/R 0.509/0.385 m, ankle lift L/R 0.131/0.083 m
+PASS Walker  31 bones, 4628 verts, 8490 triangles, 1–168 frames, smooth custom normals
+Blender 4.3.2
+
+Blender quit
+
+=== Action layers and four weapon grips ===
+FBX version: 7400
+WEAPONS Max: maximum right-palm-to-grip distances {'pistol': 0.04132119749800047, 'rifle': 0.03787678593037213, 'shotgun': 0.033319856666692585, 'minigun': 0.040805416349494694}; all four muzzle rings centered on authored axis.
+HERO MASK Max: 96 action/gait samples, prior maximum foot mismatch 0.948 m, layered error 0.000000 m. Hand pose relative to spine preserved.
+FBX version: 7400
+WEAPONS Eva: maximum right-palm-to-grip distances {'pistol': 0.033781210751600586, 'rifle': 0.03316276741251177, 'shotgun': 0.03076917812377054, 'minigun': 0.039343703071747435}; all four muzzle rings centered on authored axis.
+HERO MASK Eva: 96 action/gait samples, prior maximum foot mismatch 0.871 m, layered error 0.000000 m. Hand pose relative to spine preserved.
+Blender 4.3.2
+
+Blender quit
+
+=== Managed head recovery and manual briefing ===
+POSE PASS: 24000 frames, keyed and omitted head tracks, bounded steering and neutral recovery.
+BRIEFING PASS: 1000 level entries, manual speakers, blocked run clock, cancellation and clean final start. Managed scene stand-ins.
+
+=== Bounded ponytail spring ===
+HAIR PASS: bounded spring at 20/30/60/120 Hz, frozen pause and neutral recovery after stopping.
+
+=== Actual interface with scene/UI/game-state stand-ins ===
+Tools/QA/InterfaceProbeShims.cs(85,70): warning CS0649: Field 'ZSRGame.Pace' is never assigned to, and will always have its default value
+DIALOGUE UI PASS: 92 speaker pages with matching face and complete line.
+UI PASS: 27 portrait layouts and 44×44 minimum design-space inputs, all 40 pages with 25 entries, level 1000, rank locks, bold button font, manual dialogue with face portraits and replay callback.
+
+=== Actual melee/spit methods with scene stand-ins ===
+MELEE PASS 20 Hz: three enemy types, one physical contact per attack, no adjacent-lane damage, distinct bite/claw cause.
+TOXIC PASS 20 Hz: wind-up 0.450s, flight 0.500s, 5 scenarios, pause, 6 shot / 44 enemy caps.
+MELEE PASS 30 Hz: three enemy types, one physical contact per attack, no adjacent-lane damage, distinct bite/claw cause.
+TOXIC PASS 30 Hz: wind-up 0.433s, flight 0.500s, 5 scenarios, pause, 6 shot / 44 enemy caps.
+MELEE PASS 60 Hz: three enemy types, one physical contact per attack, no adjacent-lane damage, distinct bite/claw cause.
+TOXIC PASS 60 Hz: wind-up 0.433s, flight 0.483s, 5 scenarios, pause, 6 shot / 44 enemy caps.
+MELEE PASS 120 Hz: three enemy types, one physical contact per attack, no adjacent-lane damage, distinct bite/claw cause.
+TOXIC PASS 120 Hz: wind-up 0.425s, flight 0.483s, 5 scenarios, pause, 6 shot / 44 enemy caps.
+
+=== Grenade vector math and scene stand-ins ===
+FLIGHT PASS: 48 throws at 20/30/60/120 Hz with Unity vector math. Release, fixed aim, moving road, pace change, pause, trail and impact within 1 mm of analytical endpoint.
+
+=== Campaign and infected motion ===
+HERO PASS: heading, banking and walk/run/sprint cadence for both heroes at five campaign speeds.
+PICKUPS PASS: 180 paired crossings from 20 to 120 Hz, lane changes, central gap, coin/magnet sweep.
+SAVE PASS: new, legacy, original finale, mid-campaign and completed saves.
+ECONOMY lv 40: 3 replay(s) with sample wallet 1500 and payout 1911.
+ECONOMY lv 280: 5 replay(s) with sample wallet 4000 and payout 3255.
+ECONOMY lv 880: 5 replay(s) with sample wallet 16000 and payout 6615.
+CAMPAIGN PASS: 1000 distinct openings, 247089 wave units, 40 sectors and 6 formations.
+STORY PASS: 45 beats, first 5, final 990. 46 boss encounters including level 1000.
+BALANCE PASS: worst boss budget 7.43 s at level 90. Math model at 57% firing uptime.
+PRESSURE: 16=0.75×, 65=0.83×, 250=1.00×, 500=1.15×, 750=1.37×, 999=1.44× enemy HP/s vs. sustained minigun DPS.
+TRAFFIC PASS: 7240 obstacle windows, 1795 moves, 1.300 s minimum clearance at sprint speed.
+7 infected x 4 time steps (20/30/60/120 Hz). Max pursuit deviation 0.0001 m.
+Lateral hit travel Walker 0.457 m, Brute 0.192 m. Boss held its anchor.
+Verified mirror response, bounded impulses, flinch recovery, reset and ground lock.
+
+=== Track, sky and corridor data ===
+LANDMARK PASS ruins      1488 triangles, 6.830 m road headroom.
+LANDMARK PASS industrial 1680 triangles, 6.555 m road headroom.
+LANDMARK PASS evacuation 1644 triangles, 6.170 m road headroom.
+BRIDGE SURFACE PASS: 46 m module, 4 seamless repeats, three dashes per repeat, PBR maps registered, two shoulder drains and feathered lamp mask.
+STREET PASS track_streetlamp: 132 triangles, normals/UVs, 0.190 m beyond hero corridor.
+STREET PASS track_maintenance: 516 triangles, normals/UVs, 1.757 m beyond hero corridor.
+CAMPAIGN ART PASS: distinct warm/cool skies, low-gloss road and wet patches, two portrait covers.
+
+=== Premium resource/import data ===
+BRIDGE PASS: 1600 loop steps, at least 6.29 m deck overlap, 1492 guardrail triangles.
+UI IMPORT PASS: original proportions, no mipmaps, clamp and uncompressed desktop art; native face crops.
+MENU PASS: 13 distinct antialiased atlas symbols with clear gutters; all 55 level/district titles fit the home mission card.
+ASSETS PASS: Cyrillic and symbols in both fonts, 700-weight button captions, rounded button alpha, isolated boss emission, four unique arsenal icons.
+
+=== Asset metadata and accepted icon preservation ===
+INTEGRITY PASS: 263 unique asset GUIDs, 247 files with metadata; nine FBX, screenshot module and four byte-identical accepted weapon icons.
+
+=== Camera composition projections (Blender, not Unity) ===
+FRAME CHECK Eva 390x844 x=-4.3: silhouette x=0.094..0.293 y=0.171..0.425, rails at 20m=0.193..0.930.
+FRAME CHECK Eva 390x844 x=+0.0: silhouette x=0.404..0.599 y=0.177..0.427, rails at 16m=0.058..0.942.
+FRAME CHECK Eva 390x844 x=+4.3: silhouette x=0.708..0.908 y=0.171..0.425, rails at 20m=0.070..0.807.
+FRAME CHECK Eva 1080x2400 x=-4.3: silhouette x=0.084..0.288 y=0.171..0.425, rails at 20m=0.184..0.942.
+FRAME CHECK Eva 1080x2400 x=+0.0: silhouette x=0.401..0.601 y=0.177..0.427, rails at 16m=0.046..0.954.
+FRAME CHECK Eva 1080x2400 x=+4.3: silhouette x=0.714..0.919 y=0.171..0.425, rails at 20m=0.058..0.816.
+FRAME CHECK Eva 1080x2640 x=-4.3: silhouette x=0.084..0.288 y=0.201..0.432, rails at 20m=0.184..0.942.
+FRAME CHECK Eva 1080x2640 x=+0.0: silhouette x=0.401..0.601 y=0.206..0.434, rails at 16m=0.046..0.954.
+FRAME CHECK Eva 1080x2640 x=+4.3: silhouette x=0.714..0.919 y=0.201..0.432, rails at 20m=0.058..0.816.
+FRAME CHECK Max 390x844 x=-4.3: silhouette x=0.088..0.295 y=0.166..0.445, rails at 20m=0.193..0.930.
+FRAME CHECK Max 390x844 x=+0.0: silhouette x=0.398..0.601 y=0.173..0.447, rails at 16m=0.058..0.942.
+FRAME CHECK Max 390x844 x=+4.3: silhouette x=0.704..0.911 y=0.166..0.445, rails at 20m=0.070..0.807.
+FRAME CHECK Max 1080x2400 x=-4.3: silhouette x=0.077..0.289 y=0.166..0.445, rails at 20m=0.184..0.942.
+FRAME CHECK Max 1080x2400 x=+0.0: silhouette x=0.396..0.603 y=0.173..0.447, rails at 16m=0.046..0.954.
+FRAME CHECK Max 1080x2400 x=+4.3: silhouette x=0.710..0.922 y=0.166..0.445, rails at 20m=0.058..0.816.
+FRAME CHECK Max 1080x2640 x=-4.3: silhouette x=0.077..0.289 y=0.196..0.450, rails at 20m=0.184..0.942.
+FRAME CHECK Max 1080x2640 x=+0.0: silhouette x=0.396..0.603 y=0.202..0.452, rails at 16m=0.046..0.954.
+FRAME CHECK Max 1080x2640 x=+4.3: silhouette x=0.710..0.922 y=0.196..0.450, rails at 20m=0.058..0.816.
+Saved: '/tmp/zsr-production-run.png'
+Time: 00:36.88 (Saving: 00:00.15)
+
+=== Unity batchmode ===
+Command: Unity -batchmode -nographics -quit -projectPath /workspace/Games -logFile /tmp/zsr-production-unity.log
+Process exit code: 198
+No valid Unity Editor license found. Please activate your license.
+No project import, PlayMode, Game View, Android build, device run or FPS measurement completed.
+Blender emitted a non-fatal read-only extension-cache warning; the checks and renders completed.
+git diff --check: exit 0.
