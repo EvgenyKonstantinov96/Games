@@ -151,6 +151,23 @@ def append_field_gear(actor):
                 actor.faces.append((a+nu+1,a+nu+2,a+1,a))
                 tile=8 if 1<=i<nu-1 and 1<=j<nv-1 else 4
                 actor.tiles.append((tile,((i/nu,(j+1)/nv),((i+1)/nu,(j+1)/nv),((i+1)/nu,j/nv),(i/nu,j/nv))))
+        # Close the shell. A front-only curved surface reads as a floating fin
+        # in the side view, even when its pivot follows the knee correctly.
+        border=[start+i for i in range(nu+1)]
+        border += [start+j*(nu+1)+nu for j in range(1,nv+1)]
+        border += [start+nv*(nu+1)+i for i in range(nu-1,-1,-1)]
+        border += [start+j*(nu+1) for j in range(nv-1,0,-1)]
+        back=[]
+        for front in border:
+            x,_,z=actor.vertices[front]
+            back.append(len(actor.vertices));actor.vertices.append((x,y+.004,z))
+            actor.weights.append({'KneeGuard'+side:1.})
+        for index,(a,b) in enumerate(zip(border,border[1:]+border[:1])):
+            actor.faces.append((a,b,back[(index+1)%len(back)],back[index]))
+            actor.tiles.append((4,((0,0),(1,0),(1,1),(0,1))))
+        actor.faces.append(tuple(back))
+        actor.tiles.append((3,tuple((.5+(actor.vertices[i][0]-knee.x)/.13,
+                                   .5+(actor.vertices[i][2]-knee.z+.006)/.14) for i in back)))
         shell_end=len(actor.vertices)
         for z in (knee.z-.050,knee.z+.040):
             rings=[(Vector((knee.x,knee.y,z+dz)),.078,.077,{'Shin'+side:1.}) for dz in (-.007,.007)]
