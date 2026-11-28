@@ -1,0 +1,217 @@
+Movement and arsenal checks — 2026-11-28
+Base: 0011225e93f361002d90587769928b2b392127e6
+Game/assets/tools: cd443e7e266d111f998f9683cc3e0e2d3e5df4c2
+Not a native Unity/Android pass. API compiler warnings suppressed.
+
+=== API / real packages ===
+Game C# content digest 01dc1d5736d4f13de43960c7644f9f4fed39259ede2cef4fa329e700eef7158e
+Assembly-CSharp 27 PASS
+Assembly-CSharp 27 PASS
+Assembly-CSharp-Editor 18 PASS
+URP post-processing references, setup restoration at both entry points, and camera FXAA verified in source 41439944d30ece34e96484bdb6645b55
+
+=== Arsenal / in-memory PlayerPrefs ===
+ARSENAL TRANSACTIONS PASS: 6 milestone/legacy-purchase scenarios, no locked equip/upgrade, retained ranks, no double charge, insufficient funds, rank cap, persistence writes. In-memory PlayerPrefs only.
+
+=== Campaign, budget and pursuit / managed math ===
+ARSENAL PASS: levels 1/25/150/500; 8000 owned/unowned saved selections across the campaign.
+HERO PASS: heading, banking and walk/run/sprint cadence for both heroes at five campaign speeds.
+PICKUPS PASS: 180 paired crossings from 20 to 120 Hz, lane changes, central gap, coin/magnet sweep.
+SAVE PASS: new, legacy, original finale, mid-campaign and completed saves.
+ECONOMY lv 40: 3 replay(s) with sample wallet 1500 and payout 1911.
+ECONOMY lv 280: 5 replay(s) with sample wallet 4000 and payout 3255.
+ECONOMY lv 880: 5 replay(s) with sample wallet 16000 and payout 6615.
+CAMPAIGN PASS: 1000 distinct openings, 246184 wave units, 40 sectors and 6 formations.
+STORY PASS: 45 beats, first 5, final 990. 46 boss encounters including level 1000.
+BALANCE PASS: worst boss budget 7.45 s at level 215. Math model at 57% firing uptime.
+PRESSURE: 16=1.26×, 65=1.10×, 250=1.30×, 500=1.28×, 750=1.52×, 999=1.60× enemy HP/s vs. best unlocked sustained single-target DPS.
+TRAFFIC PASS: 7240 obstacle windows, 1795 moves, 1.300 s minimum clearance at sprint speed.
+7 infected x 4 time steps (20/30/60/120 Hz). Max pursuit deviation 0.0001 m.
+Lateral hit travel Walker 0.457 m, Brute 0.192 m. Boss held its anchor.
+Verified mirror response, bounded impulses, flinch recovery, reset and ground lock.
+
+=== FBX reimport, LOD, skin deformation / Blender ===
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Armored: [12658, 6075, 2905] triangles, one skeleton and atlas
+ANATOMY Armored 4495 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.42x, forefoot flexion 20.0/13.4 degrees
+FALL Armored: 22 poses, pavement error 0.000 m, head 1.64 to 0.40 m
+PASS Armored 51 bones, 6684 verts, 12658 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Boss: [13316, 6390, 3061] triangles, one skeleton and atlas
+ANATOMY Boss    3971 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.49x, forefoot flexion 20.2/15.0 degrees
+FALL Boss: 22 poses, pavement error 0.000 m, head 1.80 to 0.66 m
+BOSS attack reach L/R 0.769/0.769 m, ankle drift L/R 0.000/0.000 m
+PASS Boss    51 bones, 9303 verts, 13316 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Brute: [12631, 6062, 2904] triangles, one skeleton and atlas
+ANATOMY Brute   3858 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.38x, forefoot flexion 20.3/13.9 degrees
+FALL Brute: 22 poses, pavement error 0.000 m, head 1.76 to 0.51 m
+PASS Brute   51 bones, 8803 verts, 12631 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Crawler: [14854, 7128, 3416] triangles, one skeleton and atlas
+ANATOMY Crawler 1619 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.22x, forefoot flexion 14.4/12.1 degrees
+FALL Crawler: 22 poses, pavement error 0.000 m, head 0.87 to 0.21 m
+PASS Crawler 51 bones, 9644 verts, 14854 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Eva: [18836, 9025, 4280] triangles, one skeleton and atlas
+ANATOMY Eva     2263 vertices in continuous body, 71 poses, worst 99th-percentile edge stretch 1.33x, forefoot flexion 28.3/21.7 degrees
+GAIT Eva     L ankle-roll 56.2 degrees, support 0.006..0.007 m, rearward travel 0.668 m, loop error 0.0016 m
+WALK Eva     L reach 0.430 m vs 0.830 m running, 27/34 frames near the ground, match with firing variant
+GAIT Eva     R ankle-roll 56.2 degrees, support 0.006..0.006 m, rearward travel 0.667 m, loop error 0.0014 m
+WALK Eva     R reach 0.430 m vs 0.830 m running, 27/34 frames near the ground, match with firing variant
+PASS Eva     55 bones, 11474 verts, 18836 triangles, 1–289 frames, smooth custom normals, medkit, throw, walk and walk-fire poses
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Max: [22934, 10992, 5218] triangles, one skeleton and atlas
+ANATOMY Max     3880 vertices in continuous body, 71 poses, worst 99th-percentile edge stretch 1.59x, forefoot flexion 28.3/21.7 degrees
+GAIT Max     L ankle-roll 56.3 degrees, support 0.006..0.007 m, rearward travel 0.721 m, loop error 0.0021 m
+WALK Max     L reach 0.429 m vs 0.897 m running, 27/34 frames near the ground, match with firing variant
+GAIT Max     R ankle-roll 56.2 degrees, support 0.006..0.006 m, rearward travel 0.720 m, loop error 0.0018 m
+WALK Max     R reach 0.429 m vs 0.897 m running, 27/34 frames near the ground, match with firing variant
+PASS Max     53 bones, 15336 verts, 22934 triangles, 1–289 frames, smooth custom normals, medkit, throw, walk and walk-fire poses
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Runner: [11808, 5667, 2707] triangles, one skeleton and atlas
+ANATOMY Runner  1721 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.33x, forefoot flexion 19.7/17.8 degrees
+FALL Runner: 22 poses, pavement error 0.000 m, head 1.53 to 0.32 m
+GAIT Runner  ankle travel L/R 0.959/0.964 m, ankle lift L/R 0.262/0.269 m
+PASS Runner  51 bones, 6656 verts, 11808 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Toxic: [13133, 6303, 3020] triangles, one skeleton and atlas
+ANATOMY Toxic   1862 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.30x, forefoot flexion 20.3/15.3 degrees
+FALL Toxic: 22 poses, pavement error 0.000 m, head 1.52 to 0.29 m
+GAIT Toxic   ankle travel L/R 0.528/0.409 m, ankle lift L/R 0.140/0.086 m
+PASS Toxic   51 bones, 7465 verts, 13133 triangles, 1–168 frames, smooth custom normals
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+LOD Walker: [12814, 6149, 2943] triangles, one skeleton and atlas
+ANATOMY Walker  1872 vertices in continuous body, 30 poses, worst 99th-percentile edge stretch 1.26x, forefoot flexion 19.4/13.1 degrees
+FALL Walker: 22 poses, pavement error 0.000 m, head 1.57 to 0.27 m
+GAIT Walker  ankle travel L/R 0.510/0.387 m, ankle lift L/R 0.131/0.083 m
+PASS Walker  51 bones, 8426 verts, 12814 triangles, 1–168 frames, smooth custom normals
+Blender 4.3.2
+
+Blender quit
+
+=== Mixed actions and lower-body mask / Blender ===
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+WEAPONS Max: maximum right-palm-to-grip distances {'pistol': 0.04018527829832524, 'rifle': 0.036842328022415, 'shotgun': 0.032458392656325746, 'minigun': 0.039828665007125175}; all four muzzle rings centered on authored axis.
+HERO MASK Max: 96 action/gait samples, prior maximum foot mismatch 0.907 m, layered error 0.000000 m. Hand pose relative to spine preserved.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+WEAPONS Eva: maximum right-palm-to-grip distances {'pistol': 0.03346989729161046, 'rifle': 0.032703384751824084, 'shotgun': 0.030299920421437344, 'minigun': 0.03866745571406475}; all four muzzle rings centered on authored axis.
+HERO MASK Eva: 96 action/gait samples, prior maximum foot mismatch 0.842 m, layered error 0.000000 m. Hand pose relative to spine preserved.
+Blender 4.3.2
+
+Blender quit
+
+=== Knees and finger articulation / Blender ===
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+KNEE ProductionArt/Max/L: 37.0..116.0 degrees, 49 samples, leg lengths invariant, ankle seam 0.0021 m
+KNEE ProductionArt/Max/R: 37.0..116.0 degrees, 49 samples, leg lengths invariant, ankle seam 0.0018 m
+FINGERS Max: 10/10 digits have independently flexed middle and tip joints in the holding pose; no segment exceeds 100 degrees.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+KNEE zsr-human-before/Max/L: 32.9..110.3 degrees, 49 samples, leg lengths invariant, ankle seam 0.0024 m
+KNEE zsr-human-before/Max/R: 32.9..110.3 degrees, 49 samples, leg lengths invariant, ankle seam 0.0023 m
+RECOVERY COMPARISON Max: peak knee flexion change L/R +5.7/+5.7 degrees. Measurement only, not visual acceptance.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+KNEE ProductionArt/Eva/L: 39.8..117.8 degrees, 49 samples, leg lengths invariant, ankle seam 0.0016 m
+KNEE ProductionArt/Eva/R: 39.8..117.8 degrees, 49 samples, leg lengths invariant, ankle seam 0.0014 m
+FINGERS Eva: 10/10 digits have independently flexed middle and tip joints in the holding pose; no segment exceeds 100 degrees.
+Extensions: writing cache failed ([Errno 30] Read-only file system: '/home/agent/.config/blender/4.3/extensions').
+FBX version: 7400
+KNEE zsr-human-before/Eva/L: 37.5..112.8 degrees, 49 samples, leg lengths invariant, ankle seam 0.0023 m
+KNEE zsr-human-before/Eva/R: 37.5..112.8 degrees, 49 samples, leg lengths invariant, ankle seam 0.0022 m
+RECOVERY COMPARISON Eva: peak knee flexion change L/R +5.0/+5.0 degrees. Measurement only, not visual acceptance.
+Blender 4.3.2
+
+Blender quit
+
+=== Actual UI / scene stand-ins ===
+Tools/QA/InterfaceProbeShims.cs(85,70): warning CS0649: Field 'ZSRGame.Pace' is never assigned to, and will always have its default value
+DIALOGUE UI PASS: 92 speaker pages with matching face and complete line.
+FIELD KIT UI PASS: three rendered icons, one callback per item, 72×80 controls, ammo and high-contrast damage notice.
+UI PASS: 27 portrait layouts and 44×44 minimum design-space inputs, all 40 pages with 25 entries, level 1000, rank locks, bold button font, manual dialogue with face portraits and replay callback.
+
+=== Head restoration and manual briefing / stand-ins ===
+POSE PASS: 24000 frames, keyed and omitted head tracks, bounded steering and neutral recovery.
+BRIEFING PASS: 1000 level entries, manual speakers, blocked run clock, cancellation and clean final start. Managed scene stand-ins.
+
+=== Contact and acid / managed math + scene stand-ins ===
+MELEE PASS 20 Hz: three enemy types, one physical contact per attack, no adjacent-lane damage, distinct bite/claw cause.
+TOXIC PASS 20 Hz: wind-up 0.450s, flight 0.500s, 5 scenarios, pause, 6 shot / 44 enemy caps.
+MELEE PASS 30 Hz: three enemy types, one physical contact per attack, no adjacent-lane damage, distinct bite/claw cause.
+TOXIC PASS 30 Hz: wind-up 0.433s, flight 0.500s, 5 scenarios, pause, 6 shot / 44 enemy caps.
+MELEE PASS 60 Hz: three enemy types, one physical contact per attack, no adjacent-lane damage, distinct bite/claw cause.
+TOXIC PASS 60 Hz: wind-up 0.433s, flight 0.483s, 5 scenarios, pause, 6 shot / 44 enemy caps.
+MELEE PASS 120 Hz: three enemy types, one physical contact per attack, no adjacent-lane damage, distinct bite/claw cause.
+TOXIC PASS 120 Hz: wind-up 0.425s, flight 0.483s, 5 scenarios, pause, 6 shot / 44 enemy caps.
+
+=== Grenade flight / scene stand-ins ===
+FLIGHT PASS: 48 throws at 20/30/60/120 Hz with Unity vector math. Release, fixed aim, moving road, pace change, pause, trail and impact within 1 mm of analytical endpoint.
+
+=== Existing art regressions ===
+BRIDGE PASS: 1600 loop steps, at least 6.29 m deck overlap, 1492 guardrail triangles.
+ATLAS PASS: nonoverlapping 2048 islands; 768² hero skins, nine times previous skin pixels, one shared material.
+UI IMPORT PASS: original proportions, no mipmaps, clamp and uncompressed desktop art; native face crops.
+MENU PASS: 13 distinct antialiased atlas symbols with clear gutters; all 55 level/district titles fit the home mission card.
+ASSETS PASS: Cyrillic and symbols in both fonts, 700-weight button captions, rounded button alpha, isolated boss emission, four unique arsenal icons.
+
+=== Unchanged field kit ===
+PROP PASS drone: 1084 triangles, normalized normals, UVs and nondegenerate faces; bounds [1.022, 0.293, 0.882].
+PROP PASS rotor: 100 triangles, normalized normals, UVs and nondegenerate faces; bounds [0.51, 0.026, 0.062].
+PROP PASS grenade: 1220 triangles, normalized normals, UVs and nondegenerate faces; bounds [0.17, 0.234, 0.17].
+PROP PASS medkit: 340 triangles, normalized normals, UVs and nondegenerate faces; bounds [0.336, 0.262, 0.15].
+FIELD KIT ART PASS: three distinct 512² transparent icons, no clipped border, red medical case / olive grenade / light quadcopter; shared 512² atlas.
+URP SOURCE PASS: configured additional light value 1 equals actual package PerPixel; debug canvas identity and public shutdown APIs verified in Core 17.3. Not a native UI/render test.
+
+=== Syntax, GUID and content digest ===
+PYTHON SYNTAX PASS: all changed/new Python scripts.
+INTEGRITY PASS: 270 unique GUIDs, metadata; 4 accepted weapon images unchanged.
+API SOURCE DIGEST MATCH: 01dc1d5736d4f13de43960c7644f9f4fed39259ede2cef4fa329e700eef7158e
+
+=== Native Unity ===
+Attempt 1: exit 1, readonly config and licensing IPC unavailable in sandbox.
+Attempt 2: writable XDG config/cache/data, outside command network sandbox: exit 198.
+No valid Unity Editor license found. Please activate your license.
+BLOCKED: native import, PlayMode, Game View, Android APK/device, audio, FPS/memory.
+
+=== Review artifacts ===
+Blender 4.3.2 hero front/back resource render saved and inspected.
+12 Blender run frames saved; 0.8 second GIF reopened and verified 12 frames.
+Arsenal milestone UI reconstruction saved and inspected, not a Unity screenshot.
+
+=== Failed checks corrected ===
+First campaign budget check failed after replacing the hypothetical minigun with actually unlocked weapons. Adjusted only levels 16-24 to three-unit waves with 0.30 s allowance; fresh full campaign check PASS. Kept the late-wave threshold.
+Contact probe missing WeaponProfile and WeaponType after LevelPlan dependency change. Added actual dependencies; fresh contact checks PASS.
+UI probe assumed starter rifle for a replay upgrade shortfall. Explicitly selected rifle in that scenario while retaining the new starter pistol; fresh UI check PASS.
+
+=== Composition / Blender projection, not Game View ===
+FRAME CHECK Eva 390x844 x=-4.3: silhouette x=0.092..0.295 y=0.176..0.425, rails at 20m=0.193..0.930.
+FRAME CHECK Eva 390x844 x=+0.0: silhouette x=0.401..0.600 y=0.182..0.427, rails at 16m=0.058..0.942.
+FRAME CHECK Eva 390x844 x=+4.3: silhouette x=0.706..0.909 y=0.176..0.425, rails at 20m=0.070..0.807.
+FRAME CHECK Eva 1080x2400 x=-4.3: silhouette x=0.081..0.290 y=0.176..0.425, rails at 20m=0.184..0.942.
+FRAME CHECK Eva 1080x2400 x=+0.0: silhouette x=0.398..0.603 y=0.182..0.427, rails at 16m=0.046..0.954.
+FRAME CHECK Eva 1080x2400 x=+4.3: silhouette x=0.711..0.920 y=0.176..0.425, rails at 20m=0.058..0.816.
+FRAME CHECK Eva 1080x2640 x=-4.3: silhouette x=0.081..0.290 y=0.205..0.432, rails at 20m=0.184..0.942.
+FRAME CHECK Eva 1080x2640 x=+0.0: silhouette x=0.398..0.603 y=0.211..0.434, rails at 16m=0.046..0.954.
+FRAME CHECK Eva 1080x2640 x=+4.3: silhouette x=0.711..0.920 y=0.205..0.432, rails at 20m=0.058..0.816.
+FRAME CHECK Max 390x844 x=-4.3: silhouette x=0.088..0.294 y=0.174..0.445, rails at 20m=0.193..0.930.
+FRAME CHECK Max 390x844 x=+0.0: silhouette x=0.398..0.600 y=0.180..0.448, rails at 16m=0.058..0.942.
+FRAME CHECK Max 390x844 x=+4.3: silhouette x=0.704..0.910 y=0.174..0.446, rails at 20m=0.070..0.807.
+FRAME CHECK Max 1080x2400 x=-4.3: silhouette x=0.077..0.288 y=0.174..0.445, rails at 20m=0.184..0.942.
+FRAME CHECK Max 1080x2400 x=+0.0: silhouette x=0.395..0.603 y=0.180..0.448, rails at 16m=0.046..0.954.
+FRAME CHECK Max 1080x2400 x=+4.3: silhouette x=0.709..0.921 y=0.174..0.446, rails at 20m=0.058..0.816.
+FRAME CHECK Max 1080x2640 x=-4.3: silhouette x=0.077..0.288 y=0.203..0.450, rails at 20m=0.184..0.942.
+FRAME CHECK Max 1080x2640 x=+0.0: silhouette x=0.395..0.603 y=0.209..0.452, rails at 16m=0.046..0.954.
+FRAME CHECK Max 1080x2640 x=+4.3: silhouette x=0.709..0.921 y=0.203..0.450, rails at 20m=0.058..0.816.
