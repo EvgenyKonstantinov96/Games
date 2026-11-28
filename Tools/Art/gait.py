@@ -1,7 +1,7 @@
 """Author foot, pelvis and timing targets for the baked FBX motion takes."""
 
 import math
-from mathutils import Vector
+from mathutils import Vector,Quaternion
 
 # Forward reach, rear reach, stance share, swing clearance, right foot phase.
 PROFILES = {
@@ -23,6 +23,18 @@ def eased_keys(keys, phase):
             t = (phase-a)/(b-a)
             return v+(w-v)*t*t*(3-2*t)
     return keys[-1][1]
+
+
+def carry_pose(phase,walking=False,shooting=False):
+    """One rigid carry frame for both wrists and the weapon, driven by the stride."""
+    phase%=1
+    side=eased_keys(((0,-.15),(.25,1),(.5,.15),(.75,-1),(1,-.15)),phase)
+    step=eased_keys(((0,-.35),(.20,-1),(.58,1),(1,-.35)),(phase*2)%1)
+    weight=(.65 if walking else 1.)*(.65 if shooting else 1.)
+    rotation=(Quaternion((0,0,1),math.radians(side*2.2*weight)) @
+              Quaternion((1,0,0),math.radians(step*2.8*weight)) @
+              Quaternion((0,1,0),math.radians(-side*2.4*weight)))
+    return Vector((side*.014*weight,step*.005*weight,step*.017*weight)),rotation
 
 
 def foot_target(name, side, phase, ankle, walking=False):

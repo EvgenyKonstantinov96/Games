@@ -36,6 +36,7 @@ namespace ZombieSurvivalRun
         float flashTime, recoil, aimTime, kick;
         Vector3 aimPoint;
         Quaternion socketRest;
+        Vector3 socketPosition;
         Quaternion sampledSpine, sampledHead;
         bool sampledUpperBody;
         readonly ZSRUpperBodyAim upperAim = new();
@@ -87,11 +88,12 @@ namespace ZombieSurvivalRun
             var forward = FindBone(instance.transform, "ForwardMarker");
             var grip = hero ? FindBone(instance.transform, "WeaponGrip") : null;
             var barrel = hero ? FindBone(instance.transform, "WeaponForward") : null;
+            var gripHand = hero ? FindBone(instance.transform, "HandR") : null;
             var head = FindBone(instance.transform, "Head");
             var leftAnkle = FindBone(instance.transform, "FootL");
             var rightAnkle = FindBone(instance.transform, "FootR");
             if (skin == null || pelvis == null || forward == null || head == null ||
-                leftAnkle == null || rightAnkle == null || (hero && (grip == null || barrel == null)) ||
+                leftAnkle == null || rightAnkle == null || (hero && (grip == null || barrel == null || gripHand == null)) ||
                 !AlignRig(placement, name, pelvis, forward, head, leftAnkle, rightAnkle))
             {
                 Debug.LogError("[ZSR ART] Invalid rig hierarchy in " + name + ".");
@@ -148,8 +150,17 @@ namespace ZombieSurvivalRun
             actor.hasItemClips = hero && take.length >= 7.16f;
             actor.hasWalkClips = hero && take.length >= 9.59f;
             if (hero) actor.ItemHand = FindBone(instance.transform, "HandL");
-            if (hero) actor.AttachWeapon(grip, barrel, weapon);
-            if (Application.isPlaying) actor.CreateGraph(animator, take);
+            // Calibrate from the first authored pose, not the imported bind pose.
+            // The runtime gun follows the deforming wrist directly; auxiliary
+            // aim markers must not cancel the hand's running rotation.
+            var culling = animator.cullingMode;
+            if (Application.isPlaying)
+            {
+                animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+                actor.CreateGraph(animator, take);
+            }
+            if (hero) actor.AttachWeapon(grip, barrel, gripHand, weapon);
+            animator.cullingMode = culling;
             return actor;
         }
 
@@ -211,10 +222,12 @@ namespace ZombieSurvivalRun
             return null;
         }
 
-        void AttachWeapon(Transform grip, Transform barrel, WeaponType weapon)
+        void AttachWeapon(Transform grip, Transform barrel, Transform hand, WeaponType weapon)
         {
             var socket = new GameObject("Weapon grip").transform;
-            socket.SetParent(grip, false);
+            socket.SetParent(hand, false);
+            socket.localPosition = hand.InverseTransformPoint(grip.position);
+            socketPosition = socket.localPosition;
             weaponSocket = socket;
             socket.rotation = Quaternion.LookRotation(barrel.position - grip.position, transform.up);
             socketRest = socket.localRotation;
@@ -484,11 +497,11 @@ namespace ZombieSurvivalRun
             {
                 // The shoulders carry the large aiming motion; the mounted gun
                 // only makes a small correction instead of leaving both hands.
-                var aim = Quaternion.RotateTowards(rest, Quaternion.LookRotation(toTarget, transform.up), 4f);
+                var aim = Quaternion.RotateTowards(rest, Quaternion.LookRotation(toTarget, rest * Vector3.up), 1f);
                 weaponSocket.rotation = Quaternion.Slerp(rest, aim, Mathf.Clamp01(aimTime * 19f));
             }
             else weaponSocket.localRotation = socketRest;
-            weaponSocket.localPosition = Vector3.zero;
+            weaponSocket.localPosition = socketPosition;
         }
 
         void ApplyUpperBodyAim(float dt)

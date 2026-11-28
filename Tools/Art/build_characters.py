@@ -12,7 +12,7 @@ import bpy
 import bmesh
 from mathutils import Matrix, Quaternion, Vector
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from gait import eased_keys, foot_target
+from gait import eased_keys, foot_target, carry_pose
 from makehuman_body import Body, SIDES
 from character_atlas import uv as atlas_uv
 
@@ -511,29 +511,40 @@ class Character:
         pelvis.matrix = turned
         bpy.context.view_layer.update()
 
-    def hero_arms(self, swing, care, toss, reload, fire, hit, death):
+    def hero_arms(self, swing, care, toss, reload, fire, hit, death, phase, walking, shooting):
         chest = self.rig.pose.bones["Chest"]
         base = self.bones["Chest"][0]
         rise = chest.head.z-base.z
+        offset,rotation=carry_pose(phase,walking,shooting)
+        action=max(care,abs(toss),reload,hit,death)
+        weight=max(0,1-min(1,action))
+        rotation=Quaternion().slerp(rotation,weight);offset*=weight
+        pivot=v(.113,.285,self.h*.735+rise)
         for side, sign in SIDES:
             right = side == "R"
             active_hand = 0 if right else 1
-            wrist = v(.113 if right else -.025, .285 if right else .465,
-                      self.h*.735+rise+.012*swing)
+            wrist = v(.113 if right else .075, .285 if right else .430,
+                      self.h*.735+rise+.012*swing+(0 if right else .045))
             # Both hands carry one weapon. Opposite vertical wrist phases made
             # the support palm drift away from the fore-end on every stride.
             wrist += v(.006*swing,.007*abs(swing),0)
             wrist += v(sign*.15*reload*active_hand,
                        -fire*.008-hit*.09-reload*.13*active_hand-.20*care*active_hand+.13*toss*active_hand,
                        death*-.29+hit*.043-reload*.17*active_hand-.19*care*active_hand+.40*toss*active_hand)
+            wrist=pivot+rotation@(wrist-pivot)+offset
             pole = v(sign*.65,-.42,-1+.56*max(0,toss)*active_hand)
             end = self.bend_chain("UpperArm"+side,"Forearm"+side,wrist,pole)
             # Keep the support hand under the fore-end, and the firing palm around the grip.
-            self.aim_bone("Hand"+side,end,v(-.09 if right else .16,.86,-.35+.33*toss*active_hand),
+            self.aim_bone("Hand"+side,end,v(-.09 if right else .10,.86,-.35 if right else -.10+.33*toss*active_hand),
                           -.17 if right else .40)
+            hand=self.rig.pose.bones['Hand'+side]
+            carried=rotation.to_matrix().to_4x4()@hand.matrix
+            carried.translation=end
+            hand.matrix=carried
+            bpy.context.view_layer.update()
         wrist = self.rig.pose.bones["HandR"].head
-        aim = v(.03*hit,1,.025*fire+.32*hit-.49*death).normalized()
-        grip = wrist+v(.001,.037,.022)
+        aim = rotation@v(.03*hit,1,.025*fire+.32*hit-.49*death).normalized()
+        grip = wrist+rotation@v(.001,.037,.022)
         self.aim_bone("WeaponGrip",grip,aim)
         self.aim_bone("WeaponForward",grip+aim*.32,aim)
 
@@ -641,7 +652,8 @@ class Character:
                         direction=clavicle.tail-clavicle.head
                         self.aim_bone(clavicle.name,clavicle.head.copy(),
                                       direction+v(0,-s*.006*shoulder_sway,s*.004*shoulder_sway))
-                    self.hero_arms(swing * (.55 if walking else 1.),care,swing_throw,reload,fire,rear,death)
+                    self.hero_arms(swing * (.55 if walking else 1.),care,swing_throw,reload,fire,rear,death,
+                                   f if moving else 0,walking,state in ('Fire','WalkFire'))
                 for side,s in SIDES:
                     foot,toe,phase,toe_pitch=placements[side]
                     self.leg_pose(side,foot,v(s*.08,1,0),toe,toe_pitch)

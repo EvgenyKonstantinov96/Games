@@ -12,6 +12,7 @@ assets, output = map(lambda x: Path(x).resolve(), args[:2])
 output.mkdir(parents=True, exist_ok=True)
 walking = "--walk" in args
 falling = "--fall" in args
+weapon_review = '--weapon-review' in args
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 scene = bpy.context.scene
@@ -38,12 +39,14 @@ cast = (
 )
 if walking:
     cast = (("Eva",(-.79,0,0),math.pi*.51), ("Max",(.79,0,0),math.pi*.66))
+if weapon_review:
+    cast=(("Eva",(-.85,0,0),math.pi*.55),("Max",(.85,0,0),math.pi*.62))
 if falling:
     cast = (("Walker",(-1.78,0,0),math.pi*.89), ("Runner",(0,0,0),math.pi*1.11),
             ("Brute",(1.80,0,0),math.pi*1.04))
 for name, position, yaw in cast:
     old = set(bpy.data.objects)
-    bpy.ops.import_scene.fbx(filepath=str(assets/(name+".fbx")))
+    bpy.ops.import_scene.fbx(filepath=str(assets/(name+".fbx")),anim_offset=0)
     actors = set(bpy.data.objects)-old
     rig, = (o for o in actors if o.type == "ARMATURE")
     skins = [o for o in actors if o.type == "MESH"]
@@ -59,6 +62,12 @@ for name, position, yaw in cast:
     placement.rotation_euler.z = yaw
 
     if name in ('Max','Eva'):
+        scene.frame_set(1)
+        grip=rig.pose.bones['WeaponGrip'].head
+        forward=(rig.pose.bones['WeaponForward'].head-grip).normalized()
+        right=forward.cross(Vector((0,0,1))).normalized();up=right.cross(forward).normalized()
+        initial=Matrix((right,forward,up)).transposed().to_4x4();initial.translation=grip
+        wrist_mount=rig.pose.bones['HandR'].matrix.inverted()@initial
         for suffix,color in (('',(.045,.058,.065)),('_steel',(.19,.23,.25))):
             path=assets.parent/'Meshes'/('lux_weapon_rifle'+suffix+'.obj')
             points,faces=[],[]
@@ -70,12 +79,8 @@ for name, position, yaw in cast:
             gun=bpy.data.objects.new(data.name,data);bpy.context.collection.objects.link(gun);gun.parent=rig
             mat=bpy.data.materials.new(data.name);mat.diffuse_color=(*color,1);data.materials.append(mat)
 
-            def follow_weapon(scene,depsgraph=None,obj=gun,actor=rig):
-                grip=actor.pose.bones['WeaponGrip'].head
-                forward=(actor.pose.bones['WeaponForward'].head-grip).normalized()
-                right=forward.cross(Vector((0,0,1))).normalized();up=right.cross(forward).normalized()
-                basis=Matrix((right,forward,up)).transposed().to_4x4();basis.translation=grip
-                obj.matrix_local=basis
+            def follow_weapon(scene,depsgraph=None,obj=gun,actor=rig,mount=wrist_mount.copy()):
+                obj.matrix_local=actor.pose.bones['HandR'].matrix@mount
             bpy.app.handlers.frame_change_post.append(follow_weapon)
             follow_weapon(scene)
 
@@ -109,6 +114,10 @@ camera = bpy.context.object
 camera.rotation_euler = (Vector((0,0,.97))-camera.location).to_track_quat("-Z","Y").to_euler()
 camera.data.type = "ORTHO"
 camera.data.ortho_scale = 6.2 if falling else 4.04 if walking else 5.44
+if weapon_review:
+    camera.location=(.02,-10,3.1)
+    camera.rotation_euler=(Vector((-.15,0,1.28))-camera.location).to_track_quat('-Z','Y').to_euler()
+    camera.data.ortho_scale=3.6
 scene.camera = camera
 scene.render.engine = "CYCLES"
 scene.cycles.samples = 20
