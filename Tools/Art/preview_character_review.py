@@ -19,8 +19,11 @@ parser.add_argument('--frame',type=int,default=1)
 parser.add_argument('--samples',type=int,default=32)
 parser.add_argument('--width',type=int,default=1280)
 parser.add_argument('--height',type=int,default=800)
+parser.add_argument('--focus',choices=('full','head'),default='full')
 args=parser.parse_args(sys.argv[sys.argv.index('--')+1:])
 names=args.names.split(',')
+if args.focus=='head' and len(names)!=1:
+    parser.error('--focus head requires exactly one character')
 backs={int(x) for x in args.back.split(',') if x}
 bpy.ops.wm.read_factory_settings(use_empty=True)
 scene=bpy.context.scene
@@ -114,10 +117,11 @@ for pos,color,power,size in (((-3,-4,5),(1,.88,.76),1250,4),((4,-2,4),(.71,.82,1
     bpy.ops.object.light_add(type='AREA',location=pos)
     lamp=bpy.context.object;lamp.data.energy=power;lamp.data.color=color;lamp.data.size=size
     lamp.rotation_euler=(Vector((0,0,1.1))-lamp.location).to_track_quat('-Z','Y').to_euler()
-bpy.ops.object.camera_add(location=(0,-9,3.1))
+bpy.ops.object.camera_add(location=(0,-3,1.84) if args.focus=='head' else (0,-9,3.1))
 cam=bpy.context.object
-cam.rotation_euler=(Vector((0,0,1.05))-cam.location).to_track_quat('-Z','Y').to_euler()
-cam.data.type='ORTHO';cam.data.ortho_scale=max(4.75,len(names)*1.15+.15)
+target_height=(1.65 if names[0]=='Eva' else 1.77) if args.focus=='head' else 1.05
+cam.rotation_euler=(Vector((0,0,target_height))-cam.location).to_track_quat('-Z','Y').to_euler()
+cam.data.type='ORTHO';cam.data.ortho_scale=.64 if args.focus=='head' else max(4.75,len(names)*1.15+.15)
 scene.camera=cam
 scene.frame_set(args.frame)
 args.out.parent.mkdir(parents=True,exist_ok=True)

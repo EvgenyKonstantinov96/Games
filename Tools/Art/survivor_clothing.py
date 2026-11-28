@@ -71,6 +71,10 @@ def read_proxy(pack, name, family="clothes"):
         elif active and len(words) == 9:
             mapping.append(([int(x) for x in words[:3]], [float(x) for x in words[3:6]],
                             Vector(tuple(float(x) for x in words[6:9]))))
+        elif active and len(words) == 1 and words[0].isdigit():
+            # MakeHuman also permits direct basemesh bindings. Its low-poly
+            # eyes use this form rather than three barycentric references.
+            mapping.append(([int(words[0])], [1.0], Vector((0, 0, 0))))
     if "delete_verts" in text:
         for match in re.finditer(r"(\d+)\s*-\s*(\d+)|(\d+)", text.split("delete_verts", 1)[1]):
             if match[3]:
@@ -370,21 +374,40 @@ def append_hair(actor, pack):
 
 def append_groomed_locks(actor):
     """One flat side-swept forelock, tucked into the native ponytail groom."""
+    from mathutils import Vector
+    from mathutils.bvhtree import BVHTree
     h=actor.h
     path=((.055,.981,.003),(.021,.977,.008),(-.025,.966,.009),
           (-.062,.951,.006),(-.080,.936,.0008))
+    # Keep the authored outline, but follow the forehead's curvature between
+    # its long spans; projecting five rows alone leaves their chords inside skin.
+    rows=[tuple(a+(b-a)*step/3 for a,b in zip(start,end))
+          for start,end in zip(path,path[1:]) for step in range(3)]+[path[-1]]
+    # Project each corner onto its actual head triangle. The torso helper's
+    # wide maximum-depth window picks the nose for temple points, pushing a
+    # narrow forelock several centimetres away from the face.
+    head_faces=[tuple(index for index,_ in face) for face in actor.body.faces
+                if all(actor.body.geometry[index].z>h*.88 for index,_ in face)]
+    used=sorted({index for face in head_faces for index in face})
+    lookup={index:i for i,index in enumerate(used)}
+    skin=BVHTree.FromPolygons([actor.body.geometry[index] for index in used],
+                             [tuple(lookup[index] for index in face) for face in head_faces],
+                             all_triangles=False)
     first=len(actor.vertices)
-    for i,(x,z,width) in enumerate(path):
+    for x,z,width in rows:
         for sign in (-1,1):
             height=z*h+sign*width
-            y=actor.body.chest_surface(x,height)+.010
+            hit,_,_,_=skin.ray_cast(Vector((x,h*.4,height)),Vector((0,-1,0)),h*.8)
+            if hit is None:
+                raise ValueError(f"{actor.name} forelock misses head at {(x,height)}")
+            y=hit.y+.003
             actor.vertices.append((x,y,height))
             actor.weights.append({'Head':1.})
-    for i in range(len(path)-1):
+    for i in range(len(rows)-1):
         a=first+i*2
         actor.faces.append((a+2,a+3,a+1,a))
         # Follow the same warm directional strand island as the scalp.
-        u=.15+i*.035;next_u=u+.035
+        u=.15+i/(len(rows)-1)*.14;next_u=.15+(i+1)/(len(rows)-1)*.14
         actor.tiles.append((35,((next_u,.62),(next_u,.73),(u,.73),(u,.62))))
 
 
@@ -392,7 +415,12 @@ def append_fitted_head_part(actor,pack,family,name,tile,ratio):
     from mathutils import Vector
     from makehuman_body import read_obj,append_reduced
     mapping,axes,_=read_proxy(pack,name,family)
-    _,uv,faces,_=read_obj(pack.read(f'{family}/{name}/{name}.obj').decode().splitlines())
+    source,uv,faces,_=read_obj(pack.read(f'{family}/{name}/{name}.obj').decode().splitlines())
+    label=(actor.name,family,name)
+    assert source and len(mapping)==len(source),(label,'proxy/OBJ vertex count',len(mapping),len(source))
+    assert all(0<=index<len(actor.body.source) for ids,_,_ in mapping for index in ids),(label,'basemesh index')
+    assert faces and all(len(face)>=3 and all(0<=i<len(source) and 0<=j<len(uv)
+                                             for i,j in face) for face in faces),(label,'OBJ face/UV index')
     scale=Vector((1,1,1))
     for axis,(a,b,reference) in axes.items():
         scale[axis]=abs(actor.body.source[a][axis]-actor.body.source[b][axis])/reference
@@ -401,5 +429,6 @@ def append_fitted_head_part(actor,pack,family,name,tile,ratio):
         point=sum((actor.body.source[i]*weight for i,weight in zip(ids,amounts)),Vector((0,0,0)))
         point+=Vector(tuple(offset[i]*scale[i] for i in range(3)))
         points.append(actor.body.shape(point))
+    assert len(points)==len(source),(label,'fitted vertex count')
     geometry=[(tuple(i for i,_ in face),tuple(uv[j] for _,j in face)) for face in faces]
     append_reduced(actor,actor.name+' '+name,points,geometry,[tile]*len(geometry),[{'Head':1.} for _ in points],ratio)

@@ -26,7 +26,7 @@ namespace ZombieSurvivalRun
         Motion motion;
         float age, gaitPhase, blend, blendDuration = .09f, rate = 1f, actionSpeed = 1f, steeringRoll;
         float desiredRate = 1f;
-        bool moving, hero, firing, walking, hasItemClips, hasWalkClips;
+        bool moving, hero, firing, walking, hasItemClips, hasWalkClips, shotPending;
         Motion Locomotion => walking ? Motion.Walk : Motion.Move;
         Motion Shooting => walking ? Motion.WalkFire : Motion.Fire;
         static bool IsShooting(Motion value) => value == Motion.Fire || value == Motion.WalkFire;
@@ -405,6 +405,7 @@ namespace ZombieSurvivalRun
         public void Fire(Vector3 target)
         {
             firing = true;
+            shotPending = true;
             flashTime = .045f;
             recoil = kick;
             if (barrelRotor != null) barrelSpeed = 1800f;
@@ -457,10 +458,11 @@ namespace ZombieSurvivalRun
             var game = ZSRGame.Instance;
             if (game != null && game.State == ZSRState.Paused) return;
             float dt = Mathf.Min(Time.deltaTime, .05f);
-            if (firing && (flashTime -= dt) <= 0f) HideFlash();
+            // Fire runs during Update. Keep its first flash until the frame can
+            // render, even when this step is longer than the flash lifetime.
+            if (firing && !shotPending && (flashTime -= dt) <= 0f) HideFlash();
             if (weaponSocket != null)
             {
-                recoil = Mathf.MoveTowards(recoil, 0f, dt * .80f);
                 aimTime = Mathf.Max(0f, aimTime - dt);
             }
             if (!hero && motion != Motion.Death && game != null && !game.IsRunning) return;
@@ -510,6 +512,10 @@ namespace ZombieSurvivalRun
             }
             ApplyAim();
             ApplySupportGrip(dt);
+            // Sample a new impulse before aging it; otherwise a 30 Hz step
+            // consumes the minigun's entire kick before any pose sees it.
+            recoil = Mathf.MoveTowards(recoil, 0f, dt * .80f);
+            shotPending = false;
         }
 
         void RestoreSupportPose()
@@ -561,7 +567,9 @@ namespace ZombieSurvivalRun
             Vector3 relative = Quaternion.Inverse(reference) * (aimPoint-weaponSocket.position);
             bool active = aimTime>0f && IsShooting(motion);
             Vector2 angles = upperAim.Tick(relative,active,dt);
-            float kick = active ? ZSRUpperBodyAim.RecoilPitch(recoil) : 0f;
+            // The last round can start Reload before this pose is sampled.
+            // Its physical impulse persists independently of target tracking.
+            float kick = ZSRUpperBodyAim.RecoilPitch(recoil);
             breathPhase = Mathf.Repeat(breathPhase+dt*(moving?2.4f:1.43f),Mathf.PI*2f);
             float breath = Mathf.Sin(breathPhase)*(moving?.10f:.28f);
             Vector3 right = reference * Vector3.right;
@@ -611,6 +619,7 @@ namespace ZombieSurvivalRun
         void HideFlash()
         {
             firing = false;
+            shotPending = false;
             if (muzzleFlash != null) muzzleFlash.gameObject.SetActive(false);
         }
 

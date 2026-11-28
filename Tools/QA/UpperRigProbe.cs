@@ -1,4 +1,5 @@
 extern alias engine;
+#pragma warning disable 0649, 0414
 global using Vector2=engine::UnityEngine.Vector2;
 global using Vector3=engine::UnityEngine.Vector3;
 global using Mathf=engine::UnityEngine.Mathf;
@@ -42,6 +43,8 @@ namespace UnityEngine
     }
     public sealed class Transform
     {
+        public sealed class Node { public void SetActive(bool active) {} }
+        public readonly Node gameObject=new();
         Transform parentValue;
         readonly List<Transform> children=new();
         public string name;
@@ -72,6 +75,7 @@ namespace UnityEngine
     public sealed class GameObject
     {
         public readonly Transform transform;
+        public void SetActive(bool active) {}
         public GameObject(string name)=>transform=new(){name=name};
     }
 }
@@ -95,6 +99,13 @@ namespace ZombieSurvivalRun
         Quaternion supportRotation,sampledSupportUpper,sampledSupportLower,sampledSupportHand;
         float supportWeight;
         bool sampledSupport;
+        bool firing,shotPending,hasItemClips=true;
+        float flashTime,kick,barrelSpeed,actionSpeed,age,blend,blendDuration;
+        Transform barrelRotor,muzzleFlash;
+        sealed class Graph { public bool IsValid()=>false; }
+        sealed class Clip { public double GetTime()=>0;public void SetTime(double value) {} }
+        readonly Graph graph=new();
+        readonly Clip currentPose=new(),previousPose=new();
         static bool IsShooting(Motion value)=>value==Motion.Fire||value==Motion.WalkFire;
         static void Need(bool ok,string message){if(!ok)throw new Exception(message);}
         public void Check(int hz)
@@ -153,6 +164,47 @@ namespace ZombieSurvivalRun
                 Need(Quaternion.Angle(weaponSocket.localRotation,socketRest)<.08f,"No-target wrist rotation follows animation");
             }
             Console.WriteLine($"WEAPON SOCKET PASS {hz} Hz: real ApplyAim preserves running roll, wrist mount offset, no-target motion and at most one degree of fine correction. Scene/rotation stand-ins.");
+        }
+        static AimRig RecoilRig(WeaponType weapon)
+        {
+            var rig=new AimRig();rig.spine.parent=rig.transform;rig.head.parent=rig.spine;
+            rig.weaponSocket.parent=new Transform{parent=rig.spine};
+            rig.recoil=rig.aimTime=0;rig.motion=Motion.Move;rig.ConfigureWeapon(weapon);
+            return rig;
+        }
+        public static void CheckLastRoundRecoil(int hz,WeaponType weapon)
+        {
+            float dt=1f/hz;
+            var ordinary=RecoilRig(weapon);var last=RecoilRig(weapon);var neutral=RecoilRig(weapon);
+            ordinary.Fire(Vector3.forward*10);last.Fire(Vector3.forward*10);last.Reload(1.35f);neutral.Reload(1.35f);
+            ordinary.ApplyUpperBodyAim(dt);last.ApplyUpperBodyAim(dt);neutral.ApplyUpperBodyAim(dt);
+            float shotPitch=Quaternion.Angle(neutral.spine.rotation,ordinary.spine.rotation);
+            float lastPitch=Quaternion.Angle(neutral.spine.rotation,last.spine.rotation);
+            Need(shotPitch>.5f,$"{weapon}/{hz}: ordinary shot applies physical spine recoil");
+            Need(Math.Abs(lastPitch-shotPitch)<.08f,$"{weapon}/{hz}: last Fire+Reload applies ordinary-shot recoil ({lastPitch} vs {shotPitch} degrees)");
+            foreach(bool medkit in new[]{false,true})
+            {
+                var item=RecoilRig(weapon);var noImpulse=RecoilRig(weapon);
+                item.Fire(Vector3.forward*10);item.UseItem(medkit);noImpulse.UseItem(medkit);
+                item.ApplyUpperBodyAim(dt);noImpulse.ApplyUpperBodyAim(dt);
+                Need(Math.Abs(Quaternion.Angle(item.spine.rotation,noImpulse.spine.rotation)-shotPitch)<.08f,
+                    $"{weapon}/{hz}: an immediate item does not erase the existing physical impulse");
+                for(int frame=0;frame<hz;frame++)
+                {
+                    item.DecayRecoil(dt);item.RestoreSampledPose();item.ApplyUpperBodyAim(dt);
+                    noImpulse.RestoreSampledPose();noImpulse.ApplyUpperBodyAim(dt);
+                }
+                Need(item.recoil==0&&Quaternion.Angle(item.spine.rotation,noImpulse.spine.rotation)<.08f,
+                    $"{weapon}/{hz}: item recovery has no stale recoil or accumulated pose");
+            }
+            last.Die();last.RestoreSampledPose();last.ApplyUpperBodyAim(dt);
+            Need(Quaternion.Angle(last.spine.localRotation,last.sampledSpine)<.08f&&
+                Quaternion.Angle(last.head.localRotation,last.sampledHead)<.08f,$"{weapon}/{hz}: death ignores remaining impulse");
+            var disabled=RecoilRig(weapon);disabled.Fire(Vector3.forward*10);disabled.hero=false;disabled.ApplyUpperBodyAim(dt);
+            Need(Quaternion.Angle(disabled.spine.localRotation,disabled.sampledSpine)<.08f,$"{weapon}/{hz}: nonhero guard ignores recoil");
+            var noWeapon=RecoilRig(weapon);noWeapon.Fire(Vector3.forward*10);noWeapon.weaponSocket=null;noWeapon.ApplyUpperBodyAim(dt);
+            Need(Quaternion.Angle(noWeapon.spine.localRotation,noWeapon.sampledSpine)<.08f,$"{weapon}/{hz}: missing weapon guard ignores recoil");
+            Console.WriteLine($"LAST ROUND RECOIL PASS {weapon} {hz} Hz: actual Fire+Reload/UseItem/Die and ApplyUpperBodyAim, ordinary/last pitch {shotPitch:F3}/{lastPitch:F3} deg, preserved impulse, item recovery, no accumulation and death/nonhero/missing-weapon guards. Scene/rotation stand-ins, not native Animator/render.");
         }
         public void CheckSupport(int hz)
         {
@@ -272,5 +324,5 @@ namespace ZombieSurvivalRun
 }
 static class UpperRigProbe
 {
-    static void Main(string[] args){foreach(int hz in new[]{20,30,60,120}){new ZombieSurvivalRun.AimRig().Check(hz);new ZombieSurvivalRun.AimRig().CheckSocket(hz);new ZombieSurvivalRun.AimRig().CheckSupport(hz);}if(args.Length>0)ZombieSurvivalRun.AimRig.CheckFbx(args[0]);}
+    static void Main(string[] args){foreach(int hz in new[]{20,30,60,120}){new ZombieSurvivalRun.AimRig().Check(hz);new ZombieSurvivalRun.AimRig().CheckSocket(hz);new ZombieSurvivalRun.AimRig().CheckSupport(hz);foreach(var weapon in Enum.GetValues<ZombieSurvivalRun.WeaponType>())ZombieSurvivalRun.AimRig.CheckLastRoundRecoil(hz,weapon);}if(args.Length>0)ZombieSurvivalRun.AimRig.CheckFbx(args[0]);}
 }

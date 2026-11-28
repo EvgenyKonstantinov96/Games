@@ -18,6 +18,8 @@ MESHES = ROOT/"Assets/Resources/Meshes"
 TEXTURES = ROOT/"Assets/Resources/Textures"
 GAME_SOURCE = (ROOT/"Assets/Scripts/ZSRGame.cs").read_text()
 WORLD_SOURCE = (ROOT/"Assets/Scripts/ZSRWorld.cs").read_text()
+CITY_SOURCE = (ROOT/"Assets/Scripts/ZSRCityArchitecture.cs").read_text()
+CHARACTER_SOURCE = (ROOT/"Assets/Scripts/ZSRBundledCharacter.cs").read_text()
 walking = "--walk" in sys.argv
 hero_frame = 239 if walking else 42
 chapter = int(sys.argv[sys.argv.index("--chapter")+1]) if "--chapter" in sys.argv else 0
@@ -34,6 +36,21 @@ def number_setting(source, name):
 
 def camera_setting(name):
     return number_setting(GAME_SOURCE,"RunCamera"+name)
+
+
+def color_values(value):
+    return tuple(float(component.strip().rstrip("f")) for component in value.split(","))
+
+
+def emission_tint(source):
+    return color_values(re.search(r'SetColor\("_EmissionColor",\s*new Color\(([^)]+)\)', source)[1])
+
+
+city_tint_block = CITY_SOURCE.split("Color tint = chapter switch", 1)[1].split("};", 1)[0]
+city_tints = {key: color_values(value) for key, value in
+              re.findall(r'(\d+|_)\s*=>\s*new Color\(([^)]+)\)', city_tint_block)}
+city_tint = city_tints.get(str(chapter), city_tints["_"])
+city_smoothness = float(re.search(r'MatWithTexture\(tint,\s*"Textures/city_facades",\s*([\d.]+)f', CITY_SOURCE)[1])
 
 
 ROAD_WIDTH = number_setting(WORLD_SOURCE,"DeckWidth")
@@ -79,6 +96,19 @@ def paint(name, color, path=None, rough=.62, emissive=False):
         shader.inputs["Emission Color"].default_value = (*color,1)
         shader.inputs["Emission Strength"].default_value = 2
     return material
+
+
+def tint_texture(material, socket, tint, name):
+    """Apply the runtime map multiplier instead of replacing it with white."""
+    nodes, links = material.node_tree.nodes, material.node_tree.links
+    target = nodes.get("Principled BSDF").inputs[socket]
+    original = target.links[0].from_socket
+    multiply = nodes.new("ShaderNodeVectorMath")
+    multiply.name = name
+    multiply.operation = "MULTIPLY"
+    multiply.inputs[1].default_value = tint
+    links.new(original, multiply.inputs[0])
+    links.new(multiply.outputs["Vector"], target)
 
 
 def cube(name, loc, scale, mat):
@@ -132,7 +162,8 @@ if (ART/"CharacterAtlas_emission.png").exists():
     emission.image = bpy.data.images.load(str(ART/"CharacterAtlas_emission.png"), check_existing=True)
     light = nodes.get("Principled BSDF")
     links.new(emission.outputs["Color"], light.inputs["Emission Color"])
-    light.inputs["Emission Strength"].default_value = 1.25
+    tint_texture(atlas, "Emission Color", emission_tint(CHARACTER_SOURCE), "Runtime character emission tint")
+    light.inputs["Emission Strength"].default_value = 1.
 metal=paint("Weathered blue steel",(.079,.115,.161),rough=.54)
 asphalt=paint("Highway",(.04,.045,.053),ART/"Highway.png",.49)
 track_source = (ROOT/"Assets/Scripts/ZSRTrackArt.cs").read_text()
@@ -185,12 +216,14 @@ links.new(alpha.outputs[0], mix.inputs[0])
 links.new(nodes.new("ShaderNodeBsdfTransparent").outputs[0], mix.inputs[1])
 links.new(nodes.get("Principled BSDF").outputs[0], mix.inputs[2])
 links.new(mix.outputs[0], nodes.get("Material Output").inputs[0])
-facade=paint("Weathered city facade",(1,1,1),TEXTURES/"city_facades.png",.72)
+facade=paint("Weathered city facade",(1,1,1),TEXTURES/"city_facades.png",1-city_smoothness)
+tint_texture(facade, "Base Color", city_tint, "Runtime chapter facade tint")
 emission=facade.node_tree.nodes.new("ShaderNodeTexImage")
 emission.image=bpy.data.images.load(str(TEXTURES/"city_facades_emission.png"),check_existing=True)
 facade_shader=facade.node_tree.nodes.get("Principled BSDF")
 facade.node_tree.links.new(emission.outputs["Color"],facade_shader.inputs["Emission Color"])
-facade_shader.inputs["Emission Strength"].default_value=1.5
+tint_texture(facade, "Emission Color", emission_tint(CITY_SOURCE), "Runtime city emission tint")
+facade_shader.inputs["Emission Strength"].default_value=1.
 for direction in (-1,1):
     x=direction*RAIL_OFFSET
     for center in (19, 65, 111):

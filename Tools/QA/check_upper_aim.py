@@ -27,13 +27,20 @@ with tempfile.TemporaryDirectory() as folder:
     source=(ROOT/'Assets/Scripts/ZSRBundledCharacter.cs').read_text()
     # Execute the actual calibration prefix without constructing renderer meshes.
     mount=block(source,'void AttachWeapon(')
+    weapon_kick=mount[mount.index('            kick = weapon switch'):mount.index('            var gun =')]
     mount=mount[:mount.index('            kick = weapon switch')]+'}'
     start=source.index('            if (spine != null && motion != Motion.Death &&')
     end=source.index('            ApplyUpperBodyAim(dt);',start)
     code.write_text('using UnityEngine; namespace ZombieSurvivalRun { partial class AimRig {'+
         block(source,'enum Motion')+block(source,'void RestoreSampledPose()')+block(source,'void ApplyUpperBodyAim(float dt)')+block(source,'void ApplyAim()')+
         block(source,'void RestoreSupportPose()')+block(source,'void ApplySupportGrip(float dt)')+
+        ''.join(block(source,signature) for signature in ('public void Fire(', 'public void Reload(',
+            'public void UseItem(', 'public void Die()', 'void Change(', 'void HideFlash()'))+
+        'void DecayRecoil(float dt) {'+next(line.strip() for line in source.splitlines()
+            if line.strip().startswith('recoil = Mathf.MoveTowards(recoil'))+'}'+
+        'void ConfigureWeapon(WeaponType weapon) {'+weapon_kick+'}'+
         mount+block(source,'static Transform FindBone(')+
+        next(line.strip() for line in source.splitlines() if line.strip().startswith('Motion Shooting =>'))+
         next(line.strip() for line in source.splitlines() if line.strip().startswith('static bool IsGait(Motion value)'))+
         'void ApplySteering(){'+source[start:end]+'}}}')
     rig=folder/'UpperRigProbe.dll';shutil.copy(exe.with_suffix('.runtimeconfig.json'),rig.with_suffix('.runtimeconfig.json'))

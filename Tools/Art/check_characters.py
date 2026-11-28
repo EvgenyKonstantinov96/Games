@@ -83,6 +83,8 @@ for path in sorted(ROOT.glob("*.fbx")):
     assert len(skins)==3 and all(skin.name.endswith("_LOD"+str(i)) for i,skin in enumerate(skins)),path
     skin=skins[0]
     triangles=[]
+    eye_slot=36 if path.stem=='Max' else 37 if path.stem=='Eva' else 38
+    eye_x,eye_y,eye_w,eye_h=SLOTS[eye_slot]
     for index,lod in enumerate(skins):
         assert len(lod.data.materials)==1,(path,index,'temporary atlas labels leaked into runtime material slots')
         lod.data.calc_loop_triangles()
@@ -90,10 +92,16 @@ for path in sorted(ROOT.glob("*.fbx")):
         assert all(1<=len(v.groups)<=4 and abs(sum(g.weight for g in v.groups)-1)<.001
                    for v in lod.data.vertices),(path,index,"weights")
         uv=lod.data.uv_layers.active
+        eye_sides={-1:0,1:0}
         for polygon in lod.data.polygons:
             points=[(uv.data[i].uv.x*SIZE,(1-uv.data[i].uv.y)*SIZE) for i in polygon.loop_indices]
             assert any(all(x-.01<=u<=x+w+.01 and y-.01<=v<=y+h+.01 for u,v in points)
                        for x,y,w,h in SLOTS.values()),(path,index,'face crosses atlas islands',polygon.index)
+            if all(eye_x-.01<=u<=eye_x+eye_w+.01 and eye_y-.01<=v<=eye_y+eye_h+.01 for u,v in points):
+                side=-1 if sum(lod.data.vertices[i].co.x for i in polygon.vertices)<0 else 1
+                eye_sides[side]+=1
+        assert min(eye_sides.values())>0,(path,index,'missing fitted eye UV faces',eye_slot,eye_sides)
+        print(f"EYES {path.stem} LOD{index}: atlas {eye_slot}, left/right faces {eye_sides[-1]}/{eye_sides[1]}",flush=True)
     budget=30000 if path.stem in ("Max","Eva") else 19000
     assert triangles[0]<budget and triangles[1]<triangles[0]*.57 and triangles[2]<triangles[0]*.31,(path,triangles)
     print(f"LOD {path.stem}: {triangles} triangles, one skeleton and atlas",flush=True)
